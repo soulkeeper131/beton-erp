@@ -3,8 +3,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+RUN mkdir -p /app/data && touch /app/data/sqlite.db
 RUN npm run build
-RUN mkdir -p /app/data
 EXPOSE 3000
 ENV NODE_ENV=production
 ENV PORT=3000
