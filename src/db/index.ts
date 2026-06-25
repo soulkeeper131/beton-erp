@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
-import { hashSync } from 'bcryptjs';
+import bcrypt from 'bcryptjs';
 import * as schema from './schema';
 
 const sqlite = new Database('./data/sqlite.db');
@@ -268,7 +268,7 @@ if (userCount.cnt === 0) {
   );
   
   for (const u of seedUsers) {
-    const h = hashSync(u.password, 10);
+    const h = bcrypt.hashSync(u.password, 10);
     insertUser.run(u.email, h, u.name, u.role);
   }
   
