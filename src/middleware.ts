@@ -1,29 +1,29 @@
-import { auth } from "@/auth";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default auth((req) => {
-  const { pathname } = req.nextUrl;
-  const isAuth = !!req.auth;
-  const role = (req.auth?.user as any)?.role;
+// Simple middleware — no NextAuth, no DB, no edge runtime issues
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
-  // Public routes
-  if (pathname === "/login" || pathname.startsWith("/api/auth") || pathname === "/api/health") {
+  // Public routes — allow without auth
+  const publicPaths = ["/login", "/api/auth", "/api/health"];
+  if (publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     return NextResponse.next();
   }
 
-  // Not authenticated
-  if (!isAuth) {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
+  // Check for auth session cookie
+  const authCookie =
+    request.cookies.get("authjs.session-token")?.value ||
+    request.cookies.get("__Secure-authjs.session-token")?.value;
 
-  // Admin-only routes
-  const adminRoutes = ["/users", "/templates", "/audit-log", "/api-keys"];
-  if (adminRoutes.some((r) => pathname.startsWith(r)) && role !== "admin") {
-    return NextResponse.redirect(new URL("/", req.url));
+  if (!authCookie) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
