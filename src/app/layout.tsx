@@ -19,4 +19,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-// deploy trigger Thu Jun 25 10:52:01 UTC 2026
