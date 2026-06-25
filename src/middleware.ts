@@ -7,7 +7,7 @@ export default auth((req) => {
   const role = (req.auth?.user as any)?.role;
 
   // Public routes
-  if (pathname === "/login" || pathname.startsWith("/api/auth")) {
+  if (pathname === "/login" || pathname.startsWith("/api/auth") || pathname === "/api/health") {
     return NextResponse.next();
   }
 
