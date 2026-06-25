@@ -9,4 +9,4 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 RUN npm run build
 EXPOSE 3000
 ENV PORT=3000
-CMD ["node", ".next/standalone/server.js"]
+CMD ["npx", "next", "start"]
