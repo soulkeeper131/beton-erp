@@ -72,11 +72,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
-            {/* Mobile hamburger */}
+            {/* Mobile hamburger — FIRST */}
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="md:hidden order-first"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Меню"
             >
