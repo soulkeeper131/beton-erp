@@ -248,6 +248,29 @@ sqlite.exec(`
     active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS services (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT NOT NULL DEFAULT 'other',
+    unit TEXT NOT NULL DEFAULT 'бр.',
+    base_price REAL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS service_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    service_id INTEGER NOT NULL REFERENCES services(id),
+    concrete_type_id INTEGER REFERENCES concrete_types(id),
+    material_id INTEGER REFERENCES materials(id),
+    action_name TEXT,
+    quantity REAL NOT NULL DEFAULT 1,
+    unit TEXT NOT NULL DEFAULT 'бр.',
+    price_per_unit REAL DEFAULT 0,
+    sort_order INTEGER DEFAULT 0
+  );
 `);
 
 console.log("✅ Database tables ensured");

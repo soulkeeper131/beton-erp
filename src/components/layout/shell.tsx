@@ -25,6 +25,7 @@ const navItems = [
   { href: "/workers", label: "Работници", icon: "👷" },
   { href: "/materials", label: "Склад", icon: "📦" },
   { href: "/invoices", label: "Фактури", icon: "🧾" },
+  { href: "/services", label: "Услуги", icon: "🔧" },
   { href: "/concrete-types", label: "Типове бетон", icon: "🧱" },
 ];
 

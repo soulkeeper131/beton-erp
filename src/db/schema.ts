@@ -243,6 +243,30 @@ export const templates = sqliteTable("templates", {
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
+// ========== SERVICES ==========
+export const services = sqliteTable("services", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull().default("other"),
+  unit: text("unit").notNull().default("бр."),
+  basePrice: real("base_price").default(0),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+});
+
+export const serviceItems = sqliteTable("service_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  serviceId: integer("service_id").notNull().references(() => services.id),
+  concreteTypeId: integer("concrete_type_id").references(() => concreteTypes.id),
+  materialId: integer("material_id").references(() => materials.id),
+  actionName: text("action_name"),
+  quantity: real("quantity").notNull().default(1),
+  unit: text("unit").notNull().default("бр."),
+  pricePerUnit: real("price_per_unit").default(0),
+  sortOrder: integer("sort_order").default(0),
+});
+
 // ========== AUDIT LOG ==========
 export const auditLog = sqliteTable("audit_log", {
   id: integer("id").primaryKey({ autoIncrement: true }),
