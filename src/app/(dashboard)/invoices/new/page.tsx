@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/utils";
-import { Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Search } from "lucide-react";
 
 export default function NewInvoicePage() {
   const router = useRouter();
@@ -26,6 +26,8 @@ export default function NewInvoicePage() {
     taxExemptionReason: "", notes: "",
   });
   const [items, setItems] = useState([{ description: "", unit: "бр.", quantity: 1, price: 0, vatRate: 20 }]);
+  const [eikSearch, setEikSearch] = useState("");
+  const [eikLoading, setEikLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/clients").then(r => r.json()).then(setClients);
@@ -38,6 +40,37 @@ export default function NewInvoicePage() {
   const total = afterDiscount + vatAmount;
 
   const addItem = () => setItems([...items, { description: "", unit: "бр.", quantity: 1, price: 0, vatRate: 20 }]);
+
+  async function handleEikSearch() {
+    if (!eikSearch || eikSearch.length < 9) return;
+    setEikLoading(true);
+    try {
+      // First check if client with this EIK already exists
+      const existing = clients.find(c => c.eik === eikSearch);
+      if (existing) { setForm({...form, clientId: String(existing.id)}); setEikLoading(false); return; }
+      // Search CompanyBook
+      const res = await fetch(`/api/companybook?eik=${eikSearch}`);
+      const data = await res.json();
+      if (data.error) { alert(data.error); setEikLoading(false); return; }
+      // Create new client
+      const createRes = await fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.nameLatin || data.name,
+          companyName: data.name,
+          eik: data.eik,
+          address: data.address,
+        }),
+      });
+      if (createRes.ok) {
+        const newClient = await createRes.json();
+        setClients([...clients, newClient]);
+        setForm({...form, clientId: String(newClient.id)});
+      }
+    } catch { alert("Грешка при търсене"); }
+    setEikLoading(false);
+  }
   const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
   const updateItem = (i: number, f: string, v: any) => {
     const copy = [...items];
@@ -113,6 +146,15 @@ export default function NewInvoicePage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex gap-2 items-end mt-2">
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs">Бързо добавяне по ЕИК</Label>
+                <Input className="h-8 text-sm" placeholder="9-13 цифри" value={eikSearch} onChange={e => setEikSearch(e.target.value)} />
+              </div>
+              <Button type="button" variant="outline" size="sm" className="h-8 gap-1" onClick={handleEikSearch} disabled={eikLoading}>
+                <Search className="h-3 w-3" /> {eikLoading ? "..." : "Търси"}
+              </Button>
             </div>
             {form.clientId && (() => {
               const c = clients.find(x => String(x.id) === form.clientId);
