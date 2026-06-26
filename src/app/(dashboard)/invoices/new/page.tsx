@@ -165,25 +165,9 @@ export default function NewInvoicePage() {
                   )}
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                  <div className="md:col-span-2 space-y-1">
+                  <div className="col-span-2 space-y-1">
                     <Label className="text-xs">Описание *</Label>
                     <Input className="h-8 text-sm" value={item.description} onChange={e => updateItem(idx, "description", e.target.value)} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Мярка</Label>
-                    <Select value={item.unit} onValueChange={v => updateItem(idx, "unit", v)}>
-                      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="бр.">бр.</SelectItem>
-                        <SelectItem value="m³">m³</SelectItem>
-                        <SelectItem value="m²">m²</SelectItem>
-                        <SelectItem value="m">m</SelectItem>
-                        <SelectItem value="кг">кг</SelectItem>
-                        <SelectItem value="тон">тон</SelectItem>
-                        <SelectItem value="час">час</SelectItem>
-                        <SelectItem value="ден">ден</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">К-во</Label>
@@ -194,10 +178,20 @@ export default function NewInvoicePage() {
                     <Input type="number" step="0.01" className="h-8 text-sm" value={item.price} onChange={e => updateItem(idx, "price", parseFloat(e.target.value) || 0)} />
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>Мярка: </span>
+                  <Select value={item.unit} onValueChange={v => updateItem(idx, "unit", v)}>
+                    <SelectTrigger className="h-7 w-16 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="бр.">бр.</SelectItem><SelectItem value="m³">m³</SelectItem>
+                      <SelectItem value="m²">m²</SelectItem><SelectItem value="m">m</SelectItem>
+                      <SelectItem value="кг">кг</SelectItem><SelectItem value="тон">тон</SelectItem>
+                      <SelectItem value="час">час</SelectItem><SelectItem value="ден">ден</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <span>ДДС: </span>
                   <Select value={String(item.vatRate)} onValueChange={v => updateItem(idx, "vatRate", parseInt(v))}>
-                    <SelectTrigger className="h-7 w-20 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-7 w-16 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="20">20%</SelectItem>
                       <SelectItem value="9">9%</SelectItem>
@@ -240,9 +234,9 @@ export default function NewInvoicePage() {
           </CardContent>
         </Card>
 
-        <div className="flex gap-2">
-          <Button type="submit" disabled={saving} className="gap-2">💾 {saving ? "Запазване..." : "Запази фактура"}</Button>
-          <Button type="button" variant="outline" onClick={() => router.back()}>Отказ</Button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button type="submit" disabled={saving} className="gap-2 w-full sm:w-auto">💾 {saving ? "Запазване..." : "Запази фактура"}</Button>
+          <Button type="button" variant="outline" onClick={() => router.back()} className="w-full sm:w-auto">Отказ</Button>
         </div>
       </form>
     </div>

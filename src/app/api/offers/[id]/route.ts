@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { offers, offerItems, clients, concreteTypes } from "@/db/schema";
+import { offers, offerItems, clients, concreteTypes, services } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -57,6 +57,7 @@ export async function GET(
       id: offerItems.id,
       offerId: offerItems.offerId,
       concreteTypeId: offerItems.concreteTypeId,
+      serviceId: offerItems.serviceId,
       quantityM3: offerItems.quantityM3,
       pricePerM3: offerItems.pricePerM3,
       transportCost: offerItems.transportCost,
@@ -64,9 +65,12 @@ export async function GET(
       total: offerItems.total,
       concreteTypeName: concreteTypes.name,
       concreteTypeClassName: concreteTypes.className,
+      serviceName: services.name,
+      serviceUnit: services.unit,
     })
     .from(offerItems)
     .leftJoin(concreteTypes, eq(offerItems.concreteTypeId, concreteTypes.id))
+    .leftJoin(services, eq(offerItems.serviceId, services.id))
     .where(eq(offerItems.offerId, offerId))
     .all();
 
