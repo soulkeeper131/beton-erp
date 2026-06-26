@@ -18,6 +18,7 @@ export default function SitesPage() {
 
   const filtered = data.filter(s =>
     !search || s.name.toLowerCase().includes(search.toLowerCase()) ||
+    s.city?.toLowerCase().includes(search.toLowerCase()) ||
     s.address?.toLowerCase().includes(search.toLowerCase()) ||
     s.client?.name?.toLowerCase().includes(search.toLowerCase())
   );
@@ -35,6 +36,7 @@ export default function SitesPage() {
       <DataList
         columns={[
           { key: "name", label: "Име" },
+          { key: "city", label: "Град/Село" },
           { key: "address", label: "Адрес" },
           { key: "client", label: "Клиент", render: (v: any) => v?.name || "—" },
           { key: "status", label: "Статус" },

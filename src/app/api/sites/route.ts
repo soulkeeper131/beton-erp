@@ -8,6 +8,7 @@ import { z } from "zod";
 const siteSchema = z.object({
   clientId: z.number().int().positive("Клиентът е задължителен"),
   name: z.string().min(1, "Името е задължително"),
+  city: z.string().optional().default(""),
   address: z.string().min(1, "Адресът е задължителен"),
   status: z.enum(["active", "completed", "cancelled"]).default("active"),
   startDate: z.string().optional().nullable(),
@@ -29,6 +30,7 @@ export async function GET(req: Request) {
         id: sites.id,
         clientId: sites.clientId,
         name: sites.name,
+        city: sites.city,
         address: sites.address,
         status: sites.status,
         startDate: sites.startDate,
@@ -50,6 +52,7 @@ export async function GET(req: Request) {
         id: sites.id,
         clientId: sites.clientId,
         name: sites.name,
+        city: sites.city,
         address: sites.address,
         status: sites.status,
         startDate: sites.startDate,
@@ -84,6 +87,7 @@ export async function POST(req: Request) {
     .values({
       clientId: parsed.data.clientId,
       name: parsed.data.name,
+      city: parsed.data.city || "",
       address: parsed.data.address,
       status: parsed.data.status,
       startDate: parsed.data.startDate || null,

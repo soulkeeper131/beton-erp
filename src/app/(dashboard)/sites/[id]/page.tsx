@@ -44,6 +44,7 @@ import { z } from "zod";
 const formSchema = z.object({
   clientId: z.coerce.number().int().positive("Изберете клиент"),
   name: z.string().min(1, "Името е задължително"),
+  city: z.string().optional().default(""),
   address: z.string().min(1, "Адресът е задължителен"),
   status: z.enum(["active", "completed", "cancelled"]),
   startDate: z.string().optional().default(""),
@@ -57,6 +58,7 @@ type SiteData = {
   id: number;
   clientId: number;
   name: string;
+  city: string;
   address: string;
   status: string;
   startDate: string | null;
@@ -134,6 +136,7 @@ export default function SiteDetailPage() {
     form.reset({
       clientId: site.clientId,
       name: site.name,
+      city: site.city || "",
       address: site.address,
       status: site.status as FormValues["status"],
       startDate: site.startDate || "",
@@ -201,6 +204,10 @@ export default function SiteDetailPage() {
               <div>
                 <dt className="text-sm font-medium text-muted-foreground">Име</dt>
                 <dd className="text-sm">{site.name}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-muted-foreground">Град/Село</dt>
+                <dd className="text-sm">{site.city || "—"}</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-muted-foreground">Адрес</dt>
@@ -333,6 +340,19 @@ export default function SiteDetailPage() {
                     <FormLabel>Име на обект *</FormLabel>
                     <FormControl>
                       <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Град/Село</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="гр. София" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

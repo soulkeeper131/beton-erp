@@ -14,6 +14,7 @@ export default function NewSitePage() {
   const [clients, setClients] = useState<any[]>([]);
   const [form, setForm] = useState({
     name: "",
+    city: "",
     address: "",
     clientId: "",
     status: "active",
@@ -49,8 +50,12 @@ export default function NewSitePage() {
               <Input id="name" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="ул. Витоша 15" />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="city">Град/Село</Label>
+              <Input id="city" value={form.city} onChange={e => setForm({...form, city: e.target.value})} placeholder="гр. София" />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="address">Адрес</Label>
-              <Input id="address" value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="гр. София, ул. Витоша 15" />
+              <Input id="address" value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="ул. Витоша 15" />
             </div>
             <div className="space-y-2">
               <Label>Клиент</Label>

@@ -44,6 +44,7 @@ export const sites = sqliteTable("sites", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   clientId: integer("client_id").notNull().references(() => clients.id),
   name: text("name").notNull(),
+  city: text("city").notNull().default(""),
   address: text("address").notNull(),
   status: text("status").notNull().default("active"), // active | completed | cancelled
   startDate: text("start_date"),

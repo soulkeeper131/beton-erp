@@ -8,6 +8,7 @@ import { z } from "zod";
 const updateSchema = z.object({
   clientId: z.number().int().positive().optional(),
   name: z.string().min(1).optional(),
+  city: z.string().optional(),
   address: z.string().min(1).optional(),
   status: z.enum(["active", "completed", "cancelled"]).optional(),
   startDate: z.string().optional().nullable(),
@@ -27,6 +28,7 @@ export async function GET(
       id: sites.id,
       clientId: sites.clientId,
       name: sites.name,
+      city: sites.city,
       address: sites.address,
       status: sites.status,
       startDate: sites.startDate,
