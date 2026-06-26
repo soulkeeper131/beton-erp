@@ -52,19 +52,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-0.5 overflow-x-auto">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "px-3 py-1.5 text-sm rounded-md transition-colors hover:bg-muted",
+                  "px-2 py-1.5 text-xs rounded-md transition-colors hover:bg-muted whitespace-nowrap shrink-0",
                   pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
                     ? "bg-muted font-medium"
                     : "text-muted-foreground"
                 )}
               >
-                <span className="mr-1.5">{item.icon}</span>
+                <span className="mr-1">{item.icon}</span>
                 {item.label}
               </Link>
             ))}
