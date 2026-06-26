@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { invoices, invoiceItems, clients } from "@/db/schema";
+import { invoices, invoiceItems, clients, companySettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
@@ -36,6 +36,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       createdAt: invoices.createdAt,
       clientName: clients.name,
       clientCompany: clients.companyName,
+      clientEik: clients.eik,
+      clientVatNumber: clients.vatNumber,
+      clientAddress: clients.address,
+      clientPhone: clients.phone,
+      clientEmail: clients.email,
     })
     .from(invoices)
     .leftJoin(clients, eq(invoices.clientId, clients.id))
@@ -44,9 +49,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const company = db.select().from(companySettings).get();
   const items = db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, parseInt(params.id))).all();
 
-  return NextResponse.json({ ...invoice, items });
+  return NextResponse.json({ ...invoice, items, company });
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
