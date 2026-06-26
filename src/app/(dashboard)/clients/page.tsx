@@ -80,7 +80,7 @@ export default function ClientsPage() {
         ]}
         data={clients}
         loading={loading}
-        onEdit={(id) => router.push(`/clients/${id}`)}
+        onEdit={(id) => router.push(`/clients/${id}/edit`)}
         emptyText={search ? "Няма намерени клиенти" : "Няма клиенти"}
       />
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

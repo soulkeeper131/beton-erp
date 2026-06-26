@@ -1,22 +1,36 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Search } from "lucide-react";
+import { Search, ArrowLeft, Loader2 } from "lucide-react";
 
-export default function NewClientPage() {
+export default function EditClientPage() {
   const router = useRouter();
+  const params = useParams();
+  const id = params.id as string;
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [form, setForm] = useState({
     name: "", email: "", phone: "", companyName: "",
     eik: "", vatNumber: "", address: "", notes: ""
   });
+
+  useEffect(() => {
+    fetch(`/api/clients/${id}`).then(r => r.json()).then(d => {
+      if (!d.error) setForm({
+        name: d.name || "", email: d.email || "", phone: d.phone || "",
+        companyName: d.companyName || "", eik: d.eik || "",
+        vatNumber: d.vatNumber || "", address: d.address || "", notes: d.notes || ""
+      });
+      setLoading(false);
+    });
+  }, [id]);
 
   const update = (f: string, v: string) => setForm({ ...form, [f]: v });
 
@@ -31,7 +45,6 @@ export default function NewClientPage() {
         ...prev,
         companyName: prev.companyName || data.name || "",
         address: prev.address || data.address || "",
-        name: prev.name || data.nameLatin || "",
       }));
     } catch { alert("Грешка при търсене"); }
     setSearching(false);
@@ -41,18 +54,23 @@ export default function NewClientPage() {
     e.preventDefault();
     if (!form.name) return;
     setSaving(true);
-    const res = await fetch("/api/clients", {
-      method: "POST",
+    const res = await fetch(`/api/clients/${id}`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
     if (res.ok) router.push("/clients");
-    else { alert("Грешка при създаване"); setSaving(false); }
+    else { alert("Грешка"); setSaving(false); }
   }
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
   return (
     <div className="max-w-xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">👥 Нов клиент</h1>
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
+        <h1 className="text-2xl font-bold">✏️ Редактиране на клиент</h1>
+      </div>
       <Card><CardHeader><CardTitle>Данни</CardTitle></CardHeader><CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
