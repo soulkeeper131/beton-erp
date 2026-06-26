@@ -28,7 +28,9 @@ import { formatCurrency } from "@/lib/utils";
 import { Plus, Trash2, ArrowLeft } from "lucide-react";
 
 const itemSchema = z.object({
-  concreteTypeId: z.coerce.number().int().positive("Изберете тип бетон"),
+  itemType: z.enum(["concrete", "service"]).default("concrete"),
+  concreteTypeId: z.coerce.number().int().positive().optional().nullable(),
+  serviceId: z.coerce.number().int().positive().optional().nullable(),
   quantityM3: z.coerce.number().positive("Количеството трябва да е положително"),
   pricePerM3: z.coerce.number().min(0, "Цената не може да е отрицателна"),
   transportCost: z.coerce.number().min(0).optional().default(0),
@@ -57,6 +59,13 @@ type Site = {
   clientId: number;
 };
 
+type Service = {
+  id: number;
+  name: string;
+  basePrice: number | null;
+  unit: string;
+};
+
 type ConcreteType = {
   id: number;
   name: string;
@@ -70,6 +79,7 @@ export default function NewOfferPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [concreteTypes, setConcreteTypes] = useState<ConcreteType[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [saving, setSaving] = useState(false);
 
   const form = useForm<FormValues>({
@@ -82,7 +92,9 @@ export default function NewOfferPage() {
       notes: "",
       items: [
         {
+          itemType: "concrete" as const,
           concreteTypeId: 0,
+          serviceId: null,
           quantityM3: 1,
           pricePerM3: 0,
           transportCost: 0,
@@ -121,6 +133,9 @@ export default function NewOfferPage() {
     fetch("/api/concrete-types")
       .then((r) => r.json())
       .then(setConcreteTypes);
+    fetch("/api/services")
+      .then((r) => r.json())
+      .then(setServices);
   }, []);
 
   // Filter sites by selected client
@@ -138,7 +153,9 @@ export default function NewOfferPage() {
 
   const addItem = () => {
     append({
+      itemType: "concrete" as const,
       concreteTypeId: 0,
+      serviceId: null,
       quantityM3: 1,
       pricePerM3: 0,
       transportCost: 0,
@@ -177,7 +194,8 @@ export default function NewOfferPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            concreteTypeId: item.concreteTypeId,
+            concreteTypeId: item.itemType === "concrete" ? item.concreteTypeId : null,
+            serviceId: item.itemType === "service" ? item.serviceId : null,
             quantityM3: item.quantityM3,
             pricePerM3: item.pricePerM3,
             transportCost: item.transportCost || 0,
@@ -375,48 +393,87 @@ export default function NewOfferPage() {
                       )}
                     </div>
 
+                    <div className="flex gap-1">
+                      <Button type="button" size="sm" variant={item?.itemType === "concrete" ? "default" : "outline"} className="h-7 text-xs px-2" onClick={() => { form.setValue(`items.${index}.itemType`, "concrete"); form.setValue(`items.${index}.serviceId`, null); }}>
+                        🧱 Бетон
+                      </Button>
+                      <Button type="button" size="sm" variant={item?.itemType === "service" ? "default" : "outline"} className="h-7 text-xs px-2" onClick={() => { form.setValue(`items.${index}.itemType`, "service"); form.setValue(`items.${index}.concreteTypeId`, null); }}>
+                        🔧 Услуга
+                      </Button>
+                    </div>
+
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.concreteTypeId`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Тип бетон *</FormLabel>
-                            <Select
-                              value={
-                                field.value ? String(field.value) : undefined
-                              }
-                              onValueChange={(val) => {
-                                field.onChange(parseInt(val));
-                                handleConcreteTypeChange(index, val);
-                              }}
-                            >
-                              <FormControl>
-                                <SelectTrigger className="h-9">
-                                  <SelectValue placeholder="Изберете" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {concreteTypes
-                                  .filter((ct) => ct.active !== false)
-                                  .map((ct) => (
+                      {item?.itemType === "service" ? (
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.serviceId`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Услуга *</FormLabel>
+                              <Select
+                                value={field.value ? String(field.value) : undefined}
+                                onValueChange={(val) => {
+                                  field.onChange(parseInt(val));
+                                  const svc = services.find(s => s.id === parseInt(val));
+                                  if (svc?.basePrice) form.setValue(`items.${index}.pricePerM3`, svc.basePrice);
+                                }}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue placeholder="Изберете услуга" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {services.filter(s => s.basePrice != null).map((s) => (
+                                    <SelectItem key={s.id} value={String(s.id)}>
+                                      {s.name} ({s.unit})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      ) : (
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.concreteTypeId`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Тип бетон *</FormLabel>
+                              <Select
+                                value={field.value ? String(field.value) : undefined}
+                                onValueChange={(val) => {
+                                  field.onChange(parseInt(val));
+                                  handleConcreteTypeChange(index, val);
+                                }}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue placeholder="Изберете" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {concreteTypes.filter(ct => ct.active !== false).map((ct) => (
                                     <SelectItem key={ct.id} value={String(ct.id)}>
                                       {ct.name}
                                     </SelectItem>
                                   ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
                       <FormField
                         control={form.control}
                         name={`items.${index}.quantityM3`}
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs">
-                              Количество (m³) *
+                              Количество *
                             </FormLabel>
                             <FormControl>
                               <Input

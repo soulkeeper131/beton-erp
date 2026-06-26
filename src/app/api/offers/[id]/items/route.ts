@@ -6,15 +6,20 @@ import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 const itemSchema = z.object({
-  concreteTypeId: z.coerce.number().int().positive("Изберете тип бетон"),
+  concreteTypeId: z.coerce.number().int().positive().optional().nullable(),
+  serviceId: z.coerce.number().int().positive().optional().nullable(),
   quantityM3: z.coerce.number().positive("Количеството трябва да е положително"),
   pricePerM3: z.coerce.number().min(0, "Цената не може да е отрицателна"),
   transportCost: z.coerce.number().min(0).optional().default(0),
   pumpCost: z.coerce.number().min(0).optional().default(0),
+}).refine(data => data.concreteTypeId || data.serviceId, {
+  message: "Изберете тип бетон или услуга",
+  path: ["concreteTypeId"],
 });
 
 const updateItemSchema = z.object({
-  concreteTypeId: z.coerce.number().int().positive().optional(),
+  concreteTypeId: z.coerce.number().int().positive().optional().nullable(),
+  serviceId: z.coerce.number().int().positive().optional().nullable(),
   quantityM3: z.coerce.number().positive().optional(),
   pricePerM3: z.coerce.number().min(0).optional(),
   transportCost: z.coerce.number().min(0).optional(),
@@ -58,7 +63,8 @@ export async function POST(
     .insert(offerItems)
     .values({
       offerId,
-      concreteTypeId: parsed.data.concreteTypeId,
+      concreteTypeId: parsed.data.concreteTypeId || null,
+      serviceId: parsed.data.serviceId || null,
       quantityM3: parsed.data.quantityM3,
       pricePerM3: parsed.data.pricePerM3,
       transportCost: parsed.data.transportCost,
@@ -110,6 +116,7 @@ export async function PATCH(
 
   const updateData: Record<string, any> = {};
   if (parsed.data.concreteTypeId !== undefined) updateData.concreteTypeId = parsed.data.concreteTypeId;
+  if (parsed.data.serviceId !== undefined) updateData.serviceId = parsed.data.serviceId;
   if (parsed.data.quantityM3 !== undefined) updateData.quantityM3 = parsed.data.quantityM3;
   if (parsed.data.pricePerM3 !== undefined) updateData.pricePerM3 = parsed.data.pricePerM3;
   if (parsed.data.transportCost !== undefined) updateData.transportCost = parsed.data.transportCost;

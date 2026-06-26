@@ -145,6 +145,7 @@ export const offerItems = sqliteTable("offer_items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   offerId: integer("offer_id").notNull().references(() => offers.id),
   concreteTypeId: integer("concrete_type_id").references(() => concreteTypes.id),
+  serviceId: integer("service_id").references(() => services.id),
   quantityM3: real("quantity_m3").notNull(),
   pricePerM3: real("price_per_m3").notNull(),
   transportCost: real("transport_cost").default(0),

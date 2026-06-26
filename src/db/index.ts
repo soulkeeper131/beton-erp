@@ -141,6 +141,7 @@ sqlite.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     offer_id INTEGER NOT NULL REFERENCES offers(id),
     concrete_type_id INTEGER REFERENCES concrete_types(id),
+    service_id INTEGER REFERENCES services(id),
     quantity_m3 REAL NOT NULL,
     price_per_m3 REAL NOT NULL,
     transport_cost REAL DEFAULT 0,
@@ -276,6 +277,7 @@ sqlite.exec(`
 
 // Migration: add city column to sites (safe to run multiple times)
 try { sqlite.exec('ALTER TABLE sites ADD COLUMN city TEXT NOT NULL DEFAULT ""'); } catch (e: any) { if (!e.message.includes('duplicate')) console.log('city column already exists'); }
+try { sqlite.exec('ALTER TABLE offer_items ADD COLUMN service_id INTEGER REFERENCES services(id)'); } catch (e: any) { if (!e.message.includes('duplicate')) console.log('service_id column already exists'); }
 
 console.log("✅ Database tables ensured");
 
