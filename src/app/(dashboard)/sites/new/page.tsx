@@ -32,7 +32,7 @@ export default function NewSitePage() {
     const res = await fetch("/api/sites", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({...form, clientId: Number(form.clientId)}),
     });
     if (res.ok) router.push("/sites");
     else { alert("Грешка при създаване"); setSaving(false); }
