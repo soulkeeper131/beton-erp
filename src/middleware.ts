@@ -8,7 +8,14 @@ export function middleware(request: NextRequest) {
   // Public routes — allow without auth
   const publicPaths = ["/login", "/api/auth", "/api/health"];
   if (publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    // No cache for HTML pages (skip API routes)
+    if (!pathname.startsWith("/api/")) {
+      response.headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      response.headers.set("Pragma", "no-cache");
+      response.headers.set("Expires", "0");
+    }
+    return response;
   }
 
   // Check for auth session cookie
@@ -22,7 +29,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  // No cache for HTML pages (skip API routes)
+  if (!pathname.startsWith("/api/")) {
+    response.headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
+  }
+  return response;
 }
 
 export const config = {
