@@ -288,3 +288,22 @@ export const apiKeys = sqliteTable("api_keys", {
   active: integer("active", { mode: "boolean" }).notNull().default(true),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
 });
+
+// ========== COMPANY SETTINGS ==========
+export const companySettings = sqliteTable("company_settings", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  companyName: text("company_name").notNull().default(""),
+  companyNameBG: text("company_name_bg").notNull().default(""),
+  eik: text("eik").notNull().default(""),
+  vatNumber: text("vat_number").notNull().default(""),
+  address: text("address").notNull().default(""),
+  city: text("city").notNull().default(""),
+  phone: text("phone").notNull().default(""),
+  email: text("email").notNull().default(""),
+  mol: text("mol").notNull().default(""),
+  bankName: text("bank_name").notNull().default(""),
+  iban: text("iban").notNull().default(""),
+  bic: text("bic").notNull().default(""),
+  logoPath: text("logo_path"),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});

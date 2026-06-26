@@ -27,6 +27,7 @@ const navItems = [
   { href: "/invoices", label: "Фактури", icon: "🧾" },
   { href: "/services", label: "Услуги", icon: "🔧" },
   { href: "/concrete-types", label: "Типове бетон", icon: "🧱" },
+  { href: "/settings", label: "Настройки", icon: "⚙️" },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {

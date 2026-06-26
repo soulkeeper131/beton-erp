@@ -273,11 +273,37 @@ sqlite.exec(`
     price_per_unit REAL DEFAULT 0,
     sort_order INTEGER DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS company_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_name TEXT NOT NULL DEFAULT '',
+    company_name_bg TEXT NOT NULL DEFAULT '',
+    eik TEXT NOT NULL DEFAULT '',
+    vat_number TEXT NOT NULL DEFAULT '',
+    address TEXT NOT NULL DEFAULT '',
+    city TEXT NOT NULL DEFAULT '',
+    phone TEXT NOT NULL DEFAULT '',
+    email TEXT NOT NULL DEFAULT '',
+    mol TEXT NOT NULL DEFAULT '',
+    bank_name TEXT NOT NULL DEFAULT '',
+    iban TEXT NOT NULL DEFAULT '',
+    bic TEXT NOT NULL DEFAULT '',
+    logo_path TEXT,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
 // Migration: add city column to sites (safe to run multiple times)
 try { sqlite.exec('ALTER TABLE sites ADD COLUMN city TEXT NOT NULL DEFAULT ""'); } catch (e: any) { if (!e.message.includes('duplicate')) console.log('city column already exists'); }
 try { sqlite.exec('ALTER TABLE offer_items ADD COLUMN service_id INTEGER REFERENCES services(id)'); } catch (e: any) { if (!e.message.includes('duplicate')) console.log('service_id column already exists'); }
+
+// Seed company settings if empty
+const settingsCount = sqlite.prepare('SELECT COUNT(*) as cnt FROM company_settings').get() as { cnt: number };
+if (settingsCount.cnt === 0) {
+  sqlite.prepare('INSERT INTO company_settings (company_name, company_name_bg, eik, vat_number, address, city, phone, email, mol, bank_name, iban, bic) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(
+    '', '', '', '', '', '', '', '', '', '', '', ''
+  );
+}
 
 console.log("✅ Database tables ensured");
 
