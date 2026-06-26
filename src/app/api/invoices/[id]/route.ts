@@ -1,35 +1,68 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { db } from "@/db";
-import { invoices, clients } from "@/db/schema";
+import { invoices, invoiceItems, clients } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
-  const id = parseInt(params.id);
-  if (isNaN(id)) return NextResponse.json({ error: "Невалиден ID" }, { status: 400 });
-  const result = await db.select({
-    id: invoices.id, number: invoices.number, date: invoices.date, dueDate: invoices.dueDate,
-    total: invoices.total, vatRate: invoices.vatRate, vatAmount: invoices.vatAmount,
-    status: invoices.status, type: invoices.type, notes: invoices.notes, pdfPath: invoices.pdfPath,
-    clientId: invoices.clientId,
-    client: { id: clients.id, name: clients.name },
-  })
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const invoice = db
+    .select({
+      id: invoices.id,
+      clientId: invoices.clientId,
+      supplierId: invoices.supplierId,
+      number: invoices.number,
+      date: invoices.date,
+      dueDate: invoices.dueDate,
+      taxEventDate: invoices.taxEventDate,
+      direction: invoices.direction,
+      type: invoices.type,
+      currency: invoices.currency,
+      subtotal: invoices.subtotal,
+      discountPercent: invoices.discountPercent,
+      discountAmount: invoices.discountAmount,
+      vatRate: invoices.vatRate,
+      vatAmount: invoices.vatAmount,
+      total: invoices.total,
+      paymentMethod: invoices.paymentMethod,
+      paymentStatus: invoices.paymentStatus,
+      relatedInvoiceId: invoices.relatedInvoiceId,
+      taxExemptionReason: invoices.taxExemptionReason,
+      status: invoices.status,
+      notes: invoices.notes,
+      pdfPath: invoices.pdfPath,
+      createdAt: invoices.createdAt,
+      clientName: clients.name,
+      clientCompany: clients.companyName,
+    })
     .from(invoices)
     .leftJoin(clients, eq(invoices.clientId, clients.id))
-    .where(eq(invoices.id, id)).limit(1);
-  if (!result.length) return NextResponse.json({ error: "Не е намерено" }, { status: 404 });
-  return NextResponse.json(result[0]);
+    .where(eq(invoices.id, parseInt(params.id)))
+    .get();
+
+  if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const items = db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, parseInt(params.id))).all();
+
+  return NextResponse.json({ ...invoice, items });
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
-  const id = parseInt(params.id);
-  if (isNaN(id)) return NextResponse.json({ error: "Невалиден ID" }, { status: 400 });
-  const body = await request.json();
-  const result = await db.update(invoices).set(body).where(eq(invoices.id, id)).returning();
-  return NextResponse.json(result[0]);
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = await req.json();
+  const updated = db.update(invoices).set(body).where(eq(invoices.id, parseInt(params.id))).returning().get();
+  return NextResponse.json(updated);
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
-  const id = parseInt(params.id);
-  await db.delete(invoices).where(eq(invoices.id, id));
-  return NextResponse.json({ message: "Изтрито" });
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, parseInt(params.id))).run();
+  db.delete(invoices).where(eq(invoices.id, parseInt(params.id))).run();
+  return NextResponse.json({ success: true });
 }

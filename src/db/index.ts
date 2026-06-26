@@ -191,16 +191,29 @@ sqlite.exec(`
   CREATE TABLE IF NOT EXISTS invoices (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     client_id INTEGER NOT NULL REFERENCES clients(id),
+    supplier_id INTEGER REFERENCES clients(id),
     number TEXT NOT NULL,
     date TEXT NOT NULL,
     due_date TEXT NOT NULL,
-    total REAL NOT NULL DEFAULT 0,
+    tax_event_date TEXT NOT NULL,
+    direction TEXT NOT NULL DEFAULT 'outgoing',
+    type TEXT NOT NULL DEFAULT 'invoice',
+    currency TEXT NOT NULL DEFAULT 'EUR',
+    subtotal REAL NOT NULL DEFAULT 0,
+    discount_percent REAL DEFAULT 0,
+    discount_amount REAL DEFAULT 0,
     vat_rate REAL NOT NULL DEFAULT 20,
     vat_amount REAL NOT NULL DEFAULT 0,
+    total REAL NOT NULL DEFAULT 0,
+    payment_method TEXT DEFAULT 'bank',
+    payment_status TEXT NOT NULL DEFAULT 'unpaid',
+    related_invoice_id INTEGER REFERENCES invoices(id),
+    tax_exemption_reason TEXT,
     status TEXT NOT NULL DEFAULT 'draft',
-    type TEXT NOT NULL DEFAULT 'invoice',
     pdf_path TEXT,
-    notes TEXT
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
   CREATE TABLE IF NOT EXISTS invoice_items (
@@ -210,6 +223,7 @@ sqlite.exec(`
     unit TEXT NOT NULL DEFAULT 'бр.',
     quantity REAL NOT NULL DEFAULT 1,
     price REAL NOT NULL,
+    vat_rate REAL NOT NULL DEFAULT 20,
     total REAL NOT NULL
   );
 
@@ -296,6 +310,27 @@ sqlite.exec(`
 // Migration: add city column to sites (safe to run multiple times)
 try { sqlite.exec('ALTER TABLE sites ADD COLUMN city TEXT NOT NULL DEFAULT ""'); } catch (e: any) { if (!e.message.includes('duplicate')) console.log('city column already exists'); }
 try { sqlite.exec('ALTER TABLE offer_items ADD COLUMN service_id INTEGER REFERENCES services(id)'); } catch (e: any) { if (!e.message.includes('duplicate')) console.log('service_id column already exists'); }
+
+// Migration: invoice overhaul
+const invoiceCols = [
+  'ALTER TABLE invoices ADD COLUMN supplier_id INTEGER REFERENCES clients(id)',
+  'ALTER TABLE invoices ADD COLUMN tax_event_date TEXT NOT NULL DEFAULT ""',
+  'ALTER TABLE invoices ADD COLUMN direction TEXT NOT NULL DEFAULT "outgoing"',
+  'ALTER TABLE invoices ADD COLUMN currency TEXT NOT NULL DEFAULT "EUR"',
+  'ALTER TABLE invoices ADD COLUMN subtotal REAL NOT NULL DEFAULT 0',
+  'ALTER TABLE invoices ADD COLUMN discount_percent REAL DEFAULT 0',
+  'ALTER TABLE invoices ADD COLUMN discount_amount REAL DEFAULT 0',
+  'ALTER TABLE invoices ADD COLUMN payment_method TEXT DEFAULT "bank"',
+  'ALTER TABLE invoices ADD COLUMN payment_status TEXT NOT NULL DEFAULT "unpaid"',
+  'ALTER TABLE invoices ADD COLUMN related_invoice_id INTEGER REFERENCES invoices(id)',
+  'ALTER TABLE invoices ADD COLUMN tax_exemption_reason TEXT',
+  'ALTER TABLE invoices ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime("now"))',
+  'ALTER TABLE invoices ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime("now"))',
+  'ALTER TABLE invoice_items ADD COLUMN vat_rate REAL NOT NULL DEFAULT 20',
+];
+for (const sql of invoiceCols) {
+  try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) {} }
+}
 
 // Seed company settings if empty
 const settingsCount = sqlite.prepare('SELECT COUNT(*) as cnt FROM company_settings').get() as { cnt: number };

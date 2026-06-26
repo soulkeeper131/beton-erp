@@ -200,16 +200,29 @@ export const actPhotos = sqliteTable("act_photos", {
 export const invoices = sqliteTable("invoices", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   clientId: integer("client_id").notNull().references(() => clients.id),
+  supplierId: integer("supplier_id").references(() => clients.id),
   number: text("number").notNull(),
   date: text("date").notNull(),
   dueDate: text("due_date").notNull(),
-  total: real("total").notNull().default(0),
+  taxEventDate: text("tax_event_date").notNull(),
+  direction: text("direction").notNull().default("outgoing"), // incoming | outgoing
+  type: text("type").notNull().default("invoice"), // invoice | proforma | credit_note | debit_note
+  currency: text("currency").notNull().default("EUR"),
+  subtotal: real("subtotal").notNull().default(0),
+  discountPercent: real("discount_percent").default(0),
+  discountAmount: real("discount_amount").default(0),
   vatRate: real("vat_rate").notNull().default(20),
   vatAmount: real("vat_amount").notNull().default(0),
-  status: text("status").notNull().default("draft"), // draft | sent | paid | overdue | cancelled
-  type: text("type").notNull().default("invoice"), // invoice | proforma | credit_note | debit_note
+  total: real("total").notNull().default(0),
+  paymentMethod: text("payment_method").default("bank"), // bank | cash | card
+  paymentStatus: text("payment_status").notNull().default("unpaid"), // unpaid | partial | paid
+  relatedInvoiceId: integer("related_invoice_id"),
+  taxExemptionReason: text("tax_exemption_reason"),
+  status: text("status").notNull().default("draft"),
   pdfPath: text("pdf_path"),
   notes: text("notes"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
 // ========== INVOICE ITEMS ==========
@@ -220,6 +233,7 @@ export const invoiceItems = sqliteTable("invoice_items", {
   unit: text("unit").notNull().default("бр."),
   quantity: real("quantity").notNull().default(1),
   price: real("price").notNull(),
+  vatRate: real("vat_rate").notNull().default(20),
   total: real("total").notNull(),
 });
 
