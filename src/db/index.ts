@@ -48,6 +48,7 @@ sqlite.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     client_id INTEGER NOT NULL REFERENCES clients(id),
     name TEXT NOT NULL,
+    city TEXT NOT NULL DEFAULT '',
     address TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active',
     start_date TEXT,
@@ -272,6 +273,9 @@ sqlite.exec(`
     sort_order INTEGER DEFAULT 0
   );
 `);
+
+// Migration: add city column to sites (safe to run multiple times)
+try { sqlite.exec('ALTER TABLE sites ADD COLUMN city TEXT NOT NULL DEFAULT ""'); } catch (e: any) { if (!e.message.includes('duplicate')) console.log('city column already exists'); }
 
 console.log("✅ Database tables ensured");
 
