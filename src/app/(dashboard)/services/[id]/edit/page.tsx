@@ -1,28 +1,54 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Loader2 } from "lucide-react";
 
 const emptyItem = { concreteTypeId: "", materialId: "", actionName: "", quantity: "1", unit: "бр.", pricePerUnit: "0" };
 
-export default function NewServicePage() {
+export default function EditServicePage() {
   const router = useRouter();
+  const params = useParams();
+  const id = params.id as string;
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: "", description: "", category: "other", unit: "бр.", basePrice: "" });
   const [concreteTypes, setConcreteTypes] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
-  const [items, setItems] = useState([{ ...emptyItem }]);
+  const [items, setItems] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch("/api/concrete-types").then(r => r.json()).then(setConcreteTypes);
-    fetch("/api/materials").then(r => r.json()).then(setMaterials);
-  }, []);
+    Promise.all([
+      fetch("/api/concrete-types").then(r => r.json()),
+      fetch("/api/materials").then(r => r.json()),
+      fetch(`/api/services/${id}`).then(r => r.json()),
+      fetch(`/api/services/${id}/items`).then(r => r.json()),
+    ]).then(([ct, mat, svc, svcItems]) => {
+      setConcreteTypes(ct);
+      setMaterials(mat);
+      if (svc && !svc.error) {
+        setForm({ name: svc.name || "", description: svc.description || "", category: svc.category || "other", unit: svc.unit || "бр.", basePrice: svc.basePrice ? String(svc.basePrice) : "" });
+      }
+      if (Array.isArray(svcItems) && svcItems.length > 0) {
+        setItems(svcItems.map((i: any) => ({
+          concreteTypeId: i.concreteTypeId ? String(i.concreteTypeId) : "",
+          materialId: i.materialId ? String(i.materialId) : "",
+          actionName: i.actionName || "",
+          quantity: String(i.quantity),
+          unit: i.unit || "бр.",
+          pricePerUnit: String(i.pricePerUnit),
+        })));
+      } else {
+        setItems([{ ...emptyItem }]);
+      }
+      setLoading(false);
+    });
+  }, [id]);
 
   const addItem = () => setItems([...items, { ...emptyItem }]);
   const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
@@ -34,14 +60,20 @@ export default function NewServicePage() {
     e.preventDefault();
     if (!form.name) return;
     setSaving(true);
-    const res = await fetch("/api/services", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    if (!res.ok) { alert("Грешка при създаване"); setSaving(false); return; }
-    const svc = await res.json();
 
-    // Create items
+    const res = await fetch(`/api/services/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (!res.ok) { alert("Грешка при обновяване"); setSaving(false); return; }
+
+    // Delete old items
+    const existing = await fetch(`/api/services/${id}/items`).then(r => r.json());
+    for (const ei of (Array.isArray(existing) ? existing : [])) {
+      await fetch(`/api/services/${id}/items/${ei.id}`, { method: "DELETE" });
+    }
+
+    // Create new items
     for (const item of items) {
       if (!item.concreteTypeId && !item.materialId && !item.actionName) continue;
-      await fetch(`/api/services/${svc.id}/items`, {
+      await fetch(`/api/services/${id}/items`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           concreteTypeId: item.concreteTypeId ? parseInt(item.concreteTypeId) : null,
@@ -56,9 +88,14 @@ export default function NewServicePage() {
     router.push("/services");
   }
 
+  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">🔧 Нова услуга</h1>
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
+        <h1 className="text-2xl font-bold">🔧 Редактиране на услуга</h1>
+      </div>
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card><CardHeader><CardTitle>Основна информация</CardTitle></CardHeader><CardContent className="space-y-4">
           <div><Label>Име *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
@@ -106,7 +143,7 @@ export default function NewServicePage() {
                       <SelectContent>{materials.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div><Label className="text-xs">Действие</Label><Input className="h-8 text-sm" value={item.actionName} onChange={e => updateItem(idx, "actionName", e.target.value)} placeholder="напр. Полагане" /></div>
+                  <div><Label className="text-xs">Действие</Label><Input className="h-8 text-sm" value={item.actionName} onChange={e => updateItem(idx, "actionName", e.target.value)} placeholder="Полагане" /></div>
                   <div><Label className="text-xs">М.Е.</Label><Input className="h-8 text-sm" value={item.unit} onChange={e => updateItem(idx, "unit", e.target.value)} /></div>
                   <div><Label className="text-xs">К-во</Label><Input type="number" className="h-8 text-sm" value={item.quantity} onChange={e => updateItem(idx, "quantity", e.target.value)} /></div>
                   <div><Label className="text-xs">Цена/ед.</Label><Input type="number" step="0.01" className="h-8 text-sm" value={item.pricePerUnit} onChange={e => updateItem(idx, "pricePerUnit", e.target.value)} /></div>

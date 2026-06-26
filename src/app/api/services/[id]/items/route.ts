@@ -37,3 +37,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   }).returning();
   return NextResponse.json(result[0], { status: 201 });
 }
+
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  const { searchParams } = new URL(request.url);
+  const itemId = searchParams.get("itemId");
+  if (!itemId) return NextResponse.json({ error: "itemId is required" }, { status: 400 });
+  await db.delete(serviceItems).where(eq(serviceItems.id, parseInt(itemId)));
+  return NextResponse.json({ success: true });
+}

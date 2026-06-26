@@ -36,7 +36,7 @@ export default function ServicesPage() {
         ]}
         data={data}
         loading={loading}
-        onEdit={(id) => router.push(`/services/${id}`)}
+        onEdit={(id) => router.push(`/services/${id}/edit`)}
         onDelete={handleDelete}
         emptyText="Няма услуги"
       />
