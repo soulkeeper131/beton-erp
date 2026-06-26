@@ -91,7 +91,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
               )}
             </Button>
 
-            {/* User menu */}
+            {/* User menu — visible only on desktop */}
+            <div className="hidden md:block">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2">
@@ -134,6 +135,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           </div>
         </div>
 
@@ -157,6 +159,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   {item.label}
                 </Link>
               ))}
+              {/* User info in mobile menu */}
+              <div className="border-t pt-2 mt-1">
+                <div className="px-3 py-1">
+                  <div className="font-medium text-sm">{user?.name}</div>
+                  <div className="text-xs text-muted-foreground">{user?.email}</div>
+                  <div className="text-xs text-muted-foreground">{(user as any)?.role ? roleLabels[(user as any).role] || (user as any).role : ""}</div>
+                </div>
+                <button
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  className="w-full text-left px-3 py-2 text-sm text-destructive hover:bg-muted rounded-md mt-1"
+                >
+                  Изход
+                </button>
+              </div>
             </div>
           </nav>
         )}
