@@ -58,10 +58,17 @@ export const sites = sqliteTable("sites", {
 export const machines = sqliteTable("machines", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
-  type: text("type").notNull(), // mixer | pump | vibrator | other
+  type: text("type").notNull(), // mixer | pump | vibrator | truck | bus | car | polisher | other
+  category: text("category").notNull().default("other"), // vehicle type
   plateNumber: text("plate_number"),
   fuelType: text("fuel_type"),
-  status: text("status").notNull().default("available"), // available | in_use | maintenance
+  year: text("year"),
+  vin: text("vin"),
+  mileage: integer("mileage").default(0),
+  vignetteExpiry: text("vignette_expiry"),
+  insuranceExpiry: text("insurance_expiry"),
+  techInspectionExpiry: text("tech_inspection_expiry"),
+  status: text("status").notNull().default("available"),
   location: text("location"),
   lastMaintenanceDate: text("last_maintenance_date"),
   nextMaintenanceDate: text("next_maintenance_date"),
@@ -73,9 +80,12 @@ export const machineMaintenance = sqliteTable("machine_maintenance", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   machineId: integer("machine_id").notNull().references(() => machines.id),
   date: text("date").notNull(),
-  type: text("type").notNull(), // scheduled | repair | inspection
+  type: text("type").notNull(), // scheduled | repair | inspection | vignette | insurance
   description: text("description"),
   cost: real("cost").default(0),
+  provider: text("provider"),
+  documentPath: text("document_path"),
+  mileageAtRepair: integer("mileage_at_repair"),
   nextDate: text("next_date"),
   notes: text("notes"),
 });

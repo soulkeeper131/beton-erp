@@ -384,3 +384,20 @@ if (userCount.cnt === 0) {
 }
 
 export const db = drizzle(sqlite, { schema });
+
+// Migration: machines overhaul — vehicle fleet management
+const machineCols = [
+  'ALTER TABLE machines ADD COLUMN category TEXT NOT NULL DEFAULT "other"',
+  'ALTER TABLE machines ADD COLUMN year TEXT',
+  'ALTER TABLE machines ADD COLUMN vin TEXT',
+  'ALTER TABLE machines ADD COLUMN mileage INTEGER DEFAULT 0',
+  'ALTER TABLE machines ADD COLUMN vignette_expiry TEXT',
+  'ALTER TABLE machines ADD COLUMN insurance_expiry TEXT',
+  'ALTER TABLE machines ADD COLUMN tech_inspection_expiry TEXT',
+  'ALTER TABLE machine_maintenance ADD COLUMN provider TEXT',
+  'ALTER TABLE machine_maintenance ADD COLUMN document_path TEXT',
+  'ALTER TABLE machine_maintenance ADD COLUMN mileage_at_repair INTEGER',
+];
+for (const sql of machineCols) {
+  try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) {} }
+}

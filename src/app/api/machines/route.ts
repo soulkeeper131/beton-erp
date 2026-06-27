@@ -1,29 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { machines } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { auditLog } from "@/lib/audit";
 
 export async function GET() {
-  const result = await db.select().from(machines).orderBy(machines.name);
-  return NextResponse.json(result);
+  const rows = db.select().from(machines).all();
+  return NextResponse.json(rows);
 }
 
-export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { name, type, plateNumber, fuelType, location, notes } = body;
-
-  if (!name || !type) {
-    return NextResponse.json({ error: "Име и тип са задължителни" }, { status: 400 });
-  }
-
-  const result = await db.insert(machines).values({
-    name,
-    type,
-    plateNumber: plateNumber || null,
-    fuelType: fuelType || null,
-    location: location || null,
-    notes: notes || null,
+export async function POST(req: NextRequest) {
+  const body = await req.json();
+  const result = db.insert(machines).values({
+    name: body.name,
+    type: body.type,
+    category: body.category || "other",
+    plateNumber: body.plateNumber,
+    fuelType: body.fuelType,
+    year: body.year,
+    vin: body.vin,
+    mileage: body.mileage || 0,
+    vignetteExpiry: body.vignetteExpiry,
+    insuranceExpiry: body.insuranceExpiry,
+    techInspectionExpiry: body.techInspectionExpiry,
     status: "available",
-  }).returning();
+    location: body.location,
+    notes: body.notes,
+  }).returning().get();
 
-  return NextResponse.json(result[0], { status: 201 });
+  auditLog({ action: "CREATE", entityType: "machines", entityId: result.id, changes: body });
+  return NextResponse.json(result, { status: 201 });
 }

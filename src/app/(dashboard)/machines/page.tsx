@@ -4,8 +4,23 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
 
-const typeLabels: Record<string, string> = { mixer: "🚛 Миксер", pump: "🏗️ Помпа", vibrator: "〰️ Вибратор", other: "🔧 Друго" };
-const statusLabels: Record<string, string> = { available: "✅ Свободна", in_use: "🔴 Заета", maintenance: "🔧 Ремонт" };
+const typeLabels: Record<string, string> = {
+  mixer: "🚛 Бетоновоз", pump: "🏗️ Помпа", truck: "🚚 Камион",
+  bus: "🚌 Бус", car: "🚗 Лек", polisher: "✨ Полираща", other: "🔧 Друго"
+};
+const statusLabels: Record<string, string> = {
+  available: "✅ Свободна", in_use: "🔴 Заета", maintenance: "🔧 Ремонт"
+};
+
+function expiryBadge(date: string | null, label: string) {
+  if (!date) return <span className="text-xs text-muted-foreground">—</span>;
+  const d = new Date(date);
+  const now = new Date();
+  const days = Math.ceil((d.getTime() - now.getTime()) / 86400000);
+  if (days < 0) return <span className="text-xs text-red-600 font-medium">🔴 {label} изтекла</span>;
+  if (days < 30) return <span className="text-xs text-orange-600 font-medium">🟠 {label}: {days}д</span>;
+  return <span className="text-xs text-green-600">{label}: {d.toLocaleDateString("bg-BG")}</span>;
+}
 
 export default function MachinesPage() {
   const router = useRouter();
@@ -33,6 +48,9 @@ export default function MachinesPage() {
           { key: "name", label: "Име" },
           { key: "type", label: "Тип", render: (v: string) => typeLabels[v] || v },
           { key: "plateNumber", label: "Номер" },
+          { key: "vignetteExpiry", label: "Винетка", render: (v: string) => expiryBadge(v, "Вин.") },
+          { key: "insuranceExpiry", label: "ГО", render: (v: string) => expiryBadge(v, "ГО") },
+          { key: "techInspectionExpiry", label: "Преглед", render: (v: string) => expiryBadge(v, "ТП") },
           { key: "status", label: "Статус", render: (v: string) => statusLabels[v] || v },
         ]}
         data={data}
