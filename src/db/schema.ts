@@ -329,5 +329,11 @@ export const companySettings = sqliteTable("company_settings", {
   iban: text("iban").notNull().default(""),
   bic: text("bic").notNull().default(""),
   logoPath: text("logo_path"),
+  smtpHost: text("smtp_host").notNull().default(""),
+  smtpPort: integer("smtp_port").notNull().default(587),
+  smtpUser: text("smtp_user").notNull().default(""),
+  smtpPass: text("smtp_pass").notNull().default(""),
+  smtpFrom: text("smtp_from").notNull().default(""),
+  smtpSecure: integer("smtp_secure", { mode: "boolean" }).notNull().default(false),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });

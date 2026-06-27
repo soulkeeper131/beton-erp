@@ -401,3 +401,16 @@ const machineCols = [
 for (const sql of machineCols) {
   try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) {} }
 }
+
+// Migration: SMTP settings
+const smtpCols = [
+  'ALTER TABLE company_settings ADD COLUMN smtp_host TEXT NOT NULL DEFAULT ""',
+  'ALTER TABLE company_settings ADD COLUMN smtp_port INTEGER NOT NULL DEFAULT 587',
+  'ALTER TABLE company_settings ADD COLUMN smtp_user TEXT NOT NULL DEFAULT ""',
+  'ALTER TABLE company_settings ADD COLUMN smtp_pass TEXT NOT NULL DEFAULT ""',
+  'ALTER TABLE company_settings ADD COLUMN smtp_from TEXT NOT NULL DEFAULT ""',
+  'ALTER TABLE company_settings ADD COLUMN smtp_secure INTEGER NOT NULL DEFAULT 0',
+];
+for (const sql of smtpCols) {
+  try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) {} }
+}
