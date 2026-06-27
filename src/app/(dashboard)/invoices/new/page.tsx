@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/utils";
-import { Plus, Trash2, ArrowLeft, Search } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Search, CheckCircle } from "lucide-react";
+
+const isValidEik = (v: string) => /^\d{9}$/.test(v) || /^\d{13}$/.test(v);
 
 export default function NewInvoicePage() {
   const router = useRouter();
@@ -28,11 +30,20 @@ export default function NewInvoicePage() {
   const [items, setItems] = useState([{ description: "", unit: "бр.", quantity: 1, price: 0, vatRate: 20 }]);
   const [eikSearch, setEikSearch] = useState("");
   const [eikLoading, setEikLoading] = useState(false);
+  const [eikFound, setEikFound] = useState(false);
+  const lastEikSearched = useRef("");
 
   useEffect(() => {
     fetch("/api/clients").then(r => r.json()).then(setClients);
     fetch("/api/company-settings").then(r => r.json()).then(setCompany);
   }, []);
+
+  // Auto-trigger when EIK reaches exactly 9 or 13 digits
+  useEffect(() => {
+    if (!isValidEik(eikSearch) || eikSearch === lastEikSearched.current || eikLoading) return;
+    lastEikSearched.current = eikSearch;
+    handleEikSearch();
+  }, [eikSearch]);
 
   const subtotal = items.reduce((s, i) => s + i.quantity * i.price, 0);
   const vatAmount = items.reduce((s, i) => s + (i.quantity * i.price * i.vatRate) / 100, 0);
@@ -42,12 +53,12 @@ export default function NewInvoicePage() {
   const addItem = () => setItems([...items, { description: "", unit: "бр.", quantity: 1, price: 0, vatRate: 20 }]);
 
   async function handleEikSearch() {
-    if (!eikSearch || eikSearch.length < 9) return;
+    if (!isValidEik(eikSearch)) return;
     setEikLoading(true);
     try {
       // First check if client with this EIK already exists
       const existing = clients.find(c => c.eik === eikSearch);
-      if (existing) { setForm({...form, clientId: String(existing.id)}); setEikLoading(false); return; }
+      if (existing) { setForm({...form, clientId: String(existing.id)}); setEikFound(true); setEikLoading(false); return; }
       // Search CompanyBook
       const res = await fetch(`/api/companybook?eik=${eikSearch}`);
       const data = await res.json();
@@ -67,6 +78,7 @@ export default function NewInvoicePage() {
         const newClient = await createRes.json();
         setClients([...clients, newClient]);
         setForm({...form, clientId: String(newClient.id)});
+        setEikFound(true);
       }
     } catch { alert("Грешка при търсене"); }
     setEikLoading(false);
@@ -150,9 +162,13 @@ export default function NewInvoicePage() {
             <div className="flex gap-2 items-end mt-2">
               <div className="flex-1 space-y-1">
                 <Label className="text-xs">Бързо добавяне по ЕИК</Label>
-                <Input className="h-8 text-sm" placeholder="9-13 цифри" value={eikSearch} onChange={e => setEikSearch(e.target.value)} />
+                <div className="relative">
+                  <Input className={`h-8 text-sm ${eikFound ? "pr-8 border-green-500" : ""}`} placeholder="9 или 13 цифри" value={eikSearch} onChange={e => { setEikSearch(e.target.value); setEikFound(false); }} />
+                  {eikLoading && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">...</span>}
+                  {eikFound && <CheckCircle className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />}
+                </div>
               </div>
-              <Button type="button" variant="outline" size="sm" className="h-8 gap-1" onClick={handleEikSearch} disabled={eikLoading}>
+              <Button type="button" variant="outline" size="sm" className="h-8 gap-1" onClick={handleEikSearch} disabled={eikLoading || !isValidEik(eikSearch)}>
                 <Search className="h-3 w-3" /> {eikLoading ? "..." : "Търси"}
               </Button>
             </div>

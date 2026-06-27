@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, ArrowLeft, Loader2 } from "lucide-react";
+import { Search, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
+
+const isValidEik = (v: string) => /^\d{9}$/.test(v) || /^\d{13}$/.test(v);
 
 export default function EditClientPage() {
   const router = useRouter();
@@ -16,10 +18,12 @@ export default function EditClientPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
+  const [eikFound, setEikFound] = useState(false);
   const [form, setForm] = useState({
     name: "", email: "", phone: "", companyName: "",
     eik: "", vatNumber: "", address: "", notes: ""
   });
+  const lastSearched = useRef("");
 
   useEffect(() => {
     fetch(`/api/clients/${id}`).then(r => r.json()).then(d => {
@@ -32,10 +36,20 @@ export default function EditClientPage() {
     });
   }, [id]);
 
-  const update = (f: string, v: string) => setForm({ ...form, [f]: v });
+  const update = (f: string, v: string) => {
+    setForm({ ...form, [f]: v });
+    if (f === "eik") setEikFound(false);
+  };
+
+  // Auto-trigger when EIK reaches exactly 9 or 13 digits
+  useEffect(() => {
+    if (!isValidEik(form.eik) || form.eik === lastSearched.current || searching) return;
+    lastSearched.current = form.eik;
+    handleEikSearch();
+  }, [form.eik]);
 
   async function handleEikSearch() {
-    if (!form.eik || form.eik.length < 9) return;
+    if (!isValidEik(form.eik)) return;
     setSearching(true);
     try {
       const res = await fetch(`/api/companybook?eik=${form.eik}`);
@@ -46,6 +60,7 @@ export default function EditClientPage() {
         companyName: prev.companyName || data.name || "",
         address: prev.address || data.address || "",
       }));
+      setEikFound(true);
     } catch { alert("Грешка при търсене"); }
     setSearching(false);
   }
@@ -78,9 +93,15 @@ export default function EditClientPage() {
             <div><Label>Фирма</Label><Input value={form.companyName} onChange={e => update("companyName", e.target.value)} /></div>
           </div>
           <div className="flex gap-2 items-end">
-            <div className="flex-1"><Label>ЕИК</Label><Input value={form.eik} onChange={e => update("eik", e.target.value)} /></div>
-            <Button type="button" variant="outline" size="sm" onClick={handleEikSearch} disabled={searching} className="h-10 gap-1">
-              <Search className="h-4 w-4" /> {searching ? "Търси..." : "Търси"}
+            <div className="flex-1"><Label>ЕИК</Label>
+              <div className="relative">
+                <Input value={form.eik} onChange={e => update("eik", e.target.value)} className={eikFound ? "pr-8 border-green-500" : ""} />
+                {searching && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">...</span>}
+                {eikFound && <CheckCircle className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />}
+              </div>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={handleEikSearch} disabled={searching || !isValidEik(form.eik)} className="h-10 gap-1">
+              <Search className="h-4 w-4" /> {searching ? "..." : "Търси"}
             </Button>
           </div>
           <div><Label>ДДС №</Label><Input value={form.vatNumber} onChange={e => update("vatNumber", e.target.value)} /></div>
