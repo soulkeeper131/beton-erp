@@ -24,15 +24,17 @@ export async function GET(req: Request) {
     }
 
     const c = data.company;
+    const rawAddress = c.seat ? `${c.seat.settlement || ""}, ${c.seat.street || ""} ${c.seat.streetNumber || ""}`.trim().replace(/^,\s*/, "") : "";
     return NextResponse.json({
       eik: c.uic,
       name: c.companyName?.name || "",
       nameLatin: c.companyNameTransliteration?.name || "",
       legalForm: c.legalForm || "",
       status: c.status === "N" ? "Активна" : c.status === "L" ? "Ликвидирана" : c.status,
-      address: c.seat ? `${c.seat.settlement || ""}, ${c.seat.street || ""} ${c.seat.streetNumber || ""}`.trim().replace(/^,\s*/, "") : "",
+      address: rawAddress,
       city: c.seat?.settlement || "",
       postCode: c.seat?.postCode || "",
+      vatNumber: `BG${c.uic}`,
     });
   } catch (e) {
     return NextResponse.json({ error: "Грешка при свързване с CompanyBook" }, { status: 502 });

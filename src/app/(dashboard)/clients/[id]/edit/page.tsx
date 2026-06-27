@@ -59,6 +59,7 @@ export default function EditClientPage() {
         ...prev,
         companyName: prev.companyName || data.name || "",
         address: prev.address || data.address || "",
+        vatNumber: prev.vatNumber || data.vatNumber || "",
       }));
       setEikFound(true);
     } catch { alert("Грешка при търсене"); }

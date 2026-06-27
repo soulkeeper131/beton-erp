@@ -72,6 +72,7 @@ export default function NewInvoicePage() {
           companyName: data.name,
           eik: data.eik,
           address: data.address,
+          vatNumber: data.vatNumber || "",
         }),
       });
       if (createRes.ok) {
