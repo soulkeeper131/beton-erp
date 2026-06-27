@@ -1,7 +1,7 @@
 FROM node:22
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 COPY . .
 ENV NODE_ENV=production
 RUN echo "Deploy: $(date +%s)" > /app/.build_id
