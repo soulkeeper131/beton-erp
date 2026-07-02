@@ -27,8 +27,10 @@ import {
   Pencil,
   Trash2,
   Loader2,
+  Mail,
 } from "lucide-react";
 import Link from "next/link";
+import { EmailDialog } from "@/components/email-dialog";
 
 type OfferItem = {
   id: number;
@@ -157,6 +159,17 @@ export default function OfferDetailPage() {
               <FileText className="h-4 w-4 mr-1" /> PDF
             </a>
           </Button>
+          <EmailDialog
+            defaultEmail={offer.clientEmail || ""}
+            defaultSubject={`Оферта ${offer.number}`}
+            getPdfBase64={async () => {
+              const r = await fetch(`/api/offers/${offer.id}/pdf`);
+              if (!r.ok) return null;
+              const buf = await r.arrayBuffer();
+              const base64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+              return { base64, filename: `Оферта-${offer.number}.pdf` };
+            }}
+          />
           {isAdmin && (
             <Button variant="outline" size="sm" onClick={() => router.push(`/offers/${offer.id}/edit`)}>
               <Pencil className="h-4 w-4 mr-1" /> Редактирай

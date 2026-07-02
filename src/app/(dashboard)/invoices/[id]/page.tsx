@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, FileText } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { EmailDialog } from "@/components/email-dialog";
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -44,6 +45,17 @@ export default function InvoiceDetailPage() {
               <FileText className="h-4 w-4 mr-1" /> PDF
             </a>
           </Button>
+          <EmailDialog
+            defaultEmail={invoice.clientEmail || ""}
+            defaultSubject={`Фактура ${invoice.number}`}
+            getPdfBase64={async () => {
+              const r = await fetch(`/api/invoices/${invoice.id}/pdf`);
+              if (!r.ok) return null;
+              const buf = await r.arrayBuffer();
+              const base64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+              return { base64, filename: `Фактура-${invoice.number}.pdf` };
+            }}
+          />
           <div className="text-right">
           <div className="text-2xl font-bold">{formatCurrency(invoice.total)} {invoice.currency}</div>
           <span className="text-sm text-muted-foreground">{paymentLabels[invoice.paymentStatus]}</span>
