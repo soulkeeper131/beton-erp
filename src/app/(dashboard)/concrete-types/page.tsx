@@ -3,9 +3,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
+import { useIsAdmin } from "@/lib/use-is-admin";
 
 export default function ConcreteTypesPage() {
   const router = useRouter();
+  const isAdmin = useIsAdmin();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +25,7 @@ export default function ConcreteTypesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">🧱 Типове бетон</h1>
-        <Button onClick={() => router.push("/concrete-types/new")}>+ Нов тип</Button>
+        {isAdmin && <Button onClick={() => router.push("/concrete-types/new")}>+ Нов тип</Button>}
       </div>
       <DataList
         columns={[
@@ -35,6 +37,7 @@ export default function ConcreteTypesPage() {
         loading={loading}
         onEdit={(id) => router.push(`/concrete-types/${id}`)}
         onDelete={handleDelete}
+        isAdmin={isAdmin}
         emptyText="Няма типове бетон"
       />
     </div>

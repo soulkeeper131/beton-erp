@@ -34,7 +34,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
 
   const roleLabels: Record<string, string> = {
-    admin: "Администратор", manager: "Мениджър", brigadir: "Бригадир",
+    admin: "Администратор", employee: "Служител",
   };
 
   const isActive = (href: string) =>

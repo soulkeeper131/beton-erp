@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatDate, formatCurrency } from "@/lib/utils";
+import { useIsAdmin } from "@/lib/use-is-admin";
 import {
   ArrowLeft,
   FileText,
@@ -80,6 +81,7 @@ export default function OfferDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
+  const isAdmin = useIsAdmin();
   const [offer, setOffer] = useState<Offer | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -155,18 +157,22 @@ export default function OfferDetailPage() {
               <FileText className="h-4 w-4 mr-1" /> PDF
             </a>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => router.push(`/offers/${offer.id}/edit`)}>
-            <Pencil className="h-4 w-4 mr-1" /> Редактирай
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-destructive"
-            disabled={deleting}
-            onClick={handleDelete}
-          >
-            <Trash2 className="h-4 w-4 mr-1" /> Изтрий
-          </Button>
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => router.push(`/offers/${offer.id}/edit`)}>
+              <Pencil className="h-4 w-4 mr-1" /> Редактирай
+            </Button>
+          )}
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive"
+              disabled={deleting}
+              onClick={handleDelete}
+            >
+              <Trash2 className="h-4 w-4 mr-1" /> Изтрий
+            </Button>
+          )}
         </div>
       </div>
 
@@ -185,17 +191,19 @@ export default function OfferDetailPage() {
               >
                 {statusLabels[offer.status] || offer.status}
               </span>
-              <Select value={offer.status} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-[160px] h-8">
-                  <SelectValue placeholder="Смени статус" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Чернова</SelectItem>
-                  <SelectItem value="sent">Изпратена</SelectItem>
-                  <SelectItem value="accepted">Приета</SelectItem>
-                  <SelectItem value="rejected">Отказана</SelectItem>
-                </SelectContent>
-              </Select>
+              {isAdmin && (
+                <Select value={offer.status} onValueChange={handleStatusChange}>
+                  <SelectTrigger className="w-[160px] h-8">
+                    <SelectValue placeholder="Смени статус" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Чернова</SelectItem>
+                    <SelectItem value="sent">Изпратена</SelectItem>
+                    <SelectItem value="accepted">Приета</SelectItem>
+                    <SelectItem value="rejected">Отказана</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </CardContent>
         </Card>

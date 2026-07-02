@@ -4,9 +4,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DataList } from "@/components/ui/data-list";
+import { useIsAdmin } from "@/lib/use-is-admin";
 
 export default function PouringsPage() {
   const router = useRouter();
+  const isAdmin = useIsAdmin();
   const [data, setData] = useState<any[]>([]);
   const [sites, setSites] = useState<any[]>([]);
   const [filterSite, setFilterSite] = useState<string>("all");
@@ -36,7 +38,7 @@ export default function PouringsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">📋 Актувания</h1>
-        <Button onClick={() => router.push("/pourings/new")}>+ Ново актуване</Button>
+        {isAdmin && <Button onClick={() => router.push("/pourings/new")}>+ Ново актуване</Button>}
       </div>
       <Select value={filterSite} onValueChange={loadFiltered}>
         <SelectTrigger className="w-[250px]"><SelectValue placeholder="Всички обекти" /></SelectTrigger>
@@ -57,6 +59,7 @@ export default function PouringsPage() {
         loading={loading}
         onEdit={(id) => router.push(`/pourings/${id}`)}
         onDelete={handleDelete}
+        isAdmin={isAdmin}
         emptyText="Няма актувания"
       />
     </div>

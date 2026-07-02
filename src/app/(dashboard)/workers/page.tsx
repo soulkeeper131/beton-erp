@@ -3,11 +3,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
+import { useIsAdmin } from "@/lib/use-is-admin";
 
 const statusLabels: Record<string, string> = { active: "✅ Активен", inactive: "❌ Неактивен" };
 
 export default function WorkersPage() {
   const router = useRouter();
+  const isAdmin = useIsAdmin();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,7 +27,7 @@ export default function WorkersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">👷 Работници</h1>
-        <Button onClick={() => router.push("/workers/new")}>+ Нов работник</Button>
+        {isAdmin && <Button onClick={() => router.push("/workers/new")}>+ Нов работник</Button>}
       </div>
       <DataList
         columns={[
@@ -37,6 +39,7 @@ export default function WorkersPage() {
         data={data}
         loading={loading}
         onDelete={handleDelete}
+        isAdmin={isAdmin}
         emptyText="Няма работници"
       />
     </div>

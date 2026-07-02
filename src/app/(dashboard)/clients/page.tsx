@@ -11,6 +11,7 @@ import { DataList } from "@/components/ui/data-list";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Search } from "lucide-react";
+import { useIsAdmin } from "@/lib/use-is-admin";
 
 const formSchema = z.object({
   name: z.string().min(1, "Името е задължително"),
@@ -28,6 +29,7 @@ type Client = { id: number; name: string; companyName: string | null; eik: strin
 
 export default function ClientsPage() {
   const router = useRouter();
+  const isAdmin = useIsAdmin();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -64,7 +66,7 @@ export default function ClientsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Клиенти</h1>
-        <Button onClick={openCreate}>Добави клиент</Button>
+        {isAdmin && <Button onClick={openCreate}>Добави клиент</Button>}
       </div>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -81,6 +83,7 @@ export default function ClientsPage() {
         data={clients}
         loading={loading}
         onEdit={(id) => router.push(`/clients/${id}/edit`)}
+        isAdmin={isAdmin}
         emptyText={search ? "Няма намерени клиенти" : "Няма клиенти"}
       />
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

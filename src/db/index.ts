@@ -14,7 +14,7 @@ sqlite.exec(`
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     name TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'brigadir',
+    role TEXT NOT NULL DEFAULT 'employee',
     phone TEXT,
     active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -349,8 +349,7 @@ if (userCount.cnt === 0) {
   
   const seedUsers = [
     { email: "admin@beton.bg", name: "Администратор", role: "admin", password: "admin123" },
-    { email: "manager@beton.bg", name: "Мениджър", role: "manager", password: "manager123" },
-    { email: "brigadir@beton.bg", name: "Бригадир Иван", role: "brigadir", password: "brigadir123" },
+    { email: "employee@beton.bg", name: "Служител", role: "employee", password: "employee123" },
   ];
   
   const insertUser = sqlite.prepare(
@@ -380,7 +379,7 @@ if (userCount.cnt === 0) {
     insertType.run(t[0], t[1], t[2], t[3]);
   }
   
-  console.log("✅ Seed complete: 3 users, 7 concrete types");
+  console.log("✅ Seed complete: 2 users, 7 concrete types");
 }
 
 export const db = drizzle(sqlite, { schema });

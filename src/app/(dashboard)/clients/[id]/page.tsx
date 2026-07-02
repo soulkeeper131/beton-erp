@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDate } from "@/lib/utils";
+import { useIsAdmin } from "@/lib/use-is-admin";
 import { ArrowLeft, Pencil } from "lucide-react";
 import {
   Dialog,
@@ -85,6 +86,7 @@ const statusColors: Record<string, string> = {
 export default function ClientDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const isAdmin = useIsAdmin();
   const [client, setClient] = useState<Client | null>(null);
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,9 +176,11 @@ export default function ClientDetailPage() {
             <p className="text-muted-foreground">{client.companyName}</p>
           )}
         </div>
-        <Button variant="outline" onClick={openEdit} className="gap-2">
-          <Pencil className="h-4 w-4" /> Редактирай
-        </Button>
+        {isAdmin && (
+          <Button variant="outline" onClick={openEdit} className="gap-2">
+            <Pencil className="h-4 w-4" /> Редактирай
+          </Button>
+        )}
       </div>
 
       <Card>

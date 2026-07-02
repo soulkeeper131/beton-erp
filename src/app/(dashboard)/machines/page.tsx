@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
+import { useIsAdmin } from "@/lib/use-is-admin";
 
 const typeLabels: Record<string, string> = {
   mixer: "🚛 Бетоновоз", pump: "🏗️ Помпа", truck: "🚚 Камион",
@@ -24,6 +25,7 @@ function expiryBadge(date: string | null, label: string) {
 
 export default function MachinesPage() {
   const router = useRouter();
+  const isAdmin = useIsAdmin();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,7 +43,7 @@ export default function MachinesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">🚛 Машини</h1>
-        <Button onClick={() => router.push("/machines/new")}>+ Нова машина</Button>
+        {isAdmin && <Button onClick={() => router.push("/machines/new")}>+ Нова машина</Button>}
       </div>
       <DataList
         columns={[
@@ -56,6 +58,7 @@ export default function MachinesPage() {
         data={data}
         loading={loading}
         onDelete={handleDelete}
+        isAdmin={isAdmin}
         emptyText="Няма машини"
       />
     </div>

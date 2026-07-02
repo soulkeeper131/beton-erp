@@ -3,9 +3,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
+import { useIsAdmin } from "@/lib/use-is-admin";
 
 export default function MaterialsPage() {
   const router = useRouter();
+  const isAdmin = useIsAdmin();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +25,7 @@ export default function MaterialsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">📦 Склад</h1>
-        <Button onClick={() => router.push("/materials/new")}>+ Нов материал</Button>
+        {isAdmin && <Button onClick={() => router.push("/materials/new")}>+ Нов материал</Button>}
       </div>
       <DataList
         columns={[
@@ -35,6 +37,7 @@ export default function MaterialsPage() {
         data={data}
         loading={loading}
         onDelete={handleDelete}
+        isAdmin={isAdmin}
         emptyText="Няма материали"
       />
     </div>

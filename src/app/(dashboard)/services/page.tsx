@@ -3,11 +3,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
+import { useIsAdmin } from "@/lib/use-is-admin";
 
 const catLabels: Record<string, string> = { concrete: "🧱 Бетон", grinding: "✨ Шлайфане", finishing: "🎨 Довършителни", waterproofing: "💧 Хидроизолация", other: "🔧 Друго" };
 
 export default function ServicesPage() {
   const router = useRouter();
+  const isAdmin = useIsAdmin();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,7 +27,7 @@ export default function ServicesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">🔧 Услуги</h1>
-        <Button onClick={() => router.push("/services/new")}>+ Нова услуга</Button>
+        {isAdmin && <Button onClick={() => router.push("/services/new")}>+ Нова услуга</Button>}
       </div>
       <DataList
         columns={[
@@ -36,8 +38,8 @@ export default function ServicesPage() {
         ]}
         data={data}
         loading={loading}
-        onEdit={(id) => router.push(`/services/${id}/edit`)}
-        onDelete={handleDelete}
+        onEdit={isAdmin ? (id) => router.push(`/services/${id}/edit`) : undefined}
+        onDelete={isAdmin ? handleDelete : undefined}
         emptyText="Няма услуги"
       />
     </div>

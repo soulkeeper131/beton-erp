@@ -17,10 +17,11 @@ interface DataListProps {
   onDelete?: (id: number) => void;
   emptyText?: string;
   loading?: boolean;
+  isAdmin?: boolean;
 }
 
-export function DataList({ columns, data, onEdit, onDelete, emptyText = "Няма данни", loading }: DataListProps) {
-  const hasActions = !!(onEdit || onDelete);
+export function DataList({ columns, data, onEdit, onDelete, emptyText = "Няма данни", loading, isAdmin = true }: DataListProps) {
+  const hasActions = isAdmin && !!(onEdit || onDelete);
 
   if (loading) {
     return <Card><CardContent className="p-6 text-center text-muted-foreground">Зареждане...</CardContent></Card>;

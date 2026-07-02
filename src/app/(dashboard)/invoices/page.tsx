@@ -6,9 +6,11 @@ import { Input } from "@/components/ui/input";
 import { DataList } from "@/components/ui/data-list";
 import { Search, ArrowDown, ArrowUp } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { useIsAdmin } from "@/lib/use-is-admin";
 
 export default function InvoicesPage() {
   const router = useRouter();
+  const isAdmin = useIsAdmin();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -31,7 +33,7 @@ export default function InvoicesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">🧾 Фактури</h1>
-        <Button onClick={() => router.push("/invoices/new")}>+ Нова фактура</Button>
+        {isAdmin && <Button onClick={() => router.push("/invoices/new")}>+ Нова фактура</Button>}
       </div>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -50,6 +52,7 @@ export default function InvoicesPage() {
         data={filtered}
         loading={loading}
         onEdit={(id) => router.push(`/invoices/${id}`)}
+        isAdmin={isAdmin}
         emptyText={search ? "Няма намерени" : "Няма фактури"}
       />
     </div>

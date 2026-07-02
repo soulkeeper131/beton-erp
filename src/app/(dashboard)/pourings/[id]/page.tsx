@@ -9,10 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { FileText } from "lucide-react";
+import { useIsAdmin } from "@/lib/use-is-admin";
 
 export default function PouredDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const isAdmin = useIsAdmin();
   const [poured, setPoured] = useState<any>(null);
   const [sites, setSites] = useState<any[]>([]);
   const [concreteTypes, setConcreteTypes] = useState<any[]>([]);
@@ -76,9 +78,11 @@ export default function PouredDetailPage() {
               <FileText className="h-4 w-4 mr-1" /> PDF
             </a>
           </Button>
-          <Button variant="outline" onClick={() => setEditing(!editing)}>
-            {editing ? "Отказ" : "✏️ Редакция"}
-          </Button>
+          {isAdmin && (
+            <Button variant="outline" onClick={() => setEditing(!editing)}>
+              {editing ? "Отказ" : "✏️ Редакция"}
+            </Button>
+          )}
         </div>
       </div>
 

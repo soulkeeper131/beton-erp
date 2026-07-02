@@ -36,6 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatDate, formatCurrency } from "@/lib/utils";
+import { useIsAdmin } from "@/lib/use-is-admin";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -100,6 +101,7 @@ const statusColors: Record<string, string> = {
 export default function SiteDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const isAdmin = useIsAdmin();
   const [site, setSite] = useState<SiteData | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,9 +191,11 @@ export default function SiteDetailPage() {
           <h1 className="text-2xl font-bold">{site.name}</h1>
           <p className="text-muted-foreground">{site.address}</p>
         </div>
-        <Button variant="outline" onClick={openEdit} className="gap-2">
-          <Pencil className="h-4 w-4" /> Редактирай
-        </Button>
+        {isAdmin && (
+          <Button variant="outline" onClick={openEdit} className="gap-2">
+            <Pencil className="h-4 w-4" /> Редактирай
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
