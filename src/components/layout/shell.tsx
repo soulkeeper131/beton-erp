@@ -16,6 +16,7 @@ const navItems = [
   { href: "/clients", label: "Клиенти", icon: "👥" },
   { href: "/sites", label: "Обекти", icon: "🏗️" },
   { href: "/offers", label: "Оферти", icon: "📋" },
+  { href: "/calendar", label: "Календар", icon: "📅" },
   { href: "/pourings", label: "Актуване", icon: "🪣" },
   { href: "/machines", label: "Машини", icon: "🚛" },
   { href: "/workers", label: "Работници", icon: "👷" },
