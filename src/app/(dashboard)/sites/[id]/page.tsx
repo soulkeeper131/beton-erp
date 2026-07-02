@@ -39,6 +39,7 @@ import { formatDate, formatCurrency } from "@/lib/utils";
 import { useIsAdmin } from "@/lib/use-is-admin";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { PhotoGallery } from "@/components/photo-gallery";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -301,6 +302,8 @@ export default function SiteDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <PhotoGallery siteId={params.id as string} />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
