@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function InvoiceDetailPage() {
@@ -38,9 +38,16 @@ export default function InvoiceDetailPage() {
           <h1 className="text-2xl font-bold">{typeLabels[invoice.type] || invoice.type} №{invoice.number}</h1>
           <p className="text-muted-foreground">{directionLabels[invoice.direction]} • {invoice.currency}</p>
         </div>
-        <div className="text-right">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/api/invoices/${invoice.id}/pdf`} target="_blank" rel="noopener">
+              <FileText className="h-4 w-4 mr-1" /> PDF
+            </a>
+          </Button>
+          <div className="text-right">
           <div className="text-2xl font-bold">{formatCurrency(invoice.total)} {invoice.currency}</div>
           <span className="text-sm text-muted-foreground">{paymentLabels[invoice.paymentStatus]}</span>
+        </div>
         </div>
       </div>
 

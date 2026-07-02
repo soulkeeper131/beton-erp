@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { FileText } from "lucide-react";
 
 export default function PouredDetailPage() {
   const router = useRouter();
@@ -69,9 +70,16 @@ export default function PouredDetailPage() {
     <div className="max-w-xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">📋 Актуване</h1>
-        <Button variant="outline" onClick={() => setEditing(!editing)}>
-          {editing ? "Отказ" : "✏️ Редакция"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/api/pourings/${poured.id}/pdf`} target="_blank" rel="noopener">
+              <FileText className="h-4 w-4 mr-1" /> PDF
+            </a>
+          </Button>
+          <Button variant="outline" onClick={() => setEditing(!editing)}>
+            {editing ? "Отказ" : "✏️ Редакция"}
+          </Button>
+        </div>
       </div>
 
       <Card>
