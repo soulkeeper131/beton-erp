@@ -15,11 +15,19 @@ function extractGPS(buffer: Buffer): { latitude: number | null; longitude: numbe
     if (!tags.gps) return { latitude: null, longitude: null };
 
     const gps: any = tags.gps;
-    const lat = gps.Latitude;
-    const lng = gps.Longitude;
+    const latVal = gps.Latitude?.value;
+    const lngVal = gps.Longitude?.value;
 
-    if (lat == null || lng == null) return { latitude: null, longitude: null };
-    return { latitude: Number(lat), longitude: Number(lng) };
+    if (!latVal || !lngVal || !Array.isArray(latVal) || !Array.isArray(lngVal)) {
+      return { latitude: null, longitude: null };
+    }
+
+    // Convert DMS [degrees, minutes, seconds] to decimal
+    const toDecimal = (dms: number[]) => dms[0] + dms[1] / 60 + dms[2] / 3600;
+    return {
+      latitude: toDecimal(latVal),
+      longitude: toDecimal(lngVal),
+    };
   } catch {
     return { latitude: null, longitude: null };
   }
