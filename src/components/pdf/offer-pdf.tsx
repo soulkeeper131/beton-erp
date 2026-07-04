@@ -49,7 +49,6 @@ export function OfferPDF({ offer, items, company }: Props) {
       color: accent,
       marginBottom: 8,
       marginTop: 18,
-      textTransform: "uppercase",
     },
     clientBox: { borderWidth: 1, borderColor: "#ddd", borderRadius: 4, padding: 12 },
     clientRow: { flexDirection: "row", marginBottom: 5, alignItems: "flex-start" },
@@ -68,7 +67,7 @@ export function OfferPDF({ offer, items, company }: Props) {
       borderTopLeftRadius: 4,
       borderTopRightRadius: 4,
     },
-    th: { fontSize: 8, fontWeight: "bold", color: "#fff", textTransform: "uppercase" },
+    th: { fontSize: 8, fontWeight: "bold", color: "#fff" },
     trow: {
       flexDirection: "row",
       paddingTop: 8,
@@ -146,7 +145,7 @@ export function OfferPDF({ offer, items, company }: Props) {
           <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
             {hasLogo ? <Image src={logoPath!} style={styles.logo} /> : null}
             <View style={[styles.companyCol, hasLogo ? { marginLeft: 14 } : {}]}>
-              <Text style={styles.companyName}>{c.companyName || String.fromCharCode(8212)}</Text>
+              <Text style={styles.companyName}>{c.companyName || "-"}</Text>
               {c.eik ? (
                 <View style={styles.companyRow}>
                   <Text style={styles.companyLabel}>ЕИК:</Text>
@@ -174,11 +173,11 @@ export function OfferPDF({ offer, items, company }: Props) {
             <Text style={styles.titleNum}>№ {offer.number}</Text>
             <View style={styles.titleDateRow}>
               <Text style={styles.titleDateLabel}>Дата:</Text>
-              <Text style={styles.titleDateValue}>{offer.date || String.fromCharCode(8212)}</Text>
+              <Text style={styles.titleDateValue}>{offer.date || "-"}</Text>
             </View>
             <View style={styles.titleDateRow}>
               <Text style={styles.titleDateLabel}>Важност:</Text>
-              <Text style={styles.titleDateValue}>{offer.validUntil || String.fromCharCode(8212)}</Text>
+              <Text style={styles.titleDateValue}>{offer.validUntil || "-"}</Text>
             </View>
           </View>
         </View>
@@ -188,7 +187,7 @@ export function OfferPDF({ offer, items, company }: Props) {
         <View style={styles.clientBox}>
           <View style={styles.clientRow}>
             <Text style={styles.clabel}>Фирма / Име</Text>
-            <Text style={styles.cval}>{offer.clientCompany || offer.clientName || String.fromCharCode(8212)}</Text>
+            <Text style={styles.cval}>{offer.clientCompany || offer.clientName || "-"}</Text>
           </View>
           {offer.clientEik ? (
             <View style={styles.clientRow}>
@@ -231,7 +230,7 @@ export function OfferPDF({ offer, items, company }: Props) {
           </View>
 
           {(items || []).map((item: any, i: number) => {
-            const name = item.serviceName || item.concreteTypeName || String.fromCharCode(8212);
+            const name = item.serviceName || item.concreteTypeName || "-";
             const cls = item.concreteTypeClassName || "";
             const rowTotal =
               (item.quantityM3 || 0) * (item.pricePerM3 || 0) +

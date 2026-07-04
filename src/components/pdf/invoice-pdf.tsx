@@ -30,7 +30,7 @@ export function InvoicePDF({ invoice, items, company }: Props) {
     // Party boxes
     parties: { flexDirection: "row", gap: 16, marginBottom: 10 },
     partyBox: { flex: 1, borderWidth: 1, borderColor: "#e0e0e0", borderRadius: 4, padding: 10 },
-    partyTitle: { fontSize: 9, fontWeight: "bold", color: accent, marginBottom: 4, textTransform: "uppercase" },
+    partyTitle: { fontSize: 9, fontWeight: "bold", color: accent, marginBottom: 4 },
     partyText: { fontSize: 8, marginBottom: 1 },
     // Info row
     infoRow: { flexDirection: "row", gap: 20, marginBottom: 10, paddingHorizontal: 2 },
