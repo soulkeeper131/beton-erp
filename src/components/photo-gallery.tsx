@@ -141,7 +141,7 @@ export function PhotoGallery({ pouringId, siteId }: Props) {
                 <div key={p.id} className="relative group border rounded-lg overflow-hidden bg-card">
                   {/* Image */}
                   <img
-                    src={`/uploads/${p.filename}`}
+                    src={`/api/files/${p.filename}`}
                     alt={p.caption || ""}
                     className="w-full h-40 object-cover"
                     loading="lazy"

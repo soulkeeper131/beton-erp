@@ -7,7 +7,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import exifreader from "exifreader";
 
-const UPLOAD_DIR = join(process.cwd(), "public", "uploads");
+const UPLOAD_DIR = join(process.cwd(), "data", "uploads");
 
 function extractGPS(buffer: Buffer): { latitude: number | null; longitude: number | null } {
   try {
