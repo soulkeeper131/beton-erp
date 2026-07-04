@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beton ERP • Design System</title>
+<style>
+  :root {
+    /* Concrete orange — строителна тематика */
+    --color-brand: 25 95% 53%;
+    --color-brand-50: 25 95% 95%;
+    --color-brand-100: 25 95% 88%;
+    --color-brand-500: 25 95% 53%;
+    --color-brand-600: 25 90% 45%;
+    --color-brand-700: 25 85% 38%;
+
+    /* Warm neutrals */
+    --color-surface: 36 30% 97%;
+    --color-surface-alt: 32 25% 94%;
+    --color-card: 0 0% 100%;
+    --color-border: 30 10% 88%;
+    --color-border-hover: 25 30% 78%;
+
+    /* Text */
+    --color-text: 30 8% 12%;
+    --color-text-muted: 30 5% 42%;
+    --color-text-dim: 30 4% 64%;
+
+    /* Semantic */
+    --color-success: 142 72% 42%;
+    --color-danger: 0 72% 51%;
+    --color-warning: 38 92% 50%;
+    --color-info: 200 80% 48%;
+
+    /* Radii */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / .04);
+    --shadow-md: 0 2px 8px rgb(0 0 0 / .06), 0 1px 3px rgb(0 0 0 / .04);
+    --shadow-lg: 0 8px 30px rgb(0 0 0 / .08), 0 2px 8px rgb(0 0 0 / .04);
+    --shadow-xl: 0 20px 60px rgb(0 0 0 / .12);
+
+    /* Spacing scale */
+    --space-1: 4px; --space-2: 8px; --space-3: 12px;
+    --space-4: 16px; --space-5: 20px; --space-6: 24px;
+    --space-8: 32px; --space-10: 40px; --space-12: 48px;
+
+    /* Sidebar */
+    --sidebar-width: 240px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: hsl(var(--color-surface));
+    color: hsl(var(--color-text));
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Layout */
+  .app-layout {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: var(--sidebar-width);
+    background: hsl(var(--color-card));
+    border-right: 1px solid hsl(var(--color-border));
+    padding: var(--space-4) var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    margin-bottom: var(--space-4);
+    font-weight: 700;
+    font-size: 15px;
+    background: linear-gradient(135deg, hsl(var(--color-brand-600)), hsl(var(--color-brand-500)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .sidebar-logo-icon {
+    width: 32px; height: 32px;
+    background: hsl(var(--color-brand-500));
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    -webkit-text-fill-color: white;
+    flex-shrink: 0;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: 13.5px;
+    color: hsl(var(--color-text-muted));
+    text-decoration: none;
+    transition: all .15s ease;
+    font-weight: 450;
+  }
+
+  .nav-item:hover { background: hsl(var(--color-surface)); color: hsl(var(--color-text)); }
+  .nav-item.active {
+    background: hsl(var(--color-brand-100));
+    color: hsl(var(--color-brand-700));
+    font-weight: 550;
+  }
+
+  .nav-icon { font-size: 18px; width: 22px; text-align: center; flex-shrink: 0; }
+  .nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: hsl(var(--color-text-dim)); padding: var(--space-3) var(--space-3) var(--space-1); font-weight: 600; }
+
+  /* Main area */
+  .main-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  /* Header */
+  .top-header {
+    height: 56px;
+    background: hsl(var(--color-card) / .85);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border-bottom: 1px solid hsl(var(--color-border));
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 var(--space-6);
+    position: sticky; top: 0; z-index: 30;
+  }
+
+  .breadcrumb { font-size: 13.5px; color: hsl(var(--color-text-muted)); font-weight: 450; }
+  .user-btn {
+    display: flex; align-items: center; gap: var(--space-2);
+    padding: var(--space-1) var(--space-3); border-radius: var(--radius-lg);
+    border: none; background: transparent; cursor: pointer; font: inherit;
+    font-size: 13.5px; color: hsl(var(--color-text));
+    transition: background .15s;
+  }
+  .user-btn:hover { background: hsl(var(--color-surface)); }
+  .avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: hsl(var(--color-brand-100));
+    color: hsl(var(--color-brand-600));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 13px;
+  }
+
+  /* Content area */
+  .content { padding: var(--space-6); max-width: 1100px; width: 100%; }
+
+  /* KPI Grid */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
+  }
+
+  .kpi-card {
+    background: hsl(var(--color-card));
+    border: 1px solid hsl(var(--color-border));
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    transition: box-shadow .2s, border-color .2s;
+  }
+  .kpi-card:hover {
+    border-color: hsl(var(--color-border-hover));
+    box-shadow: var(--shadow-md);
+  }
+  .kpi-label { font-size: 12px; color: hsl(var(--color-text-muted)); margin-bottom: var(--space-1); font-weight: 500; }
+  .kpi-value { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+
+  /* Card */
+  .card {
+    background: hsl(var(--color-card));
+    border: 1px solid hsl(var(--color-border));
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-5);
+    overflow: hidden;
+  }
+  .card-header { padding: var(--space-4) var(--space-5); border-bottom: 1px solid hsl(var(--color-border)); font-weight: 600; font-size: 14px; }
+  .card-body { padding: var(--space-5); }
+
+  /* Table */
+  .table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .table th { text-align: left; padding: var(--space-3) var(--space-4); color: hsl(var(--color-text-muted)); font-weight: 550; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; border-bottom: 2px solid hsl(var(--color-border)); }
+  .table td { padding: var(--space-3) var(--space-4); border-bottom: 1px solid hsl(var(--color-border)); }
+  .table tr:hover td { background: hsl(var(--color-surface)); }
+
+  /* Badge */
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 9px; border-radius: 100px;
+    font-size: 11.5px; font-weight: 550;
+  }
+  .badge-success { background: hsl(var(--color-success) / .12); color: hsl(var(--color-success)); }
+  .badge-warning { background: hsl(var(--color-warning) / .12); color: hsl(35 85% 38%); }
+  .badge-danger { background: hsl(var(--color-danger) / .10); color: hsl(var(--color-danger)); }
+  .badge-neutral { background: hsl(var(--color-text) / .06); color: hsl(var(--color-text-muted)); }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 15px; border-radius: var(--radius-md);
+    font: inherit; font-size: 13px; font-weight: 520;
+    cursor: pointer; transition: all .15s ease;
+    border: 1px solid transparent;
+  }
+  .btn-primary { background: hsl(var(--color-brand-500)); color: #fff; }
+  .btn-primary:hover { background: hsl(var(--color-brand-600)); }
+  .btn-outline { background: transparent; border-color: hsl(var(--color-border)); color: hsl(var(--color-text)); }
+  .btn-outline:hover { background: hsl(var(--color-surface)); border-color: hsl(var(--color-border-hover)); }
+  .btn-ghost { background: transparent; border-color: transparent; color: hsl(var(--color-text-muted)); }
+  .btn-ghost:hover { background: hsl(var(--color-surface)); color: hsl(var(--color-text)); }
+  .btn-sm { padding: 5px 11px; font-size: 12px; border-radius: var(--radius-sm); }
+
+  /* Form */
+  .form-group { margin-bottom: var(--space-4); }
+  .form-label { display: block; font-size: 13px; font-weight: 520; margin-bottom: var(--space-1); color: hsl(var(--color-text)); }
+  .form-input {
+    width: 100%; padding: 8px 12px; border-radius: var(--radius-md);
+    border: 1px solid hsl(var(--color-border)); font: inherit; font-size: 13.5px;
+    background: hsl(var(--color-card)); color: hsl(var(--color-text));
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .form-input:focus { outline: none; border-color: hsl(var(--color-brand-500)); box-shadow: 0 0 0 3px hsl(var(--color-brand-500) / .12); }
+
+  /* Section */
+  .section-title { font-size: 20px; font-weight: 700; margin-bottom: var(--space-5); letter-spacing: -.01em; }
+
+  /* Design system showcase */
+  .showcase-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-8); }
+  .showcase-section { margin-bottom: var(--space-10); }
+  .showcase-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: hsl(var(--color-text-dim)); margin-bottom: var(--space-4); font-weight: 600; }
+  .color-swatch { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-3); }
+  .color-dot {
+    width: 40px; height: 40px; border-radius: var(--radius-md);
+    border: 1px solid rgb(0 0 0 / .06);
+    flex-shrink: 0;
+  }
+  .color-info { font-size: 11.5px; color: hsl(var(--color-text-muted)); }
+
+  @media (max-width: 768px) {
+    .showcase-grid { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .sidebar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <span class="sidebar-logo-icon">🏗️</span>
+      Beton ERP
+    </div>
+    <div class="nav-section">Основно</div>
+    <a href="#" class="nav-item active"><span class="nav-icon">📊</span> Табло</a>
+    <a href="#" class="nav-item"><span class="nav-icon">📅</span> Календар</a>
+    <div class="nav-section">Управление</div>
+    <a href="#" class="nav-item"><span class="nav-icon">👥</span> Клиенти</a>
+    <a href="#" class="nav-item"><span class="nav-icon">🏗️</span> Обекти</a>
+    <a href="#" class="nav-item"><span class="nav-icon">📋</span> Оферти</a>
+    <a href="#" class="nav-item"><span class="nav-icon">🧾</span> Фактури</a>
+    <a href="#" class="nav-item"><span class="nav-icon">🪣</span> Актуване</a>
+    <div class="nav-section">Ресурси</div>
+    <a href="#" class="nav-item"><span class="nav-icon">🚛</span> Машини</a>
+    <a href="#" class="nav-item"><span class="nav-icon">👷</span> Работници</a>
+    <a href="#" class="nav-item"><span class="nav-icon">📦</span> Склад</a>
+    <a href="#" class="nav-item"><span class="nav-icon">🔧</span> Услуги</a>
+    <div class="nav-section">Система</div>
+    <a href="#" class="nav-item"><span class="nav-icon">📋</span> Одит лог</a>
+    <a href="#" class="nav-item"><span class="nav-icon">⚙️</span> Настройки</a>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-area">
+    <header class="top-header">
+      <span class="breadcrumb">Табло</span>
+      <button class="user-btn">
+        <span class="avatar">А</span>
+        <span>Администратор</span>
+      </button>
+    </header>
+
+    <div class="content">
+      <h2 class="section-title">📊 Табло</h2>
+
+      <!-- KPI Grid -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Оборот (месец)</div>
+          <div class="kpi-value">€24 500</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Отворени оферти</div>
+          <div class="kpi-value">7</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Неизплатени</div>
+          <div class="kpi-value">3</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Активни обекти</div>
+          <div class="kpi-value">12</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Работници днес</div>
+          <div class="kpi-value">18</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Излят бетон</div>
+          <div class="kpi-value">340 m³</div>
+        </div>
+      </div>
+
+      <!-- Recent offers table -->
+      <div class="card">
+        <div class="card-header">📋 Последни оферти</div>
+        <div class="card-body" style="padding: 0;">
+          <table class="table">
+            <thead>
+              <tr><th>Номер</th><th>Клиент</th><th>Дата</th><th>Сума</th><th>Статус</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight: 550;">ОФ-2026-0042</td>
+                <td>Стройинвест ООД</td>
+                <td>01.07.2026</td>
+                <td style="font-weight: 550;">€8 400</td>
+                <td><span class="badge badge-warning">Чернова</span></td>
+                <td style="text-align: right;">
+                  <button class="btn btn-outline btn-sm">📄 PDF</button>
+                  <button class="btn btn-ghost btn-sm">✏️</button>
+                </td>
+              </tr>
+              <tr>
+                <td style="font-weight: 550;">ОФ-2026-0041</td>
+                <td>Бетонстрой ЕООД</td>
+                <td>28.06.2026</td>
+                <td style="font-weight: 550;">€12 150</td>
+                <td><span class="badge badge-success">Приета</span></td>
+                <td style="text-align: right;">
+                  <button class="btn btn-outline btn-sm">📄 PDF</button>
+                  <button class="btn btn-ghost btn-sm">✏️</button>
+                </td>
+              </tr>
+              <tr>
+                <td style="font-weight: 550;">ОФ-2026-0040</td>
+                <td>Гражданстрой АД</td>
+                <td>25.06.2026</td>
+                <td style="font-weight: 550;">€5 200</td>
+                <td><span class="badge badge-neutral">Изпратена</span></td>
+                <td style="text-align: right;">
+                  <button class="btn btn-outline btn-sm">📄 PDF</button>
+                  <button class="btn btn-ghost btn-sm">✏️</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Upcoming schedule -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5);">
+        <div class="card">
+          <div class="card-header">📅 Предстоящи наряди</div>
+          <div class="card-body">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid hsl(var(--color-border)); font-size: 13px;">
+              <div><strong>ЖК Младост, бл.42</strong><br><span style="color: hsl(var(--color-text-muted)); font-size: 12px;">03.07 • B25 • 120 m³</span></div>
+              <span class="badge badge-success">Потвърден</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid hsl(var(--color-border)); font-size: 13px;">
+              <div><strong>Бизнес парк, сгр.5</strong><br><span style="color: hsl(var(--color-text-muted)); font-size: 12px;">05.07 • B20 • 85 m³</span></div>
+              <span class="badge badge-warning">Планиран</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 13px;">
+              <div><strong>Промишлена зона, уч.12</strong><br><span style="color: hsl(var(--color-text-muted)); font-size: 12px;">07.07 • B30 • 200 m³</span></div>
+              <span class="badge badge-warning">Планиран</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">🚨 Изтичащи документи</div>
+          <div class="card-body">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid hsl(var(--color-border)); font-size: 13px;">
+              <div><strong>Бетоновоз СВ1234</strong><br><span style="color: hsl(var(--color-text-muted)); font-size: 12px;">Винетка • 15.07.2026</span></div>
+              <span class="badge badge-warning">Скоро</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid hsl(var(--color-border)); font-size: 13px;">
+              <div><strong>Бус СВ5678</strong><br><span style="color: hsl(var(--color-text-muted)); font-size: 12px;">ГО • 02.07.2026</span></div>
+              <span class="badge badge-danger">Изтекъл</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 13px;">
+              <div><strong>Помпа СВ9012</strong><br><span style="color: hsl(var(--color-text-muted)); font-size: 12px;">Тех. преглед • 20.07.2026</span></div>
+              <span class="badge badge-warning">Скоро</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Design System Showcase -->
+      <h2 class="section-title" style="margin-top: var(--space-12); padding-top: var(--space-8); border-top: 2px solid hsl(var(--color-border));">🎨 Дизайн система</h2>
+
+      <div class="showcase-grid">
+        <div>
+          <div class="showcase-section">
+            <div class="showcase-label">Цветове • Primary</div>
+            <div class="color-swatch">
+              <div class="color-dot" style="background: hsl(25 95% 53%);"></div>
+              <div class="color-dot" style="background: hsl(25 90% 45%);"></div>
+              <div class="color-dot" style="background: hsl(25 85% 38%);"></div>
+              <div class="color-dot" style="background: hsl(25 95% 88%);"></div>
+            </div>
+            <div class="color-info">Brand Orange • hsl(25, 95%, 53%)</div>
+          </div>
+
+          <div class="showcase-section">
+            <div class="showcase-label">Повърхности</div>
+            <div class="color-swatch">
+              <div class="color-dot" style="background: hsl(var(--color-card));"></div>
+              <div class="color-dot" style="background: hsl(var(--color-surface));"></div>
+              <div class="color-dot" style="background: hsl(var(--color-surface-alt));"></div>
+            </div>
+            <div class="color-info">Card → Surface → Surface Alt</div>
+          </div>
+
+          <div class="showcase-section">
+            <div class="showcase-label">Типография</div>
+            <p style="font-size: 28px; font-weight: 700; letter-spacing: -.02em;">Inter Bold 28px</p>
+            <p style="font-size: 20px; font-weight: 700; letter-spacing: -.01em;">Inter Bold 20px</p>
+            <p style="font-size: 14px; font-weight: 500;">Inter Medium 14px — body text</p>
+            <p style="font-size: 13px; color: hsl(var(--color-text-muted));">Inter 13px muted</p>
+            <p style="font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: hsl(var(--color-text-dim));">Inter 11px caps</p>
+          </div>
+        </div>
+
+        <div>
+          <div class="showcase-section">
+            <div class="showcase-label">Бутони</div>
+            <div style="display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-3);">
+              <button class="btn btn-primary">Запази</button>
+              <button class="btn btn-outline">Отказ</button>
+              <button class="btn btn-ghost">Назад</button>
+            </div>
+            <div style="display: flex; gap: var(--space-2); flex-wrap: wrap;">
+              <button class="btn btn-primary btn-sm">+ Нов</button>
+              <button class="btn btn-outline btn-sm">📄 PDF</button>
+              <button class="btn btn-ghost btn-sm">✏️</button>
+            </div>
+          </div>
+
+          <div class="showcase-section">
+            <div class="showcase-label">Badge статуси</div>
+            <div style="display: flex; gap: var(--space-2); flex-wrap: wrap;">
+              <span class="badge badge-success">Приета</span>
+              <span class="badge badge-warning">Чернова</span>
+              <span class="badge badge-danger">Изтекъл</span>
+              <span class="badge badge-neutral">Изпратена</span>
+            </div>
+          </div>
+
+          <div class="showcase-section">
+            <div class="showcase-label">Form Input</div>
+            <div class="form-group">
+              <label class="form-label">Име на клиент</label>
+              <input class="form-input" type="text" placeholder="Въведете име..." value="Стройинвест ООД">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Статус</label>
+              <select class="form-input">
+                <option>Активен</option>
+                <option>Завършен</option>
+                <option>Отказан</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="showcase-section">
+            <div class="showcase-label">Радиус</div>
+            <div class="color-swatch">
+              <div class="color-dot" style="width: 20px; height: 20px; border-radius: 6px; background: hsl(var(--color-brand-500));"></div>
+              <div class="color-dot" style="width: 20px; height: 20px; border-radius: 10px; background: hsl(var(--color-brand-500));"></div>
+              <div class="color-dot" style="width: 20px; height: 20px; border-radius: 14px; background: hsl(var(--color-brand-500));"></div>
+              <div class="color-dot" style="width: 20px; height: 20px; border-radius: 20px; background: hsl(var(--color-brand-500));"></div>
+            </div>
+            <div class="color-info">6px → 10px → 14px → 20px</div>
+          </div>
+        </div>
+      </div>
+
+      <p style="text-align: center; margin-top: var(--space-12); color: hsl(var(--color-text-dim)); font-size: 12px;">
+        Beton ERP Design System • v2.0 • blv.bg
+      </p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
