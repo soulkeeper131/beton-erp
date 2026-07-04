@@ -1,6 +1,15 @@
-import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image, Font } from "@react-pdf/renderer";
 import path from "path";
 import { existsSync } from "fs";
+
+// Register Cyrillic-capable font (built-in Helvetica lacks Cyrillic glyphs)
+Font.register({
+  family: "DejaVu Sans",
+  fonts: [
+    { src: "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", fontWeight: "normal" },
+    { src: "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fontWeight: "bold" },
+  ],
+});
 
 const typeLabels: Record<string, string> = {
   invoice: "ФАКТУРА", proforma: "ПРОФОРМА", credit_note: "КРЕДИТНО ИЗВЕСТИЕ", debit_note: "ДЕБИТНО ИЗВЕСТИЕ",
@@ -16,7 +25,7 @@ export function InvoicePDF({ invoice, items, company }: Props) {
   const hasLogo = logoPath && existsSync(logoPath);
 
   const styles = StyleSheet.create({
-    page: { padding: 36, fontSize: 9, fontFamily: "Helvetica", color: "#1a1a1a" },
+    page: { padding: 36, fontSize: 9, fontFamily: "DejaVu Sans", color: "#1a1a1a" },
     // Header
     header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12, borderBottomWidth: 2, borderBottomColor: accent, paddingBottom: 10 },
     logo: { width: 80, height: 40, objectFit: "contain" },

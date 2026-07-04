@@ -1,6 +1,15 @@
-import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image, Font } from "@react-pdf/renderer";
 import path from "path";
 import { existsSync } from "fs";
+
+// Register Cyrillic-capable font (built-in Helvetica lacks Cyrillic glyphs)
+Font.register({
+  family: "DejaVu Sans",
+  fonts: [
+    { src: "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", fontWeight: "normal" },
+    { src: "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fontWeight: "bold" },
+  ],
+});
 
 type Props = { offer: any; items: any[]; company: any };
 
@@ -14,7 +23,7 @@ export function OfferPDF({ offer, items, company }: Props) {
     page: {
       padding: 40,
       fontSize: 10,
-      fontFamily: "Helvetica",
+      fontFamily: "DejaVu Sans",
       color: "#1a1a1a",
     },
 

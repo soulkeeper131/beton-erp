@@ -6,7 +6,7 @@ COPY . .
 ENV NODE_ENV=production
 RUN echo "Deploy: $(date +%s)" > /app/.build_id
 RUN mkdir -p /app/data
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl fonts-dejavu-core && rm -rf /var/lib/apt/lists/*
 RUN npm run build
 EXPOSE 3000
 ENV PORT=3000

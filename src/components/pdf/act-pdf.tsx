@@ -1,6 +1,15 @@
-import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image, Font } from "@react-pdf/renderer";
 import path from "path";
 import { existsSync } from "fs";
+
+// Register Cyrillic-capable font (built-in Helvetica lacks Cyrillic glyphs)
+Font.register({
+  family: "DejaVu Sans",
+  fonts: [
+    { src: "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", fontWeight: "normal" },
+    { src: "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fontWeight: "bold" },
+  ],
+});
 
 type Props = { pouring: any; company: any };
 
@@ -11,7 +20,7 @@ export function ActPDF({ pouring, company }: Props) {
   const hasLogo = logoPath && existsSync(logoPath);
 
   const styles = StyleSheet.create({
-    page: { padding: 36, fontSize: 9, fontFamily: "Helvetica", color: "#1a1a1a" },
+    page: { padding: 36, fontSize: 9, fontFamily: "DejaVu Sans", color: "#1a1a1a" },
     header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 14, borderBottomWidth: 2, borderBottomColor: accent, paddingBottom: 10 },
     logo: { width: 80, height: 40, objectFit: "contain" },
     companyInfo: { flex: 1, marginLeft: hasLogo ? 12 : 0 },
