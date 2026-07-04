@@ -335,5 +335,11 @@ export const companySettings = sqliteTable("company_settings", {
   smtpPass: text("smtp_pass").notNull().default(""),
   smtpFrom: text("smtp_from").notNull().default(""),
   smtpSecure: integer("smtp_secure", { mode: "boolean" }).notNull().default(false),
+  imapHost: text("imap_host").notNull().default(""),
+  imapPort: integer("imap_port").notNull().default(993),
+  imapUser: text("imap_user").notNull().default(""),
+  imapPass: text("imap_pass").notNull().default(""),
+  imapTls: integer("imap_tls", { mode: "boolean" }).notNull().default(true),
+  incomingEmailFolder: text("incoming_email_folder").notNull().default("INBOX"),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });

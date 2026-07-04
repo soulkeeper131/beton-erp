@@ -63,6 +63,20 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
 
+      {/* PDF preview for incoming drafts */}
+      {invoice.pdfPath && invoice.direction === "incoming" && (
+        <Card>
+          <CardHeader><CardTitle className="text-sm">📄 Оригинален документ</CardTitle></CardHeader>
+          <CardContent>
+            <iframe
+              src={`/api/files?path=${encodeURIComponent(invoice.pdfPath)}`}
+              className="w-full h-[500px] border rounded"
+              title="Оригинален PDF"
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Доставчик + Получател */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>

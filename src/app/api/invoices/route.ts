@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { invoices, invoiceItems, clients, companySettings } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { z } from "zod";
 
 const itemSchema = z.object({
@@ -33,9 +33,15 @@ const invoiceSchema = z.object({
   items: z.array(itemSchema).min(1),
 });
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { searchParams } = new URL(req.url);
+  const statusFilter = searchParams.get("status");
+
+  const conditions = [];
+  if (statusFilter) conditions.push(eq(invoices.status, statusFilter));
 
   const result = db
     .select({
@@ -51,11 +57,14 @@ export async function GET() {
       vatAmount: invoices.vatAmount,
       paymentStatus: invoices.paymentStatus,
       status: invoices.status,
+      notes: invoices.notes,
+      pdfPath: invoices.pdfPath,
       clientName: clients.name,
       clientCompany: clients.companyName,
     })
     .from(invoices)
     .leftJoin(clients, eq(invoices.clientId, clients.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(invoices.date))
     .all();
 

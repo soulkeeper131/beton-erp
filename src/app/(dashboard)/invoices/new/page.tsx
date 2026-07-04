@@ -36,7 +36,16 @@ export default function NewInvoicePage() {
   useEffect(() => {
     fetch("/api/clients").then(r => r.json()).then(setClients);
     fetch("/api/company-settings").then(r => r.json()).then(setCompany);
+    fetchNextNumber("outgoing");
   }, []);
+
+  const fetchNextNumber = async (dir: string) => {
+    try {
+      const res = await fetch(`/api/invoices/next-number?direction=${dir}`);
+      const data = await res.json();
+      if (data.number) setForm(prev => ({ ...prev, number: data.number }));
+    } catch {}
+  };
 
   // Auto-trigger when EIK reaches exactly 9 or 13 digits
   useEffect(() => {
@@ -118,8 +127,8 @@ export default function NewInvoicePage() {
           <CardHeader><CardTitle>Основна информация</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
-              <Button type="button" size="sm" variant={isOutgoing ? "default" : "outline"} onClick={() => setForm({...form, direction: "outgoing"})}>📤 Изходяща</Button>
-              <Button type="button" size="sm" variant={!isOutgoing ? "default" : "outline"} onClick={() => setForm({...form, direction: "incoming"})}>📥 Входяща</Button>
+              <Button type="button" size="sm" variant={isOutgoing ? "default" : "outline"} onClick={() => { setForm({...form, direction: "outgoing"}); fetchNextNumber("outgoing"); }}>📤 Изходяща</Button>
+              <Button type="button" size="sm" variant={!isOutgoing ? "default" : "outline"} onClick={() => { setForm({...form, direction: "incoming"}); fetchNextNumber("incoming"); }}>📥 Входяща</Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2"><Label>Тип</Label>

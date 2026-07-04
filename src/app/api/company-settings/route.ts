@@ -24,6 +24,12 @@ const settingsSchema = z.object({
   smtpPass: z.string().optional().default(""),
   smtpFrom: z.string().optional().default(""),
   smtpSecure: z.boolean().optional().default(false),
+  imapHost: z.string().optional().default(""),
+  imapPort: z.number().optional().default(993),
+  imapUser: z.string().optional().default(""),
+  imapPass: z.string().optional().default(""),
+  imapTls: z.boolean().optional().default(true),
+  incomingEmailFolder: z.string().optional().default("INBOX"),
 });
 
 export async function GET() {
@@ -33,9 +39,9 @@ export async function GET() {
   const settings = db.select().from(companySettings).limit(1).get();
   if (!settings) {
     const [created] = db.insert(companySettings).values({}).returning().all();
-    return NextResponse.json({ ...created, smtpPass: created.smtpPass ? "••••••" : "" });
+    return NextResponse.json({ ...created, smtpPass: created.smtpPass ? "••••••" : "", imapPass: created.imapPass ? "••••••" : "" });
   }
-  return NextResponse.json({ ...settings, smtpPass: settings.smtpPass ? "••••••" : "" });
+  return NextResponse.json({ ...settings, smtpPass: settings.smtpPass ? "••••••" : "", imapPass: settings.imapPass ? "••••••" : "" });
 }
 
 export async function PATCH(req: Request) {
@@ -45,11 +51,17 @@ export async function PATCH(req: Request) {
   const body = await req.json();
   // Convert checkbox value to boolean
   if (typeof body.smtpSecure === "string") body.smtpSecure = body.smtpSecure === "on" || body.smtpSecure === "true";
+  if (typeof body.imapTls === "string") body.imapTls = body.imapTls === "on" || body.imapTls === "true";
   if (typeof body.smtpPort === "string") body.smtpPort = parseInt(body.smtpPort) || 587;
+  if (typeof body.imapPort === "string") body.imapPort = parseInt(body.imapPort) || 993;
   // If smtpPass is the masked value, keep existing
   if (body.smtpPass === "••••••") {
     const existing = db.select().from(companySettings).limit(1).get();
     body.smtpPass = existing?.smtpPass || "";
+  }
+  if (body.imapPass === "••••••") {
+    const existing = db.select().from(companySettings).limit(1).get();
+    body.imapPass = existing?.imapPass || "";
   }
   
   const parsed = settingsSchema.safeParse(body);
@@ -58,9 +70,9 @@ export async function PATCH(req: Request) {
   const existing = db.select().from(companySettings).limit(1).get();
   if (!existing) {
     const [created] = db.insert(companySettings).values(parsed.data).returning().all();
-    return NextResponse.json({ ...created, smtpPass: "••••••" });
+    return NextResponse.json({ ...created, smtpPass: "••••••", imapPass: "••••••" });
   }
 
   const [updated] = db.update(companySettings).set(parsed.data).where(eq(companySettings.id, existing.id)).returning().all();
-  return NextResponse.json({ ...updated, smtpPass: "••••••" });
+  return NextResponse.json({ ...updated, smtpPass: "••••••", imapPass: "••••••" });
 }

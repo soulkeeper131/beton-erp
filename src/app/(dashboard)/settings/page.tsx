@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Save, Mail, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, Save, Mail, CheckCircle, XCircle, Inbox } from "lucide-react";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -18,6 +18,8 @@ export default function SettingsPage() {
     bankName: "", iban: "", bic: "",
     smtpHost: "", smtpPort: 587, smtpUser: "", smtpPass: "",
     smtpFrom: "", smtpSecure: false,
+    imapHost: "", imapPort: 993, imapUser: "", imapPass: "",
+    imapTls: true, incomingEmailFolder: "INBOX",
   });
 
   useEffect(() => {
@@ -31,6 +33,9 @@ export default function SettingsPage() {
         smtpHost: d.smtpHost || "", smtpPort: d.smtpPort || 587,
         smtpUser: d.smtpUser || "", smtpPass: d.smtpPass || "",
         smtpFrom: d.smtpFrom || "", smtpSecure: !!d.smtpSecure,
+        imapHost: d.imapHost || "", imapPort: d.imapPort || 993,
+        imapUser: d.imapUser || "", imapPass: d.imapPass || "",
+        imapTls: !!d.imapTls, incomingEmailFolder: d.incomingEmailFolder || "INBOX",
       });
     });
   }, []);
@@ -58,6 +63,19 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: form.email }),
       });
+      const data = await res.json();
+      setTestResult({ ok: res.ok, msg: data.message || data.error });
+    } catch {
+      setTestResult({ ok: false, msg: "Грешка при свързване" });
+    }
+    setTesting(false);
+  }
+
+  async function testImap() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/imap-test", { method: "POST" });
       const data = await res.json();
       setTestResult({ ok: res.ok, msg: data.message || data.error });
     } catch {
@@ -121,6 +139,39 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3 pt-2">
               <Button type="button" variant="outline" size="sm" onClick={testSmtp} disabled={testing || !form.smtpHost} className="gap-1">
                 <Mail className="h-3 w-3" /> {testing ? "Изпращане..." : "Тест мейл"}
+              </Button>
+              {testResult && (
+                <span className={`text-sm flex items-center gap-1 ${testResult.ok ? "text-green-600" : "text-red-600"}`}>
+                  {testResult.ok ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                  {testResult.msg}
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* IMAP */}
+        <Card>
+          <CardHeader><CardTitle>📥 Входящи фактури (IMAP)</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2"><Label>IMAP Хост</Label><Input value={form.imapHost} onChange={e => u("imapHost", e.target.value)} placeholder="imap.gmail.com" /></div>
+              <div><Label>Порт</Label><Input type="number" value={form.imapPort} onChange={e => u("imapPort", parseInt(e.target.value) || 993)} /></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><Label>Потребител</Label><Input value={form.imapUser} onChange={e => u("imapUser", e.target.value)} /></div>
+              <div><Label>Парола</Label><Input type="password" value={form.imapPass} onChange={e => u("imapPass", e.target.value)} placeholder="Оставено празно = без промяна" /></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+              <div><Label>Папка</Label><Input value={form.incomingEmailFolder} onChange={e => u("incomingEmailFolder", e.target.value)} placeholder="INBOX" /></div>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={form.imapTls} onChange={e => u("imapTls", e.target.checked)} className="w-4 h-4" />
+                TLS
+              </label>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={testImap} disabled={testing || !form.imapHost} className="gap-1">
+                <Inbox className="h-3 w-3" /> {testing ? "Проверка..." : "Тест IMAP"}
               </Button>
               {testResult && (
                 <span className={`text-sm flex items-center gap-1 ${testResult.ok ? "text-green-600" : "text-red-600"}`}>

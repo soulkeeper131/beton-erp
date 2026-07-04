@@ -413,3 +413,16 @@ const smtpCols = [
 for (const sql of smtpCols) {
   try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) {} }
 }
+
+// Migration: IMAP settings
+const imapCols = [
+  'ALTER TABLE company_settings ADD COLUMN imap_host TEXT NOT NULL DEFAULT ""',
+  'ALTER TABLE company_settings ADD COLUMN imap_port INTEGER NOT NULL DEFAULT 993',
+  'ALTER TABLE company_settings ADD COLUMN imap_user TEXT NOT NULL DEFAULT ""',
+  'ALTER TABLE company_settings ADD COLUMN imap_pass TEXT NOT NULL DEFAULT ""',
+  'ALTER TABLE company_settings ADD COLUMN imap_tls INTEGER NOT NULL DEFAULT 1',
+  'ALTER TABLE company_settings ADD COLUMN incoming_email_folder TEXT NOT NULL DEFAULT "INBOX"',
+];
+for (const sql of imapCols) {
+  try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) {} }
+}
