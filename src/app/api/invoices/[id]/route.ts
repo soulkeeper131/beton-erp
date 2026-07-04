@@ -33,7 +33,6 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       status: invoices.status,
       notes: invoices.notes,
       pdfPath: invoices.pdfPath,
-      createdAt: invoices.createdAt,
       clientName: clients.name,
       clientCompany: clients.companyName,
       clientEik: clients.eik,

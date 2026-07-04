@@ -329,7 +329,9 @@ const invoiceCols = [
   'ALTER TABLE invoice_items ADD COLUMN vat_rate REAL NOT NULL DEFAULT 20',
 ];
 for (const sql of invoiceCols) {
-  try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) {} }
+  try { sqlite.exec(sql); } catch(e: any) {
+    if (!e.message.includes('duplicate')) console.error('Invoice migration failed:', sql.substring(0, 80), e.message);
+  }
 }
 
 // Seed company settings if empty
