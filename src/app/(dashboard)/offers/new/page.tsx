@@ -236,9 +236,9 @@ export default function NewOfferPage() {
                     <FormItem>
                       <FormLabel>Клиент *</FormLabel>
                       <Select
-                        value={field.value ? String(field.value) : undefined}
+                        value={field.value ? String(field.value) : ""}
                         onValueChange={(val) => {
-                          field.onChange(parseInt(val));
+                          field.onChange(val ? parseInt(val) : 0);
                           form.setValue("siteId", null);
                         }}
                       >
@@ -267,7 +267,7 @@ export default function NewOfferPage() {
                       <FormLabel>Обект</FormLabel>
                       <Select
                         value={
-                          field.value ? String(field.value) : undefined
+                          field.value ? String(field.value) : ""
                         }
                         onValueChange={(val) =>
                           field.onChange(val ? parseInt(val) : null)
@@ -411,9 +411,9 @@ export default function NewOfferPage() {
                             <FormItem>
                               <FormLabel className="text-xs">Услуга *</FormLabel>
                               <Select
-                                value={field.value ? String(field.value) : undefined}
+                                value={field.value ? String(field.value) : ""}
                                 onValueChange={(val) => {
-                                  field.onChange(parseInt(val));
+                                  field.onChange(val ? parseInt(val) : 0);
                                   const svc = services.find(s => s.id === parseInt(val));
                                   if (svc?.basePrice) form.setValue(`items.${index}.pricePerM3`, svc.basePrice);
                                 }}
@@ -443,9 +443,9 @@ export default function NewOfferPage() {
                             <FormItem>
                               <FormLabel className="text-xs">Тип бетон *</FormLabel>
                               <Select
-                                value={field.value ? String(field.value) : undefined}
+                                value={field.value ? String(field.value) : ""}
                                 onValueChange={(val) => {
-                                  field.onChange(parseInt(val));
+                                  field.onChange(val ? parseInt(val) : 0);
                                   handleConcreteTypeChange(index, val);
                                 }}
                               >

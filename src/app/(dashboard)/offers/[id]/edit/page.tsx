@@ -221,7 +221,7 @@ export default function EditOfferPage() {
                 <FormField control={form.control} name="clientId" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Клиент *</FormLabel>
-                    <Select value={field.value ? String(field.value) : undefined} onValueChange={(val) => { field.onChange(parseInt(val)); form.setValue("siteId", null); }}>
+                    <Select value={field.value ? String(field.value) : ""} onValueChange={(val) => { field.onChange(val ? parseInt(val) : 0); form.setValue("siteId", null); }}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Изберете клиент" /></SelectTrigger></FormControl>
                       <SelectContent>{clients.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
                     </Select>
@@ -231,7 +231,7 @@ export default function EditOfferPage() {
                 <FormField control={form.control} name="siteId" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Обект</FormLabel>
-                    <Select value={field.value ? String(field.value) : undefined} onValueChange={(val) => field.onChange(val ? parseInt(val) : null)}>
+                    <Select value={field.value ? String(field.value) : ""} onValueChange={(val) => field.onChange(val ? parseInt(val) : null)}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Изберете обект" /></SelectTrigger></FormControl>
                       <SelectContent>{filteredSites.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                     </Select>
@@ -279,7 +279,7 @@ export default function EditOfferPage() {
                       {item?.itemType === "service" ? (
                         <FormField control={form.control} name={`items.${index}.serviceId`} render={({ field }) => (
                           <FormItem><FormLabel className="text-xs">Услуга *</FormLabel>
-                            <Select value={field.value ? String(field.value) : undefined} onValueChange={(val) => { field.onChange(parseInt(val)); const svc = services.find(s => s.id === parseInt(val)); if (svc?.basePrice) form.setValue(`items.${index}.pricePerM3`, svc.basePrice); }}>
+                            <Select value={field.value ? String(field.value) : ""} onValueChange={(val) => { field.onChange(val ? parseInt(val) : 0); const svc = services.find(s => s.id === parseInt(val)); if (svc?.basePrice) form.setValue(`items.${index}.pricePerM3`, svc.basePrice); }}>
                               <FormControl><SelectTrigger className="h-9"><SelectValue placeholder="Изберете услуга" /></SelectTrigger></FormControl>
                               <SelectContent>{services.filter(s => s.basePrice != null).map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name} ({s.unit})</SelectItem>)}</SelectContent>
                             </Select><FormMessage /></FormItem>
@@ -287,7 +287,7 @@ export default function EditOfferPage() {
                       ) : (
                         <FormField control={form.control} name={`items.${index}.concreteTypeId`} render={({ field }) => (
                           <FormItem><FormLabel className="text-xs">Тип бетон *</FormLabel>
-                            <Select value={field.value ? String(field.value) : undefined} onValueChange={(val) => { field.onChange(parseInt(val)); handleConcreteTypeChange(index, val); }}>
+                            <Select value={field.value ? String(field.value) : ""} onValueChange={(val) => { field.onChange(val ? parseInt(val) : 0); handleConcreteTypeChange(index, val); }}>
                               <FormControl><SelectTrigger className="h-9"><SelectValue placeholder="Изберете" /></SelectTrigger></FormControl>
                               <SelectContent>{concreteTypes.filter(ct => ct.active !== false).map(ct => <SelectItem key={ct.id} value={String(ct.id)}>{ct.name}</SelectItem>)}</SelectContent>
                             </Select><FormMessage /></FormItem>
