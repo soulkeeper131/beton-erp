@@ -1,49 +1,70 @@
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
-
-const styles = StyleSheet.create({
-  page: { padding: 40, fontSize: 10, fontFamily: "Helvetica" },
-  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 16 },
-  companyName: { fontSize: 14, fontWeight: "bold" },
-  companyDetails: { fontSize: 8, color: "#555", marginTop: 1 },
-  title: { fontSize: 18, fontWeight: "bold", textAlign: "right" },
-  subtitle: { fontSize: 9, color: "#555", textAlign: "right", marginTop: 1 },
-  parties: { flexDirection: "row", gap: 20, marginBottom: 16 },
-  partyBox: { flex: 1, borderWidth: 1, borderColor: "#ccc", padding: 8, borderRadius: 2 },
-  partyTitle: { fontSize: 9, fontWeight: "bold", marginBottom: 4, textTransform: "uppercase" },
-  partyText: { fontSize: 8, marginBottom: 1 },
-  infoRow: { flexDirection: "row", marginBottom: 3 },
-  infoLabel: { width: 80, fontSize: 8, color: "#555" },
-  infoValue: { fontSize: 8 },
-  table: { marginTop: 8 },
-  tableHeader: { flexDirection: "row", backgroundColor: "#f0f0f0", padding: 4, borderBottomWidth: 1 },
-  th: { fontSize: 8, fontWeight: "bold" },
-  tableRow: { flexDirection: "row", padding: 4, borderBottomWidth: 0.5, borderBottomColor: "#eee" },
-  td: { fontSize: 8 },
-  summary: { marginTop: 12, alignItems: "flex-end" },
-  summaryRow: { flexDirection: "row", width: 220, marginBottom: 2 },
-  summaryLabel: { flex: 1, fontSize: 8, textAlign: "right" },
-  summaryValue: { width: 70, fontSize: 8, textAlign: "right" },
-  summaryBold: { fontSize: 10, fontWeight: "bold" },
-  bankInfo: { marginTop: 16, fontSize: 8, color: "#555" },
-  footer: { marginTop: 20 },
-  signLine: { borderTopWidth: 0.5, borderTopColor: "#999", width: 120, marginTop: 30 },
-  signLabel: { fontSize: 8, color: "#555", marginTop: 2 },
-});
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import path from "path";
+import { existsSync } from "fs";
 
 const typeLabels: Record<string, string> = {
-  invoice: "ФАКТУРА", proforma: "ПРОФОРМА ФАКТУРА",
-  credit_note: "КРЕДИТНО ИЗВЕСТИЕ", debit_note: "ДЕБИТНО ИЗВЕСТИЕ",
+  invoice: "ФАКТУРА", proforma: "ПРОФОРМА", credit_note: "КРЕДИТНО ИЗВЕСТИЕ", debit_note: "ДЕБИТНО ИЗВЕСТИЕ",
 };
 
 type Props = { invoice: any; items: any[]; company: any };
 
 export function InvoicePDF({ invoice, items, company }: Props) {
   const c = company || {};
+  const accent = c.accentColor || "#f97316";
   const title = typeLabels[invoice.type] || "ФАКТУРА";
+  const logoPath = c.logoPath ? path.join(process.cwd(), c.logoPath) : null;
+  const hasLogo = logoPath && existsSync(logoPath);
+
+  const styles = StyleSheet.create({
+    page: { padding: 36, fontSize: 9, fontFamily: "Helvetica", color: "#1a1a1a" },
+    // Header
+    header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12, borderBottomWidth: 2, borderBottomColor: accent, paddingBottom: 10 },
+    logo: { width: 80, height: 40, objectFit: "contain" },
+    companyInfo: { flex: 1, marginLeft: hasLogo ? 12 : 0 },
+    companyName: { fontSize: 13, fontWeight: "bold", color: accent },
+    companyDetail: { fontSize: 8, color: "#555", marginTop: 1 },
+    // Title
+    titleBlock: { alignItems: "flex-end" },
+    title: { fontSize: 16, fontWeight: "bold", color: accent },
+    titleSub: { fontSize: 9, color: "#555", marginTop: 2 },
+    // Party boxes
+    parties: { flexDirection: "row", gap: 16, marginBottom: 10 },
+    partyBox: { flex: 1, borderWidth: 1, borderColor: "#e0e0e0", borderRadius: 4, padding: 10 },
+    partyTitle: { fontSize: 9, fontWeight: "bold", color: accent, marginBottom: 4, textTransform: "uppercase" },
+    partyText: { fontSize: 8, marginBottom: 1 },
+    // Info row
+    infoRow: { flexDirection: "row", gap: 20, marginBottom: 10, paddingHorizontal: 2 },
+    infoItem: { flexDirection: "row" },
+    infoLabel: { fontSize: 8, color: "#888", width: 70 },
+    infoValue: { fontSize: 8, fontWeight: "bold" },
+    // Table
+    table: { marginTop: 4 },
+    tableHeader: { flexDirection: "row", backgroundColor: accent, padding: 5, borderTopLeftRadius: 3, borderTopRightRadius: 3 },
+    th: { fontSize: 7, fontWeight: "bold", color: "#fff" },
+    tableRow: { flexDirection: "row", padding: 5, borderBottomWidth: 0.5, borderBottomColor: "#e8e8e8" },
+    tableRowAlt: { flexDirection: "row", padding: 5, borderBottomWidth: 0.5, borderBottomColor: "#e8e8e8", backgroundColor: "#fafafa" },
+    td: { fontSize: 8 },
+    // Summary
+    summary: { marginTop: 10, alignItems: "flex-end" },
+    summaryRow: { flexDirection: "row", width: 200, marginBottom: 2 },
+    summaryLabel: { flex: 1, fontSize: 8, textAlign: "right", color: "#555" },
+    summaryValue: { width: 65, fontSize: 8, textAlign: "right" },
+    summaryBold: { fontSize: 10, fontWeight: "bold", color: "#1a1a1a" },
+    // Bank
+    bankBox: { marginTop: 10, padding: 8, backgroundColor: "#f8f8f8", borderRadius: 3 },
+    bankText: { fontSize: 8, color: "#555" },
+    // Footer
+    footer: { position: "absolute", bottom: 30, left: 36, right: 36 },
+    footerLine: { borderTopWidth: 1, borderTopColor: accent, marginBottom: 6 },
+    footerText: { fontSize: 7, color: "#999", textAlign: "center" },
+    signBlock: { flexDirection: "row", justifyContent: "space-between", marginTop: 20 },
+    signLine: { borderTopWidth: 0.5, borderTopColor: "#999", width: 110, marginTop: 25 },
+    signLabel: { fontSize: 7, color: "#777", marginTop: 2 },
+  });
 
   const subtotal = invoice.subtotal || 0;
   const discount = invoice.discountAmount || 0;
-  const vatAmount = invoice.vatAmount || 0;
+  const vat = invoice.vatAmount || 0;
   const total = invoice.total || 0;
 
   return (
@@ -51,19 +72,18 @@ export function InvoicePDF({ invoice, items, company }: Props) {
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.companyName}>{c.companyName || "—"}</Text>
-            {c.companyNameBG && c.companyNameBG !== c.companyName && (
-              <Text style={styles.companyDetails}>{c.companyNameBG}</Text>
-            )}
-            {c.eik && <Text style={styles.companyDetails}>ЕИК: {c.eik}</Text>}
-            {c.vatNumber && <Text style={styles.companyDetails}>ДДС №: {c.vatNumber}</Text>}
-            {c.address && <Text style={styles.companyDetails}>{c.city ? `${c.city}, ` : ""}{c.address}</Text>}
-            {c.mol && <Text style={styles.companyDetails}>МОЛ: {c.mol}</Text>}
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+            {hasLogo && <Image src={logoPath} style={styles.logo} />}
+            <View style={styles.companyInfo}>
+              <Text style={styles.companyName}>{c.companyName || "—"}</Text>
+              {c.companyNameBG && c.companyNameBG !== c.companyName && <Text style={styles.companyDetail}>{c.companyNameBG}</Text>}
+              {c.eik && <Text style={styles.companyDetail}>ЕИК: {c.eik}{c.vatNumber ? ` • ДДС: ${c.vatNumber}` : ""}</Text>}
+              {c.address && <Text style={styles.companyDetail}>{c.city ? `${c.city}, ` : ""}{c.address}</Text>}
+            </View>
           </View>
-          <View>
+          <View style={styles.titleBlock}>
             <Text style={styles.title}>{title}</Text>
-            <Text style={styles.subtitle}>№ {invoice.number}</Text>
+            <Text style={styles.titleSub}>№ {invoice.number}</Text>
           </View>
         </View>
 
@@ -87,39 +107,31 @@ export function InvoicePDF({ invoice, items, company }: Props) {
         </View>
 
         {/* Dates */}
-        <View style={{ flexDirection: "row", gap: 30, marginBottom: 10 }}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Дата:</Text>
-            <Text style={styles.infoValue}>{invoice.date || "—"}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Падеж:</Text>
-            <Text style={styles.infoValue}>{invoice.dueDate || "—"}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Дан. събитие:</Text>
-            <Text style={styles.infoValue}>{invoice.taxEventDate || "—"}</Text>
-          </View>
+        <View style={styles.infoRow}>
+          <View style={styles.infoItem}><Text style={styles.infoLabel}>Дата:</Text><Text style={styles.infoValue}>{invoice.date || "—"}</Text></View>
+          <View style={styles.infoItem}><Text style={styles.infoLabel}>Падеж:</Text><Text style={styles.infoValue}>{invoice.dueDate || "—"}</Text></View>
+          <View style={styles.infoItem}><Text style={styles.infoLabel}>Дан. събитие:</Text><Text style={styles.infoValue}>{invoice.taxEventDate || "—"}</Text></View>
+          <View style={styles.infoItem}><Text style={styles.infoLabel}>Плащане:</Text><Text style={styles.infoValue}>{invoice.paymentMethod === "bank" ? "Банков превод" : invoice.paymentMethod === "cash" ? "В брой" : "Карта"}</Text></View>
         </View>
 
-        {/* Items Table */}
+        {/* Table */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.th, { flex: 1 }]}>Описание</Text>
-            <Text style={[styles.th, { width: 40, textAlign: "center" }]}>Мярка</Text>
-            <Text style={[styles.th, { width: 45, textAlign: "center" }]}>К-во</Text>
-            <Text style={[styles.th, { width: 60, textAlign: "right" }]}>Цена</Text>
-            <Text style={[styles.th, { width: 40, textAlign: "center" }]}>ДДС%</Text>
-            <Text style={[styles.th, { width: 65, textAlign: "right" }]}>Стойност</Text>
+            <Text style={[styles.th, { flex: 2 }]}>Описание</Text>
+            <Text style={[styles.th, { width: 35, textAlign: "center" }]}>М-ка</Text>
+            <Text style={[styles.th, { width: 40, textAlign: "center" }]}>К-во</Text>
+            <Text style={[styles.th, { width: 55, textAlign: "right" }]}>Цена</Text>
+            <Text style={[styles.th, { width: 35, textAlign: "center" }]}>ДДС</Text>
+            <Text style={[styles.th, { width: 60, textAlign: "right" }]}>Стойност</Text>
           </View>
           {items.map((item: any, i: number) => (
-            <View style={styles.tableRow} key={i}>
-              <Text style={[styles.td, { flex: 1 }]}>{item.description}</Text>
-              <Text style={[styles.td, { width: 40, textAlign: "center" }]}>{item.unit}</Text>
-              <Text style={[styles.td, { width: 45, textAlign: "center" }]}>{item.quantity}</Text>
-              <Text style={[styles.td, { width: 60, textAlign: "right" }]}>{item.price.toFixed(2)}</Text>
-              <Text style={[styles.td, { width: 40, textAlign: "center" }]}>{item.vatRate}%</Text>
-              <Text style={[styles.td, { width: 65, textAlign: "right" }]}>{item.total.toFixed(2)}</Text>
+            <View style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt} key={i}>
+              <Text style={[styles.td, { flex: 2 }]}>{item.description}</Text>
+              <Text style={[styles.td, { width: 35, textAlign: "center" }]}>{item.unit}</Text>
+              <Text style={[styles.td, { width: 40, textAlign: "center" }]}>{item.quantity}</Text>
+              <Text style={[styles.td, { width: 55, textAlign: "right" }]}>{item.price.toFixed(2)}</Text>
+              <Text style={[styles.td, { width: 35, textAlign: "center" }]}>{item.vatRate}%</Text>
+              <Text style={[styles.td, { width: 60, textAlign: "right" }]}>{item.total.toFixed(2)}</Text>
             </View>
           ))}
         </View>
@@ -138,47 +150,31 @@ export function InvoicePDF({ invoice, items, company }: Props) {
           )}
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>ДДС {invoice.vatRate}%:</Text>
-            <Text style={styles.summaryValue}>{vatAmount.toFixed(2)} {invoice.currency}</Text>
+            <Text style={styles.summaryValue}>{vat.toFixed(2)} {invoice.currency}</Text>
           </View>
-          <View style={[styles.summaryRow, { borderTopWidth: 1, borderTopColor: "#000", paddingTop: 2, marginTop: 2 }]}>
-            <Text style={[styles.summaryLabel, styles.summaryBold]}>Общо:</Text>
-            <Text style={[styles.summaryValue, styles.summaryBold]}>{total.toFixed(2)} {invoice.currency}</Text>
+          <View style={[styles.summaryRow, { borderTopWidth: 1, borderTopColor: accent, paddingTop: 3, marginTop: 3 }]}>
+            <Text style={[styles.summaryLabel, styles.summaryBold]}>Общо за плащане:</Text>
+            <Text style={[styles.summaryValue, styles.summaryBold, { color: accent }]}>{total.toFixed(2)} {invoice.currency}</Text>
           </View>
         </View>
 
-        {/* Bank Info */}
+        {/* Bank info */}
         {(c.bankName || c.iban) && (
-          <View style={styles.bankInfo}>
-            <Text>Банкова сметка:</Text>
-            {c.bankName && <Text>{c.bankName}</Text>}
-            {c.iban && <Text>IBAN: {c.iban}</Text>}
-            {c.bic && <Text>BIC: {c.bic}</Text>}
+          <View style={styles.bankBox}>
+            <Text style={styles.bankText}>Банкова сметка: {[c.bankName, c.iban ? `IBAN: ${c.iban}` : "", c.bic ? `BIC: ${c.bic}` : ""].filter(Boolean).join(" • ")}</Text>
           </View>
         )}
 
-        {/* Notes + tax exemption */}
-        {invoice.taxExemptionReason && (
-          <View style={{ marginTop: 10 }}>
-            <Text style={{ fontSize: 8, color: "#555" }}>Основание за нулева ставка: {invoice.taxExemptionReason}</Text>
-          </View>
-        )}
-        {invoice.notes && (
-          <View style={{ marginTop: 10 }}>
-            <Text style={{ fontSize: 8, color: "#555" }}>Забележка: {invoice.notes}</Text>
-          </View>
-        )}
+        {/* Exemption / Notes */}
+        {invoice.taxExemptionReason && <Text style={{ fontSize: 7, color: "#888", marginTop: 6 }}>Основание за 0% ДДС: {invoice.taxExemptionReason}</Text>}
 
-        {/* Signatures */}
+        {/* Footer */}
         <View style={styles.footer}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <View>
-              <View style={styles.signLine} />
-              <Text style={styles.signLabel}>Изготвил: ..............................</Text>
-            </View>
-            <View>
-              <View style={styles.signLine} />
-              <Text style={styles.signLabel}>Получил: ..............................</Text>
-            </View>
+          <View style={styles.footerLine} />
+          <Text style={styles.footerText}>{c.companyName || ""} • {c.eik ? `ЕИК ${c.eik}` : ""} • {c.city || ""}</Text>
+          <View style={styles.signBlock}>
+            <View><View style={styles.signLine} /><Text style={styles.signLabel}>Изготвил: ..............................</Text></View>
+            <View><View style={styles.signLine} /><Text style={styles.signLabel}>Получил: ..............................</Text></View>
           </View>
         </View>
       </Page>

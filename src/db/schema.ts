@@ -329,6 +329,7 @@ export const companySettings = sqliteTable("company_settings", {
   iban: text("iban").notNull().default(""),
   bic: text("bic").notNull().default(""),
   logoPath: text("logo_path"),
+  accentColor: text("accent_color").notNull().default("#f97316"), // orange default
   smtpHost: text("smtp_host").notNull().default(""),
   smtpPort: integer("smtp_port").notNull().default(587),
   smtpUser: text("smtp_user").notNull().default(""),

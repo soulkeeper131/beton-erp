@@ -426,3 +426,6 @@ const imapCols = [
 for (const sql of imapCols) {
   try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) {} }
 }
+
+// Migration: accent color
+try { sqlite.exec('ALTER TABLE company_settings ADD COLUMN accent_color TEXT NOT NULL DEFAULT "#f97316"'); } catch(e: any) { if (!e.message.includes('duplicate')) {} }

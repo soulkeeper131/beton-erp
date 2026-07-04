@@ -18,6 +18,7 @@ const settingsSchema = z.object({
   bankName: z.string().optional().default(""),
   iban: z.string().optional().default(""),
   bic: z.string().optional().default(""),
+  accentColor: z.string().optional().default("#f97316"),
   smtpHost: z.string().optional().default(""),
   smtpPort: z.number().optional().default(587),
   smtpUser: z.string().optional().default(""),

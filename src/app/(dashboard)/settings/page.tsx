@@ -15,7 +15,7 @@ export default function SettingsPage() {
   const [form, setForm] = useState({
     companyName: "", companyNameBG: "", eik: "", vatNumber: "",
     address: "", city: "", phone: "", email: "", mol: "",
-    bankName: "", iban: "", bic: "",
+    bankName: "", iban: "", bic: "", accentColor: "#f97316",
     smtpHost: "", smtpPort: 587, smtpUser: "", smtpPass: "",
     smtpFrom: "", smtpSecure: false,
     imapHost: "", imapPort: 993, imapUser: "", imapPass: "",
@@ -30,6 +30,7 @@ export default function SettingsPage() {
         address: d.address || "", city: d.city || "",
         phone: d.phone || "", email: d.email || "", mol: d.mol || "",
         bankName: d.bankName || "", iban: d.iban || "", bic: d.bic || "",
+        accentColor: d.accentColor || "#f97316",
         smtpHost: d.smtpHost || "", smtpPort: d.smtpPort || 587,
         smtpUser: d.smtpUser || "", smtpPass: d.smtpPass || "",
         smtpFrom: d.smtpFrom || "", smtpSecure: !!d.smtpSecure,
@@ -111,6 +112,53 @@ export default function SettingsPage() {
               <div><Label>Банка</Label><Input value={form.bankName} onChange={e => u("bankName", e.target.value)} /></div>
               <div><Label>IBAN</Label><Input value={form.iban} onChange={e => u("iban", e.target.value)} /></div>
               <div><Label>BIC</Label><Input value={form.bic} onChange={e => u("bic", e.target.value)} /></div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Дизайн на документи */}
+        <Card>
+          <CardHeader><CardTitle>🎨 Дизайн на документи</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Лого</Label>
+                <div className="flex items-center gap-3 mt-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const fd = new FormData();
+                      fd.append("file", file);
+                      const res = await fetch("/api/upload-logo", { method: "POST", body: fd });
+                      if (res.ok) alert("✅ Логото е качено");
+                      else alert("❌ Грешка при качване");
+                    }}
+                    className="text-sm"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">PNG или JPG, до 2MB. Ще се показва в PDF документите.</p>
+              </div>
+              <div>
+                <Label>Акцентен цвят</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="color"
+                    value={form.accentColor}
+                    onChange={e => u("accentColor", e.target.value)}
+                    className="w-10 h-10 rounded border cursor-pointer"
+                  />
+                  <Input
+                    value={form.accentColor}
+                    onChange={e => u("accentColor", e.target.value)}
+                    className="w-28 font-mono text-sm"
+                    placeholder="#f97316"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Използва се за заглавки и акценти в PDF-ите.</p>
+              </div>
             </div>
           </CardContent>
         </Card>
