@@ -57,10 +57,11 @@ export async function GET(
     InvoicePDF({ invoice, items, company })
   );
 
+  const safeNumber = invoice.number?.replace(/[^a-zA-Z0-9_-]/g, "_") || "invoice";
   return new Response(stream as any, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="invoice-${invoice.number}.pdf"`,
+      "Content-Disposition": `inline; filename="${safeNumber}.pdf"`,
     },
   });
 }

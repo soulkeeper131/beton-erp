@@ -64,10 +64,12 @@ export async function GET(
     OfferPDF({ offer, items, company })
   );
 
+  // ASCII-safe filename — Cyrillic chars in headers cause ByteString error
+  const safeNumber = offer.number?.replace(/[^a-zA-Z0-9_-]/g, "_") || "offer";
   return new Response(stream as any, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="offer-${offer.number}.pdf"`,
+      "Content-Disposition": `inline; filename="${safeNumber}.pdf"`,
     },
   });
 }
