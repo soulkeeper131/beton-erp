@@ -5,8 +5,25 @@ import { actPhotos } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import exifreader from "exifreader";
 
 const UPLOAD_DIR = join(process.cwd(), "public", "uploads");
+
+function extractGPS(buffer: Buffer): { latitude: number | null; longitude: number | null } {
+  try {
+    const tags = exifreader.load(buffer, { expanded: true });
+    if (!tags.gps) return { latitude: null, longitude: null };
+
+    const gps: any = tags.gps;
+    const lat = gps.Latitude;
+    const lng = gps.Longitude;
+
+    if (lat == null || lng == null) return { latitude: null, longitude: null };
+    return { latitude: Number(lat), longitude: Number(lng) };
+  } catch {
+    return { latitude: null, longitude: null };
+  }
+}
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -45,6 +62,9 @@ export async function POST(request: NextRequest) {
   const buffer = Buffer.from(await file.arrayBuffer());
   await writeFile(join(UPLOAD_DIR, filename), buffer);
 
+  // Extract GPS from EXIF
+  const { latitude, longitude } = extractGPS(buffer);
+
   // Save DB record
   const [photo] = await db
     .insert(actPhotos)
@@ -53,8 +73,14 @@ export async function POST(request: NextRequest) {
       siteId: siteId ? parseInt(siteId) : null,
       filename,
       caption: caption || null,
+      latitude: latitude ?? undefined,
+      longitude: longitude ?? undefined,
     })
     .returning();
+
+  if (latitude && longitude) {
+    console.log(`Photo GPS: ${latitude}, ${longitude}`);
+  }
 
   return NextResponse.json(photo, { status: 201 });
 }

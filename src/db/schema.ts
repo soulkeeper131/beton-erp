@@ -203,6 +203,8 @@ export const actPhotos = sqliteTable("act_photos", {
   siteId: integer("site_id").references(() => sites.id),
   filename: text("filename").notNull(),
   caption: text("caption"),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
   uploadedAt: text("uploaded_at").notNull().default(sql`(datetime('now'))`),
 });
 

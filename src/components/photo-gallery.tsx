@@ -1,16 +1,25 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, Trash2, Loader2 } from "lucide-react";
+import { Camera, Trash2, Loader2, MapPin } from "lucide-react";
 import { useIsAdmin } from "@/lib/use-is-admin";
 
 type Photo = {
   id: number;
   filename: string;
   caption: string | null;
+  latitude: number | null;
+  longitude: number | null;
   uploadedAt: string;
+};
+
+type GeoInfo = {
+  displayName: string;
+  road: string;
+  city: string;
+  country: string;
 };
 
 type Props = {
@@ -18,21 +27,70 @@ type Props = {
   siteId?: string;
 };
 
+function MapThumbnail({ lat, lng }: { lat: number; lng: number }) {
+  const zoom = 16;
+  const size = "300x150";
+  const marker = `${lat},${lng}`;
+  // OpenStreetMap static map via a free tile service
+  const src = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=${zoom}&size=${size}&markers=${marker},red-pushpin`;
+
+  return (
+    <img
+      src={src}
+      alt="Локация"
+      className="w-full h-24 object-cover rounded mt-1"
+      loading="lazy"
+    />
+  );
+}
+
 export function PhotoGallery({ pouringId, siteId }: Props) {
   const isAdmin = useIsAdmin();
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [geoCache, setGeoCache] = useState<Record<string, GeoInfo | null>>({});
+  const [loadingGeo, setLoadingGeo] = useState<Record<string, boolean>>({});
   const fileRef = useRef<HTMLInputElement>(null);
 
   const loadPhotos = async () => {
     const param = pouringId ? `pouringId=${pouringId}` : `siteId=${siteId}`;
     const res = await fetch(`/api/photos?${param}`);
-    if (res.ok) setPhotos(await res.json());
+    if (res.ok) {
+      const data = await res.json();
+      setPhotos(data);
+    }
     setLoading(false);
   };
 
   useEffect(() => { loadPhotos(); }, [pouringId, siteId]);
+
+  const fetchGeo = useCallback(async (lat: number, lng: number) => {
+    const key = `${lat},${lng}`;
+    if (geoCache[key] !== undefined) return;
+    setLoadingGeo(prev => ({ ...prev, [key]: true }));
+    try {
+      const res = await fetch(`/api/geocode?lat=${lat}&lng=${lng}`);
+      if (res.ok) {
+        const json = await res.json();
+        setGeoCache(prev => ({ ...prev, [key]: json }));
+      } else {
+        setGeoCache(prev => ({ ...prev, [key]: null }));
+      }
+    } catch {
+      setGeoCache(prev => ({ ...prev, [key]: null }));
+    }
+    setLoadingGeo(prev => ({ ...prev, [key]: false }));
+  }, [geoCache]);
+
+  // Lazy-load geocode for photos with GPS
+  useEffect(() => {
+    photos.forEach(p => {
+      if (p.latitude && p.longitude) {
+        fetchGeo(p.latitude, p.longitude);
+      }
+    });
+  }, [photos, fetchGeo]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -73,26 +131,63 @@ export function PhotoGallery({ pouringId, siteId }: Props) {
         {photos.length === 0 ? (
           <p className="text-muted-foreground text-sm">Няма снимки</p>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {photos.map(p => (
-              <div key={p.id} className="relative group">
-                <img
-                  src={`/uploads/${p.filename}`}
-                  alt={p.caption || ""}
-                  className="w-full h-32 object-cover rounded-lg"
-                  loading="lazy"
-                />
-                {p.caption && <p className="text-xs mt-1 text-muted-foreground truncate">{p.caption}</p>}
-                {isAdmin && (
-                  <button
-                    className="absolute top-1 right-1 bg-destructive text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => handleDelete(p.id)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {photos.map(p => {
+              const geoKey = `${p.latitude},${p.longitude}`;
+              const geo = (p.latitude && p.longitude) ? geoCache[geoKey] : undefined;
+              const geoLoading = loadingGeo[geoKey];
+
+              return (
+                <div key={p.id} className="relative group border rounded-lg overflow-hidden bg-card">
+                  {/* Image */}
+                  <img
+                    src={`/uploads/${p.filename}`}
+                    alt={p.caption || ""}
+                    className="w-full h-40 object-cover"
+                    loading="lazy"
+                  />
+
+                  {/* Info below image */}
+                  <div className="p-2">
+                    {p.caption && <p className="text-xs font-medium truncate">{p.caption}</p>}
+
+                    {/* GPS location */}
+                    {p.latitude && p.longitude && (
+                      <div className="mt-1">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3 text-orange-500" />
+                          <span>{p.latitude.toFixed(6)}, {p.longitude.toFixed(6)}</span>
+                        </div>
+
+                        {/* Address */}
+                        {geoLoading ? (
+                          <p className="text-xs text-muted-foreground mt-0.5">Зарежда адрес...</p>
+                        ) : geo ? (
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate" title={geo.displayName}>
+                            {[geo.road, geo.city].filter(Boolean).join(", ") || geo.displayName}
+                          </p>
+                        ) : null}
+
+                        {/* Map thumbnail */}
+                        {p.latitude && p.longitude && (
+                          <MapThumbnail lat={p.latitude} lng={p.longitude} />
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Delete button */}
+                  {isAdmin && (
+                    <button
+                      className="absolute top-2 right-2 bg-destructive text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => handleDelete(p.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>
