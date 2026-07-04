@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Simple middleware — cookie-based auth, no DB/Edge issues
+// Simple middleware — cookie-based auth + API key support
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -15,6 +15,15 @@ export function middleware(request: NextRequest) {
       response.headers.set("Expires", "0");
     }
     return response;
+  }
+
+  // API key auth (Bearer token) — for AI/automation
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    if (token === process.env.API_KEY) {
+      return NextResponse.next();
+    }
   }
 
   // Check for auth session cookie
