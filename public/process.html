@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beton ERP — Бизнес процес</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --card: #1a1a1a;
+    --border: #2a2a2a;
+    --text: #e0e0e0;
+    --muted: #999;
+    --orange: #f97316;
+    --orange-light: #fb923c;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --purple: #a855f7;
+    --red: #ef4444;
+    --teal: #14b8a6;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.6;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+  
+  /* Header */
+  .header {
+    text-align: center;
+    padding: 3rem 1rem;
+    background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+    border-bottom: 2px solid var(--orange);
+  }
+  .header h1 { font-size: 2.5rem; font-weight: 800; }
+  .header h1 span { color: var(--orange); }
+  .header p { color: var(--muted); margin-top: 0.5rem; font-size: 1.1rem; }
+  
+  /* Section */
+  .section {
+    margin: 3rem 0;
+  }
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .section-title .icon { font-size: 1.8rem; }
+  
+  /* Diagram card */
+  .diagram-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2rem;
+    overflow-x: auto;
+  }
+  .diagram-card .mermaid { 
+    display: flex; 
+    justify-content: center;
+  }
+  
+  /* Step cards */
+  .steps { display: grid; gap: 1rem; }
+  .step {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    transition: border-color 0.2s;
+  }
+  .step:hover { border-color: var(--orange); }
+  .step-num {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .step-num.orange { background: var(--orange); color: #fff; }
+  .step-num.blue { background: var(--blue); color: #fff; }
+  .step-num.green { background: var(--green); color: #fff; }
+  .step-num.purple { background: var(--purple); color: #fff; }
+  .step-num.teal { background: var(--teal); color: #fff; }
+  .step-num.red { background: var(--red); color: #fff; }
+  .step-content h3 { font-size: 1.1rem; margin-bottom: 0.3rem; }
+  .step-content p { color: var(--muted); font-size: 0.95rem; }
+  .step-content .badge {
+    display: inline-block;
+    background: #333;
+    color: #ccc;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-family: monospace;
+    margin-right: 0.3rem;
+    margin-top: 0.3rem;
+  }
+  
+  /* Tech stack */
+  .tech-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+  .tech-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+  }
+  .tech-item .tech-icon { font-size: 2rem; }
+  .tech-item h4 { margin: 0.5rem 0; }
+  .tech-item p { color: var(--muted); font-size: 0.85rem; }
+  
+  /* Two columns */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+  
+  .footer {
+    text-align: center;
+    padding: 2rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🏗️ <span>Beton ERP</span></h1>
+  <p>Пълен бизнес процес — от първия контакт с клиента до фактурата</p>
+</div>
+
+<div class="container">
+
+<!-- ========== MAIN FLOW ========== -->
+<div class="section">
+  <div class="section-title"><span class="icon">🔄</span> Основен работен поток</div>
+  <div class="diagram-card">
+    <pre class="mermaid">
+flowchart TD
+    SETUP["⚙️<br/>Първоначална<br/>настройка"]
+    CLIENT["👥<br/>Регистриране<br/>на клиент"]
+    SITE["🏗️<br/>Създаване<br/>на обект"]
+    CALENDAR["📅<br/>Планиране<br/>в календар"]
+    OFFER["📋<br/>Изготвяне<br/>на оферта"]
+    POURING["🪣<br/>Актуване<br/>(изливане)"]
+    INVOICE["🧾<br/>Издаване<br/>на фактура"]
+    ARCHIVE["📦<br/>Одит лог<br/>& Архив"]
+
+    SETUP --> CLIENT --> SITE --> CALENDAR --> OFFER --> POURING --> INVOICE --> ARCHIVE
+    OFFER -.->|"клиентът отказва"| CLIENT
+    POURING -.->|"допълнително изливане"| CALENDAR
+
+    style SETUP fill:#1a1a1a,stroke:#a855f7,color:#e0e0e0
+    style CLIENT fill:#1a1a1a,stroke:#3b82f6,color:#e0e0e0
+    style SITE fill:#1a1a1a,stroke:#22c55e,color:#e0e0e0
+    style CALENDAR fill:#1a1a1a,stroke:#f97316,color:#e0e0e0
+    style OFFER fill:#1a1a1a,stroke:#14b8a6,color:#e0e0e0
+    style POURING fill:#1a1a1a,stroke:#f97316,color:#e0e0e0
+    style INVOICE fill:#1a1a1a,stroke:#ef4444,color:#e0e0e0
+    style ARCHIVE fill:#1a1a1a,stroke:#999,color:#e0e0e0
+    </pre>
+  </div>
+</div>
+
+<!-- ========== STEPS ========== -->
+<div class="section">
+  <div class="section-title"><span class="icon">📋</span> Стъпка по стъпка</div>
+  <div class="steps">
+
+    <div class="step">
+      <div class="step-num purple">1</div>
+      <div class="step-content">
+        <h3>⚙️ Първоначална настройка</h3>
+        <p>Въвеждат се базовите данни — типове бетон (B10–B30), услуги, машини, работници, материали и фирмени реквизити за документите.</p>
+        <span class="badge">/settings</span>
+        <span class="badge">/concrete-types</span>
+        <span class="badge">/services</span>
+        <span class="badge">/machines</span>
+        <span class="badge">/workers</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num blue">2</div>
+      <div class="step-content">
+        <h3>👥 Регистриране на клиент</h3>
+        <p>Въвежда се ЕИК — системата автоматично търси фирмата в CompanyBook и попълва име, адрес, ДДС номер. Ръчно добавяне също е възможно.</p>
+        <span class="badge">/clients</span>
+        <span class="badge">CompanyBook API</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num green">3</div>
+      <div class="step-content">
+        <h3>🏗️ Създаване на обект</h3>
+        <p>Към клиента се създава строителен обект с адрес и описание. Могат да се качват снимки — системата извлича GPS координати и показва локация на карта.</p>
+        <span class="badge">/sites</span>
+        <span class="badge">GPS EXIF</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num orange">4</div>
+      <div class="step-content">
+        <h3>📅 Планиране в календар</h3>
+        <p>Изливането се планира за конкретна дата с избран тип бетон и прогнозно количество (m³). Календарът показва всички планирани обекти.</p>
+        <span class="badge">/calendar</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num teal">5</div>
+      <div class="step-content">
+        <h3>📋 Изготвяне на оферта</h3>
+        <p>Създава се оферта с редове от типове бетон и услуги. Генерира се професионален PDF с фирмено лого и цветове, готов за изпращане.</p>
+        <span class="badge">/offers</span>
+        <span class="badge">PDF генератор</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num orange">6</div>
+      <div class="step-content">
+        <h3>🪣 Актуване (изливане)</h3>
+        <p>След изпълнение се създава акт за изливането — дата, обект, тип бетон, количество, машина, метеорологични условия и снимки.</p>
+        <span class="badge">/pourings</span>
+        <span class="badge">Снимки + GPS</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num red">7</div>
+      <div class="step-content">
+        <h3>🧾 Издаване на фактура</h3>
+        <p>Фактура с избрани редове, ДДС, падеж и начин на плащане. Всички задължителни ЗДДС реквизити са включени. Генерира се PDF.</p>
+        <span class="badge">/invoices</span>
+        <span class="badge">ЗДДС compliant</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ========== ARCHITECTURE ========== -->
+<div class="section">
+  <div class="section-title"><span class="icon">🏛️</span> Архитектура и хостинг</div>
+  <div class="diagram-card">
+    <pre class="mermaid">
+flowchart LR
+    subgraph User["👤 Потребител"]
+        BROWSER["Браузър /<br/>Мобилен"]
+    end
+    
+    subgraph Coolify["🖥️ Coolify (coolify.blv.bg)"]
+        direction TB
+        CONTAINER["Docker контейнер<br/>Next.js 14<br/>SQLite база"]
+        UPLOADS["data/uploads/<br/>Снимки + Лого"]
+        VOLUME["Docker Volume<br/>(persistent data)"]
+    end
+    
+    subgraph External["🌐 Външни"]
+        CB["CompanyBook API<br/>Търсене по ЕИК"]
+        OSM["OpenStreetMap<br/>Карти + Локация"]
+    end
+    
+    subgraph CI["🔄 CI/CD"]
+        GH["GitHub<br/>soulkeeper131/beton-erp"]
+        COOL["Coolify Deploy<br/>main branch → auto"]
+    end
+
+    BROWSER -->|"HTTPS<br/>beton.blv.bg"| CONTAINER
+    CONTAINER --> UPLOADS
+    CONTAINER --> VOLUME
+    CONTAINER --> CB
+    CONTAINER --> OSM
+    GH -->|"git push main"| COOL
+    COOL -->|"rebuild & deploy"| CONTAINER
+
+    style User fill:#1a1a1a,stroke:#3b82f6,color:#e0e0e0
+    style Coolify fill:#1a1a1a,stroke:#f97316,color:#e0e0e0
+    style External fill:#1a1a1a,stroke:#22c55e,color:#e0e0e0
+    style CI fill:#1a1a1a,stroke:#a855f7,color:#e0e0e0
+    </pre>
+  </div>
+</div>
+
+<!-- ========== TECH ========== -->
+<div class="section">
+  <div class="section-title"><span class="icon">🔧</span> Технологичен стек</div>
+  <div class="tech-grid">
+    <div class="tech-item">
+      <div class="tech-icon">⚡</div>
+      <h4>Next.js 14</h4>
+      <p>React framework, SSR, App Router</p>
+    </div>
+    <div class="tech-item">
+      <div class="tech-icon">🗄️</div>
+      <h4>SQLite + Drizzle</h4>
+      <p>База данни с type-safe ORM</p>
+    </div>
+    <div class="tech-item">
+      <div class="tech-icon">🐳</div>
+      <h4>Docker + Coolify</h4>
+      <p>Контейнеризация и автоматичен деплой</p>
+    </div>
+    <div class="tech-item">
+      <div class="tech-icon">📄</div>
+      <h4>@react-pdf/renderer</h4>
+      <p>PDF генерация с кирилица (DejaVu Sans)</p>
+    </div>
+    <div class="tech-item">
+      <div class="tech-icon">🔐</div>
+      <h4>NextAuth.js</h4>
+      <p>Автентикация с роли (admin/employee)</p>
+    </div>
+    <div class="tech-item">
+      <div class="tech-icon">📍</div>
+      <h4>ExifReader + OSM</h4>
+      <p>GPS извличане и карти от снимки</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== FLOW DETAIL ========== -->
+<div class="section">
+  <div class="section-title"><span class="icon">🔍</span> Детайлен flow с модули</div>
+  <div class="diagram-card">
+    <pre class="mermaid">
+flowchart LR
+    subgraph S1["1. НАСТРОЙКА"]
+        CT["🧱 Типове бетон"]
+        SV["🔧 Услуги"]
+        MC["🚛 Машини"]
+        WR["👷 Работници"]
+        MT["📦 Материали"]
+        ST["⚙️ Фирмени данни"]
+    end
+    
+    subgraph S2["2. КЛИЕНТ"]
+        CL["👥 Създаване"]
+        EIK["🔍 EIK търсене"]
+    end
+    
+    subgraph S3["3. ОБЕКТ"]
+        SI["🏗️ Създаване"]
+        PH["📸 Снимки + GPS"]
+    end
+    
+    subgraph S4["4. ПЛАНИРАНЕ"]
+        CA["📅 Календар"]
+    end
+    
+    subgraph S5["5. ОФЕРТА"]
+        OF["📋 Офериране"]
+        PDF1["📄 PDF"]
+    end
+    
+    subgraph S6["6. ИЗПЪЛНЕНИЕ"]
+        PO["🪣 Актуване"]
+        PH2["📸 Снимки"]
+        PDF2["📄 Акт PDF"]
+    end
+    
+    subgraph S7["7. ФАКТУРА"]
+        INV["🧾 Фактура"]
+        PDF3["📄 Фактура PDF"]
+    end
+    
+    subgraph S8["8. АРХИВ"]
+        LOG["📋 Одит лог"]
+    end
+
+    S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8
+    style S1 fill:#1a1a1a,stroke:#a855f7,color:#e0e0e0
+    style S2 fill:#1a1a1a,stroke:#3b82f6,color:#e0e0e0
+    style S3 fill:#1a1a1a,stroke:#22c55e,color:#e0e0e0
+    style S4 fill:#1a1a1a,stroke:#f97316,color:#e0e0e0
+    style S5 fill:#1a1a1a,stroke:#14b8a6,color:#e0e0e0
+    style S6 fill:#1a1a1a,stroke:#f59e0b,color:#e0e0e0
+    style S7 fill:#1a1a1a,stroke:#ef4444,color:#e0e0e0
+    style S8 fill:#1a1a1a,stroke:#6b7280,color:#e0e0e0
+    </pre>
+  </div>
+</div>
+
+<!-- ========== DATA ========== -->
+<div class="section">
+  <div class="section-title"><span class="icon">📊</span> Ключови данни в системата</div>
+  <div class="two-col">
+    <div class="steps" style="grid-template-columns:1fr">
+      <div class="step">
+        <div class="step-num blue">📋</div>
+        <div class="step-content">
+          <h3>Данни, които се въвеждат веднъж</h3>
+          <p>Фирмени реквизити, лого, цветове, типове бетон (B10-B30, замазка, транспортбетон), услуги, машини, материали, работници.</p>
+        </div>
+      </div>
+    </div>
+    <div class="steps" style="grid-template-columns:1fr">
+      <div class="step">
+        <div class="step-num green">🔄</div>
+        <div class="step-content">
+          <h3>Данни за всеки проект</h3>
+          <p>Клиент → Обект → Календар → Оферта → Актуване → Фактура. Всеки обект минава през целия цикъл.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Beton ERP · blv.bg · Юли 2026<br/>
+  Изградено с Next.js 14, SQLite + Drizzle, Docker/Coolify
+</div>
+
+</div>
+
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    primaryColor: '#1a1a1a',
+    primaryTextColor: '#e0e0e0',
+    lineColor: '#555',
+    fontSize: '14px'
+  },
+  flowchart: { useMaxWidth: true, htmlLabels: true }
+});
+</script>
+
+</body>
+</html>
