@@ -137,6 +137,66 @@
     font-size: 0.85rem;
     border-top: 1px solid var(--border);
   }
+
+  /* Edge cases */
+  .edge-grid { display: grid; gap: 1rem; }
+  .edge-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--orange);
+    border-radius: 8px;
+    padding: 1.2rem;
+    transition: border-left-color 0.2s;
+  }
+  .edge-item.critical { border-left-color: var(--red); }
+  .edge-item.medium { border-left-color: var(--orange); }
+  .edge-item.low { border-left-color: var(--teal); }
+  .edge-item h4 { margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.5rem; }
+  .edge-item p { color: var(--muted); font-size: 0.9rem; }
+  .severity {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .severity.critical { background: #7f1d1d; color: #fca5a5; }
+  .severity.medium { background: #78350f; color: #fdba74; }
+  .severity.low { background: #134e4a; color: #5eead4; }
+
+  /* Roadmap */
+  .todo-list { display: grid; gap: 0.75rem; }
+  .todo-item {
+    display: flex; align-items: center; gap: 1rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+  }
+  .todo-status {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+  .todo-status.done { background: #14532d; color: var(--green); }
+  .todo-status.now { background: #78350f; color: var(--orange); }
+  .todo-status.later { background: #1e293b; color: var(--muted); }
+  .todo-item .todo-label { flex: 1; }
+  .todo-item .todo-label strong { display: block; margin-bottom: 0.15rem; }
+  .todo-item .todo-label span { color: var(--muted); font-size: 0.85rem; }
+  .todo-prio {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .todo-prio.high { background: #7f1d1d; color: #fca5a5; }
+  .todo-prio.medium { background: #78350f; color: #fdba74; }
+  .todo-prio.low { background: #1e3a5f; color: #93c5fd; }
+  .todo-prio.done { background: #14532d; color: #86efac; }
+
 </style>
 </head>
 <body>
@@ -423,6 +483,171 @@ flowchart LR
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ========== EDGE CASES ========== -->
+<div class="section">
+  <div class="section-title"><span class="icon">⚠️</span> Теоретични Edge Cases</div>
+  <div class="edge-grid">
+
+    <div class="edge-item critical">
+      <h4>🔴 Двойно фактуриране <span class="severity critical">Критично</span></h4>
+      <p>Един акт може да генерира само една фактура. Системата трябва да проверява дали вече има издадена фактура за съответния pouring ID. Без тази проверка има риск от дублиране на финансови документи.</p>
+    </div>
+
+    <div class="edge-item critical">
+      <h4>🔴 Конкурентен достъп до SQLite <span class="severity critical">Критично</span></h4>
+      <p>SQLite поддържа само един писач в даден момент. При 10-20 потребителя, опитващи се да записват едновременно (напр. двама души актуват различни обекти), ще възникне <code>SQLITE_BUSY</code>. Решение: WAL режим + retry логика или миграция към PostgreSQL.</p>
+    </div>
+
+    <div class="edge-item critical">
+      <h4>🔴 Изтриване на използван тип бетон <span class="severity critical">Критично</span></h4>
+      <p>Ако администратор изтрие тип бетон, който вече е използван в оферти или актове, ще се наруши референтната цялост. Решение: ON DELETE RESTRICT (да не позволява изтриване) или soft-delete.</p>
+    </div>
+
+    <div class="edge-item medium">
+      <h4>🟠 Промяна на цена след издадена оферта <span class="severity medium">Средно</span></h4>
+      <p>Ако цената на бетон се промени след като оферта е изпратена на клиент, старата оферта запазва старите цени. Но при създаване на фактура от оферта, трябва да се ползват цените от офертата, не текущите. Нужна е версионност на цените.</p>
+    </div>
+
+    <div class="edge-item medium">
+      <h4>🟠 Клиент без ЕИК (физическо лице) <span class="severity medium">Средно</span></h4>
+      <p>CompanyBook API работи само с ЕИК/БУЛСТАТ. За физически лица трябва ръчно въвеждане на име, адрес, ЕГН. Системата трябва да позволява създаване на клиент без ЕИК.</p>
+    </div>
+
+    <div class="edge-item medium">
+      <h4>🟠 Снимки без GPS данни <span class="severity medium">Средно</span></h4>
+      <p>Ако телефонът няма включена локация, или снимката е пратена през чат приложение (WhatsApp/Viber стрипват EXIF), GPS няма да бъде извлечен. Системата трябва да позволява ръчно добавяне на координати или адрес.</p>
+    </div>
+
+    <div class="edge-item medium">
+      <h4>🟠 Грешка в CompanyBook API <span class="severity medium">Средно</span></h4>
+      <p>Ако CompanyBook не отговори (timeout, лимит на заявки, невалиден API ключ), системата трябва да позволи ръчно въвеждане на фирмените данни и да покаже ясно съобщение, че автоматичното търсене не е успяло.</p>
+    </div>
+
+    <div class="edge-item low">
+      <h4>🟢 Липса на интернет връзка <span class="severity low">Бъдеще</span></h4>
+      <p>При работа на обект без интернет (напр. в изба, мазе), системата не може да качва снимки или да търси в CompanyBook. PWA + Service Worker с офлайн кеширане биха позволили основна функционалност без връзка.</p>
+    </div>
+
+    <div class="edge-item low">
+      <h4>🟢 Препълване на дисковото пространство <span class="severity low">Бъдеще</span></h4>
+      <p>Снимките се записват в <code>data/uploads/</code>. При стотици обекти с десетки снимки, дискът на сървъра може да се напълни. Нужен е мониторинг + предупреждение при < 10% свободно място.</p>
+    </div>
+
+    <div class="edge-item low">
+      <h4>🟢 Празна база данни при първо стартиране <span class="severity low">Low</span></h4>
+      <p>Ако базата е чисто нова и няма типове бетон, услуги, клиенти — UI-то трябва да показва подсказки и бутони "Създай първия...", вместо празни таблици, които изглеждат като бъг.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ========== ROADMAP ========== -->
+<div class="section">
+  <div class="section-title"><span class="icon">🗺️</span> Roadmap — Какво предстои</div>
+  <div class="todo-list">
+
+    <div class="todo-item">
+      <div class="todo-status now">🔥</div>
+      <div class="todo-label">
+        <strong>Dropdown за бетон/услуги във фактури</strong>
+        <span>Редовете на фактурата да могат да избират от съществуващи типове бетон и услуги, вместо само свободен текст.</span>
+      </div>
+      <span class="todo-prio high">Висока</span>
+    </div>
+
+    <div class="todo-item">
+      <div class="todo-status now">🔥</div>
+      <div class="todo-label">
+        <strong>User Management (потребители и роли)</strong>
+        <span>Страница за admin да създава/редактира потребители. Разграничаване на роли: admin (пълен достъп), employee (само актуване и снимки), viewer (само четене).</span>
+      </div>
+      <span class="todo-prio high">Висока</span>
+    </div>
+
+    <div class="todo-item">
+      <div class="todo-status now">🔥</div>
+      <div class="todo-label">
+        <strong>Backup система</strong>
+        <span>Автоматичен бекъп на SQLite базата + качените снимки. Локален + cloud (Google Drive / S3). Възможност за restore от бекъп.</span>
+      </div>
+      <span class="todo-prio high">Висока</span>
+    </div>
+
+    <div class="todo-item">
+      <div class="todo-status later">📋</div>
+      <div class="todo-label">
+        <strong>Ръчно добавяне на GPS координати</strong>
+        <span>Когато снимка няма EXIF GPS, потребителят да може ръчно да въведе координати или да избере локация на карта.</span>
+      </div>
+      <span class="todo-prio medium">Средна</span>
+    </div>
+
+    <div class="todo-item">
+      <div class="todo-status later">📋</div>
+      <div class="todo-label">
+        <strong>Email известяване</strong>
+        <span>Автоматични имейли при: нова оферта (до клиент), одобрение на оферта, планирано изливане (напомняне ден преди), генерирана фактура.</span>
+      </div>
+      <span class="todo-prio medium">Средна</span>
+    </div>
+
+    <div class="todo-item">
+      <div class="todo-status later">📋</div>
+      <div class="todo-label">
+        <strong>Експорт на данни</strong>
+        <span>CSV/Excel експорт на клиенти, обекти, оферти, фактури. PDF експорт на справки (месечен отчет, оборот по клиенти).</span>
+      </div>
+      <span class="todo-prio medium">Средна</span>
+    </div>
+
+    <div class="todo-item">
+      <div class="todo-status later">📋</div>
+      <div class="todo-label">
+        <strong>Rate Limiting &amp; Security</strong>
+        <span>Ограничаване на заявки (особено за CompanyBook API), brute-force защита на login, audit log за неуспешни опити за вход.</span>
+      </div>
+      <span class="todo-prio medium">Средна</span>
+    </div>
+
+    <div class="todo-item">
+      <div class="todo-status done">✅</div>
+      <div class="todo-label">
+        <strong>GPS EXIF извличане</strong>
+        <span>Автоматично извличане на GPS координати от качени снимки + reverse geocode + мини-карта.</span>
+      </div>
+      <span class="todo-prio done">Готово</span>
+    </div>
+
+    <div class="todo-item">
+      <div class="todo-status done">✅</div>
+      <div class="todo-label">
+        <strong>PDF генериране с кирилица</strong>
+        <span>Оферти, фактури и актове като PDF с DejaVu Sans шрифт, фирмено лого и акцентен цвят.</span>
+      </div>
+      <span class="todo-prio done">Готово</span>
+    </div>
+
+    <div class="todo-item">
+      <div class="todo-status later">📋</div>
+      <div class="todo-label">
+        <strong>Миграция SQLite → PostgreSQL</strong>
+        <span>При нарастване на натоварването (> 20 потребителя), миграция към PostgreSQL за по-добра конкурентност. Drizzle ORM поддържа и двете без промяна на кода.</span>
+      </div>
+      <span class="todo-prio low">Ниска</span>
+    </div>
+
+    <div class="todo-item">
+      <div class="todo-status later">📋</div>
+      <div class="todo-label">
+        <strong>Мобилно PWA приложение</strong>
+        <span>Service Worker за офлайн достъп, push известия, оптимизиран mobile-first интерфейс за работа на обект.</span>
+      </div>
+      <span class="todo-prio low">Ниска</span>
+    </div>
+
   </div>
 </div>
 
