@@ -17,6 +17,11 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
+  // Static files and public assets — no auth required
+  if (/\.(html|css|js|png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|eot|pdf|json|xml|txt|map)$/i.test(pathname)) {
+    return NextResponse.next();
+  }
+
   // API key auth (Bearer token) — for AI/automation
   const authHeader = request.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
