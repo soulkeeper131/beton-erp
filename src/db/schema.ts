@@ -50,6 +50,8 @@ export const sites = sqliteTable("sites", {
   startDate: text("start_date"),
   endDate: text("end_date"),
   notes: text("notes"),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });

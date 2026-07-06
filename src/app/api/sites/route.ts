@@ -36,6 +36,8 @@ export async function GET(req: Request) {
         startDate: sites.startDate,
         endDate: sites.endDate,
         notes: sites.notes,
+        latitude: sites.latitude,
+        longitude: sites.longitude,
         createdAt: sites.createdAt,
         updatedAt: sites.updatedAt,
         clientName: clients.name,
@@ -58,6 +60,8 @@ export async function GET(req: Request) {
         startDate: sites.startDate,
         endDate: sites.endDate,
         notes: sites.notes,
+        latitude: sites.latitude,
+        longitude: sites.longitude,
         createdAt: sites.createdAt,
         updatedAt: sites.updatedAt,
         clientName: clients.name,
@@ -93,6 +97,8 @@ export async function POST(req: Request) {
       startDate: parsed.data.startDate || null,
       endDate: parsed.data.endDate || null,
       notes: parsed.data.notes || null,
+      latitude: (parsed.data as any).latitude ?? null,
+      longitude: (parsed.data as any).longitude ?? null,
     })
     .returning()
     .all();

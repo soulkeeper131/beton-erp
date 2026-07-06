@@ -14,6 +14,8 @@ const updateSchema = z.object({
   startDate: z.string().optional().nullable(),
   endDate: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
 });
 
 export async function GET(
@@ -34,6 +36,8 @@ export async function GET(
       startDate: sites.startDate,
       endDate: sites.endDate,
       notes: sites.notes,
+      latitude: sites.latitude,
+      longitude: sites.longitude,
       createdAt: sites.createdAt,
       updatedAt: sites.updatedAt,
       clientName: clients.name,

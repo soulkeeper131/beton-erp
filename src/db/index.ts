@@ -338,6 +338,10 @@ for (const sql of invoiceCols) {
 try { sqlite.exec('ALTER TABLE act_photos ADD COLUMN latitude REAL'); } catch (e: any) { if (!e.message.includes('duplicate')) console.error('lat migration:', e.message); }
 try { sqlite.exec('ALTER TABLE act_photos ADD COLUMN longitude REAL'); } catch (e: any) { if (!e.message.includes('duplicate')) console.error('lng migration:', e.message); }
 
+// Migration: add GPS location to sites
+try { sqlite.exec('ALTER TABLE sites ADD COLUMN latitude REAL'); } catch (e: any) { if (!e.message.includes('duplicate')) console.error('sites lat migration:', e.message); }
+try { sqlite.exec('ALTER TABLE sites ADD COLUMN longitude REAL'); } catch (e: any) { if (!e.message.includes('duplicate')) console.error('sites lng migration:', e.message); }
+
 // Seed company settings if empty
 const settingsCount = sqlite.prepare('SELECT COUNT(*) as cnt FROM company_settings').get() as { cnt: number };
 if (settingsCount.cnt === 0) {

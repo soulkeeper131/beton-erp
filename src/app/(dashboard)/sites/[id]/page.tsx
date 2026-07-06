@@ -52,6 +52,8 @@ const formSchema = z.object({
   startDate: z.string().optional().default(""),
   endDate: z.string().optional().default(""),
   notes: z.string().optional().default(""),
+  latitude: z.coerce.number().optional().nullable(),
+  longitude: z.coerce.number().optional().nullable(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -66,6 +68,8 @@ type SiteData = {
   startDate: string | null;
   endDate: string | null;
   notes: string | null;
+  latitude: number | null;
+  longitude: number | null;
   createdAt: string;
   updatedAt: string;
   clientName: string | null;
@@ -257,6 +261,23 @@ export default function SiteDetailPage() {
                 <dd className="text-sm">{formatDate(site.createdAt)}</dd>
               </div>
             </dl>
+            {site.latitude != null && site.longitude != null && (
+              <div className="mt-4 pt-4 border-t">
+                <dt className="text-sm font-medium text-muted-foreground">📍 GPS координати</dt>
+                <dd className="text-sm">
+                  {site.latitude.toFixed(6)}, {site.longitude.toFixed(6)}
+                  {" "}
+                  <a
+                    href={`https://www.openstreetmap.org/?mlat=${site.latitude}&mlon=${site.longitude}&zoom=17`}
+                    target="_blank"
+                    rel="noopener"
+                    className="text-orange-400 hover:underline text-xs ml-2"
+                  >
+                    Отвори карта ↗
+                  </a>
+                </dd>
+              </div>
+            )}
             {site.notes && (
               <div className="mt-4 pt-4 border-t">
                 <dt className="text-sm font-medium text-muted-foreground">Бележки</dt>
@@ -378,6 +399,48 @@ export default function SiteDetailPage() {
                   </FormItem>
                 )}
               />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="latitude"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>GPS ширина (Latitude)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="any"
+                          placeholder="42.6977"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="longitude"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>GPS дължина (Longitude)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="any"
+                          placeholder="23.3219"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={form.control}
                 name="status"
