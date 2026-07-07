@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { offers, offerItems, clients, concreteTypes, services, companySettings } from "@/db/schema";
+import { offers, offerItems, clients, concreteTypes, services, sites, companySettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { renderToStream } from "@react-pdf/renderer";
 import { OfferPDF } from "@/components/pdf/offer-pdf";
@@ -33,9 +33,12 @@ export async function GET(
       clientAddress: clients.address,
       clientPhone: clients.phone,
       clientEmail: clients.email,
+      siteName: sites.name,
+      siteCity: sites.city,
     })
     .from(offers)
     .leftJoin(clients, eq(offers.clientId, clients.id))
+    .leftJoin(sites, eq(offers.siteId, sites.id))
     .where(eq(offers.id, offerId))
     .get();
 

@@ -2,7 +2,6 @@ import { Document, Page, Text, View, StyleSheet, Image, Font } from "@react-pdf/
 import path from "path";
 import { existsSync } from "fs";
 
-// Register Cyrillic-capable font (built-in Helvetica lacks Cyrillic glyphs)
 Font.register({
   family: "DejaVu Sans",
   fonts: [
@@ -15,212 +14,178 @@ type Props = { pouring: any; company: any };
 
 export function ActPDF({ pouring, company }: Props) {
   const c = company || {};
-  const accent = c.accentColor || "#f97316";
   const logoPath = c.logoPath ? path.join(process.cwd(), c.logoPath) : null;
   const hasLogo = logoPath && existsSync(logoPath);
 
   const styles = StyleSheet.create({
-    page: { padding: 40, fontSize: 10, fontFamily: "DejaVu Sans", color: "#1a1a1a" },
+    page: { padding: 30, fontSize: 9, fontFamily: "DejaVu Sans", color: "#000" },
 
-    // ── HEADER ──
-    header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20, paddingBottom: 14, borderBottomWidth: 3, borderBottomColor: accent },
-    logo: { width: 100, height: 45, objectFit: "contain" },
-    companyCol: { flex: 1, paddingRight: 10 },
-    companyName: { fontSize: 14, fontWeight: "bold", color: accent, marginBottom: 4 },
-    companyRow: { flexDirection: "row", marginBottom: 3, alignItems: "flex-start" },
-    companyLabel: { fontSize: 9, color: "#aaa", width: 55, flexShrink: 0 },
-    companyValue: { fontSize: 9, color: "#444", flex: 1 },
+    title: { textAlign: "center", fontSize: 14, fontWeight: "bold", marginBottom: 4 },
+    subtitle: { textAlign: "center", fontSize: 10, marginBottom: 12 },
 
-    // Title
-    titleCol: { alignItems: "flex-end", flexShrink: 0, minWidth: 120 },
-    titleBig: { fontSize: 20, fontWeight: "bold", color: accent, marginBottom: 8 },
-    titleSub: { fontSize: 10, fontWeight: "bold", color: "#333", marginBottom: 6 },
-    titleDateRow: { flexDirection: "row", marginBottom: 3, justifyContent: "flex-end" },
-    titleDateLabel: { fontSize: 9, color: "#aaa", marginRight: 4 },
-    titleDateValue: { fontSize: 9, fontWeight: "bold", color: "#333" },
+    partiesRow: { flexDirection: "row", borderWidth: 1, borderColor: "#000", marginBottom: 8 },
+    partyLeft: { flex: 1, padding: 6, borderRightWidth: 1, borderColor: "#000" },
+    partyRight: { flex: 1, padding: 6 },
+    partyLabel: { fontSize: 8, fontWeight: "bold", marginBottom: 4 },
+    partyText: { fontSize: 8, marginBottom: 2 },
+    logoImg: { width: 70, height: 35, objectFit: "contain", alignSelf: "flex-end", marginBottom: 4 },
 
-    // ── SECTION ──
-    sectionTitle: { fontSize: 10, fontWeight: "bold", color: accent, marginBottom: 8, marginTop: 18 },
+    objectRow: { flexDirection: "row", borderWidth: 1, borderColor: "#000", padding: 6, marginBottom: 8 },
+    objectLabel: { width: 55, fontSize: 8, fontWeight: "bold" },
+    objectValue: { flex: 1, fontSize: 8 },
 
-    // ── DETAILS GRID ──
-    detailBox: { borderWidth: 1, borderColor: "#ddd", borderRadius: 4, padding: 12 },
-    grid: { flexDirection: "row", flexWrap: "wrap" },
-    field: { width: "50%", marginBottom: 8, paddingRight: 10 },
-    fieldLabel: { fontSize: 8, color: "#aaa" },
-    fieldValue: { fontSize: 10, fontWeight: "bold" },
+    table: { marginBottom: 8 },
+    thead: { flexDirection: "row", backgroundColor: "#ddd", borderWidth: 1, borderColor: "#000" },
+    th: { fontSize: 8, fontWeight: "bold", padding: 4 },
+    trow: { flexDirection: "row", borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderColor: "#000" },
+    td: { fontSize: 8, padding: 4 },
 
-    // ── TABLE ──
-    table: { marginTop: 6 },
-    thead: { flexDirection: "row", backgroundColor: accent, paddingTop: 8, paddingBottom: 8, paddingLeft: 8, paddingRight: 8, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
-    th: { fontSize: 8, fontWeight: "bold", color: "#fff" },
-    trow: { flexDirection: "row", paddingTop: 8, paddingBottom: 8, paddingLeft: 8, paddingRight: 8, borderBottomWidth: 1, borderBottomColor: "#eee" },
-    td: { fontSize: 9 },
+    summaryTable: { marginBottom: 10 },
+    srow: { flexDirection: "row", borderWidth: 1, borderColor: "#000", borderTopWidth: 0 },
+    slab: { width: 130, fontSize: 8, fontWeight: "bold", padding: 4, backgroundColor: "#ddd", borderRightWidth: 1, borderColor: "#000" },
+    sval: { flex: 1, fontSize: 8, padding: 4, textAlign: "right", paddingRight: 8 },
 
-    // ── NOTES ──
-    notesBox: { marginTop: 14, padding: 10, backgroundColor: "#f9f9f9", borderRadius: 4, borderLeftWidth: 3, borderLeftColor: accent },
-    notesText: { fontSize: 9, color: "#666" },
+    signTitle: { textAlign: "center", fontSize: 8, fontWeight: "bold", marginBottom: 6, marginTop: 6 },
+    signTable: { marginTop: 4 },
+    signHeader: { flexDirection: "row", backgroundColor: "#ddd", borderWidth: 1, borderColor: "#000" },
+    signH: { fontSize: 7, fontWeight: "bold", padding: 3, textAlign: "center" },
+    signRow: { flexDirection: "row", borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderColor: "#000", minHeight: 22 },
+    signCell: { fontSize: 7, padding: 3, borderRightWidth: 1, borderColor: "#000" },
 
-    // ── FOOTER ──
-    footer: { position: "absolute", bottom: 35, left: 40, right: 40 },
-    footLine: { borderTopWidth: 1.5, borderTopColor: accent, marginBottom: 10 },
-    footText: { fontSize: 8, color: "#bbb", textAlign: "center", marginBottom: 22 },
-    signRow: { flexDirection: "row", justifyContent: "space-between" },
-    signCol: { alignItems: "center", width: 140 },
-    signLine: { borderTopWidth: 1, borderTopColor: "#ddd", width: "100%", marginBottom: 4 },
-    signLab: { fontSize: 8, color: "#aaa" },
+    infoRow: { flexDirection: "row", borderWidth: 1, borderColor: "#000", padding: 6, marginBottom: 8 },
+    infoLabel: { width: 80, fontSize: 8, fontWeight: "bold" },
+    infoValue: { flex: 1, fontSize: 8 },
+
+    notesBox: { marginTop: 8, borderWidth: 1, borderColor: "#000", padding: 6 },
+    notesLabel: { fontSize: 7, fontWeight: "bold", marginBottom: 2 },
+    notesText: { fontSize: 7, color: "#333" },
   });
+
+  const totalPrice = pouring.totalPrice || 0;
+  const vat = totalPrice * 0.20;
+  const grandTotal = totalPrice + vat;
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
 
-        {/* ═══ HEADER ═══ */}
-        <View style={styles.header}>
-          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-            {hasLogo ? <Image src={logoPath!} style={styles.logo} /> : null}
-            <View style={[styles.companyCol, hasLogo ? { marginLeft: 14 } : {}]}>
-              <Text style={styles.companyName}>{c.companyName || "-"}</Text>
-              {c.eik ? (
-                <View style={styles.companyRow}>
-                  <Text style={styles.companyLabel}>ЕИК:</Text>
-                  <Text style={styles.companyValue}>{c.eik}{c.vatNumber ? ` / ДДС: ${c.vatNumber}` : ""}</Text>
-                </View>
-              ) : null}
-              {c.address ? (
-                <View style={styles.companyRow}>
-                  <Text style={styles.companyLabel}>Адрес:</Text>
-                  <Text style={styles.companyValue}>{[c.city, c.address].filter(Boolean).join(", ")}</Text>
-                </View>
-              ) : null}
-            </View>
+        <Text style={styles.title}>ПРОТОКОЛ / АКТ</Text>
+        <Text style={styles.subtitle}>за извършено бетониране — № {pouring.id} / {pouring.date || "-"}</Text>
+
+        {/* Parties */}
+        <View style={styles.partiesRow}>
+          <View style={styles.partyLeft}>
+            <Text style={styles.partyLabel}>ВЪЗЛОЖИТЕЛ:</Text>
+            <Text style={styles.partyText}>{pouring.clientName || "-"}</Text>
           </View>
-          <View style={styles.titleCol}>
-            <Text style={styles.titleBig}>АКТ</Text>
-            <Text style={styles.titleSub}>за извършено бетониране</Text>
-            <View style={styles.titleDateRow}>
-              <Text style={styles.titleDateLabel}>№:</Text>
-              <Text style={styles.titleDateValue}>{pouring.id}</Text>
-            </View>
-            <View style={styles.titleDateRow}>
-              <Text style={styles.titleDateLabel}>Дата:</Text>
-              <Text style={styles.titleDateValue}>{pouring.date || "-"}</Text>
-            </View>
+          <View style={styles.partyRight}>
+            <Text style={styles.partyLabel}>ИЗПЪЛНИТЕЛ:</Text>
+            {hasLogo ? <Image src={logoPath!} style={styles.logoImg} /> : null}
+            <Text style={styles.partyText}>{c.companyName || "-"}</Text>
+            {c.eik ? <Text style={styles.partyText}>ЕИК: {c.eik}</Text> : null}
+            {c.vatNumber ? <Text style={styles.partyText}>ИН по ЗДДС: {c.vatNumber}</Text> : null}
+            {c.address ? <Text style={styles.partyText}>{[c.city, c.address].filter(Boolean).join(", ")}</Text> : null}
           </View>
         </View>
 
-        {/* ═══ DETAILS ═══ */}
-        <Text style={styles.sectionTitle}>Данни за обекта и изпълнението</Text>
-        <View style={styles.detailBox}>
-          <View style={styles.grid}>
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Обект</Text>
-              <Text style={styles.fieldValue}>{pouring.siteName || "-"}</Text>
-              {pouring.siteCity ? <Text style={{ fontSize: 8, color: "#888" }}>{pouring.siteCity}</Text> : null}
-            </View>
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Клиент</Text>
-              <Text style={styles.fieldValue}>{pouring.clientName || "-"}</Text>
-            </View>
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Дата на изпълнение</Text>
-              <Text style={styles.fieldValue}>{pouring.date || "-"}</Text>
-            </View>
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Машина (помпа)</Text>
-              <Text style={styles.fieldValue}>{pouring.machineName || "-"}</Text>
-            </View>
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Метеорологични условия</Text>
-              <Text style={styles.fieldValue}>{pouring.weather || "-"}</Text>
-            </View>
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Статус</Text>
-              <Text style={styles.fieldValue}>
-                {pouring.status === "completed" ? "Изпълнено" : pouring.status === "pending" ? "Предстои" : pouring.status || "-"}
-              </Text>
-            </View>
-          </View>
+        {/* Object */}
+        <View style={styles.objectRow}>
+          <Text style={styles.objectLabel}>ОБЕКТ:</Text>
+          <Text style={styles.objectValue}>{pouring.siteName || "-"}{pouring.siteCity ? `, ${pouring.siteCity}` : ""}</Text>
         </View>
 
-        {/* ═══ ITEMS TABLE ═══ */}
-        {pouring.items && pouring.items.length > 0 ? (
-          <>
-            <Text style={styles.sectionTitle}>Изпълнени работи</Text>
-            <View style={styles.table}>
-              <View style={styles.thead}>
-                <Text style={[styles.th, { flex: 1 }]}>Тип бетон</Text>
-                <Text style={[styles.th, { width: 70, textAlign: "center" }]}>К-во (m³)</Text>
-                <Text style={[styles.th, { width: 80, textAlign: "right" }]}>Цена/m³</Text>
-                <Text style={[styles.th, { width: 90, textAlign: "right" }]}>Общо</Text>
-              </View>
-              {pouring.items.map((item: any, i: number) => (
-                <View style={styles.trow} key={i}>
-                  <Text style={[styles.td, { flex: 1 }]}>{item.concreteTypeName || "-"}</Text>
-                  <Text style={[styles.td, { width: 70, textAlign: "center" }]}>{item.quantityM3 || 0}</Text>
-                  <Text style={[styles.td, { width: 80, textAlign: "right" }]}>{(item.pricePerM3 || 0).toFixed(2)} лв</Text>
-                  <Text style={[styles.td, { width: 90, textAlign: "right", fontWeight: "bold" }]}>{(item.total || 0).toFixed(2)} лв</Text>
-                </View>
-              ))}
-              <View style={[styles.trow, { backgroundColor: "#f5f5f5", fontWeight: "bold" }]}>
-                <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>ОБЩО</Text>
-                <Text style={[styles.td, { width: 70, textAlign: "center", fontWeight: "bold" }]}>{(pouring.totalQty || 0).toFixed(1)}</Text>
-                <Text style={[styles.td, { width: 80, textAlign: "right" }]}></Text>
-                <Text style={[styles.td, { width: 90, textAlign: "right", fontWeight: "bold" }]}>{(pouring.totalPrice || 0).toFixed(2)} лв</Text>
-              </View>
+        {/* Info */}
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Машина (помпа):</Text>
+          <Text style={styles.infoValue}>{pouring.machineName || "-"}</Text>
+          <Text style={styles.infoLabel}>Време:</Text>
+          <Text style={styles.infoValue}>{pouring.weather || "-"}</Text>
+        </View>
+
+        {/* Items Table */}
+        {(pouring.items || []).length > 0 ? (
+          <View style={styles.table}>
+            <View style={styles.thead}>
+              <Text style={[styles.th, { width: 24, textAlign: "center" }]}>№</Text>
+              <Text style={[styles.th, { flex: 1 }]}>Тип бетон</Text>
+              <Text style={[styles.th, { width: 50, textAlign: "center" }]}>К-во m³</Text>
+              <Text style={[styles.th, { width: 58, textAlign: "right" }]}>Цена/m³</Text>
+              <Text style={[styles.th, { width: 70, textAlign: "right" }]}>Общо</Text>
             </View>
-          </>
+            {pouring.items.map((item: any, i: number) => (
+              <View style={styles.trow} key={i} wrap={false}>
+                <Text style={[styles.td, { width: 24, textAlign: "center" }]}>{i + 1}</Text>
+                <Text style={[styles.td, { flex: 1 }]}>{item.concreteTypeName || "-"}</Text>
+                <Text style={[styles.td, { width: 50, textAlign: "center" }]}>{item.quantityM3 || 0}</Text>
+                <Text style={[styles.td, { width: 58, textAlign: "right" }]}>{(item.pricePerM3 || 0).toFixed(2)} лв</Text>
+                <Text style={[styles.td, { width: 70, textAlign: "right" }]}>{(item.total || 0).toFixed(2)} лв</Text>
+              </View>
+            ))}
+          </View>
         ) : (
-          <>
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Количество</Text>
-              <Text style={styles.fieldValue}>{pouring.totalQty || 0} m³</Text>
-            </View>
-          </>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Количество:</Text>
+            <Text style={styles.infoValue}>{pouring.totalQty || 0} m³</Text>
+          </View>
         )}
 
-        {/* ═══ WORKERS ═══ */}
+        {/* Summary */}
+        <View style={styles.summaryTable}>
+          <View style={styles.srow}>
+            <Text style={styles.slab}>ОБЩА СУМА:</Text>
+            <Text style={styles.sval}>{totalPrice.toFixed(2)} лв</Text>
+          </View>
+          <View style={styles.srow}>
+            <Text style={styles.slab}>ДДС 20%:</Text>
+            <Text style={styles.sval}>{vat.toFixed(2)} лв</Text>
+          </View>
+          <View style={styles.srow}>
+            <Text style={[styles.slab, { fontWeight: "bold" }]}>КРАЙНА СУМА:</Text>
+            <Text style={[styles.sval, { fontWeight: "bold" }]}>{grandTotal.toFixed(2)} лв</Text>
+          </View>
+        </View>
+
+        {/* Workers */}
         {pouring.workers && pouring.workers.length > 0 ? (
           <>
-            <Text style={styles.sectionTitle}>Работници на смяна</Text>
             <View style={styles.table}>
               <View style={styles.thead}>
-                <Text style={[styles.th, { flex: 1 }]}>Име</Text>
-                <Text style={[styles.th, { width: 60, textAlign: "center" }]}>Часа</Text>
+                <Text style={[styles.th, { flex: 1 }]}>Работник</Text>
+                <Text style={[styles.th, { width: 55, textAlign: "center" }]}>Часа</Text>
               </View>
               {pouring.workers.map((w: any, i: number) => (
-                <View style={styles.trow} key={i}>
+                <View style={styles.trow} key={i} wrap={false}>
                   <Text style={[styles.td, { flex: 1 }]}>{w.workerName || "-"}</Text>
-                  <Text style={[styles.td, { width: 60, textAlign: "center" }]}>{w.hours}</Text>
+                  <Text style={[styles.td, { width: 55, textAlign: "center" }]}>{w.hours}</Text>
                 </View>
               ))}
             </View>
           </>
         ) : null}
 
-        {/* ═══ NOTES ═══ */}
+        {/* Notes */}
         {pouring.notes ? (
           <View style={styles.notesBox}>
+            <Text style={styles.notesLabel}>Забележки:</Text>
             <Text style={styles.notesText}>{pouring.notes}</Text>
           </View>
         ) : null}
 
-        {/* ═══ FOOTER ═══ */}
-        <View style={styles.footer}>
-          <View style={styles.footLine} />
-          <Text style={styles.footText}>
-            {[c.companyName, c.eik ? `ЕИК ${c.eik}` : "", c.city].filter(Boolean).join("  •  ")}
-            {"  —  "}Акт № {pouring.id}
-          </Text>
-          <View style={styles.signRow}>
-            <View style={styles.signCol}>
-              <View style={styles.signLine} />
-              <Text style={styles.signLab}>Изпълнител: ________________________</Text>
-            </View>
-            <View style={styles.signCol}>
-              <View style={styles.signLine} />
-              <Text style={styles.signLab}>Възложител: ________________________</Text>
-            </View>
+        {/* Signatures */}
+        <Text style={styles.signTitle}>ПОДПИСИ НА СТРАНИТЕ</Text>
+        <View style={styles.signTable}>
+          <View style={styles.signHeader}>
+            <Text style={[styles.signH, { flex: 1 }]}>ЗА ВЪЗЛОЖИТЕЛЯ-ПРИЕЛ:</Text>
+            <Text style={[styles.signH, { flex: 1 }]}>ЗА ИЗПЪЛНИТЕЛЯ-ПРЕДАЛ:</Text>
           </View>
+          {["Име:", "Длъжност:", "Дата:", "Подпис:"].map((label, idx) => (
+            <View style={styles.signRow} key={idx}>
+              <Text style={[styles.signCell, { width: 80 }]}>{label}</Text>
+              <Text style={[styles.signCell, { flex: 1 }]}></Text>
+              <Text style={[styles.signCell, { width: 80 }]}>{label}</Text>
+              <Text style={[styles.signCell, { flex: 1, borderRightWidth: 0 }]}></Text>
+            </View>
+          ))}
         </View>
 
       </Page>

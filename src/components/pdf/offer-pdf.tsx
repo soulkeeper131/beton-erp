@@ -2,7 +2,6 @@ import { Document, Page, Text, View, StyleSheet, Image, Font } from "@react-pdf/
 import path from "path";
 import { existsSync } from "fs";
 
-// Register Cyrillic-capable font (built-in Helvetica lacks Cyrillic glyphs)
 Font.register({
   family: "DejaVu Sans",
   fonts: [
@@ -15,125 +14,54 @@ type Props = { offer: any; items: any[]; company: any };
 
 export function OfferPDF({ offer, items, company }: Props) {
   const c = company || {};
-  const accent = c.accentColor || "#f97316";
   const logoPath = c.logoPath ? path.join(process.cwd(), c.logoPath) : null;
   const hasLogo = logoPath && existsSync(logoPath);
 
   const styles = StyleSheet.create({
-    page: {
-      padding: 40,
-      fontSize: 10,
-      fontFamily: "DejaVu Sans",
-      color: "#1a1a1a",
-    },
+    page: { padding: 30, fontSize: 9, fontFamily: "DejaVu Sans", color: "#000" },
 
-    // ── HEADER ──
-    header: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginBottom: 20,
-      paddingBottom: 14,
-      borderBottomWidth: 3,
-      borderBottomColor: accent,
-    },
-    logo: { width: 100, height: 45, objectFit: "contain" },
-    companyCol: { flex: 1, paddingRight: 10 },
-    companyName: { fontSize: 14, fontWeight: "bold", color: accent, marginBottom: 4 },
-    companyRow: { flexDirection: "row", marginBottom: 3, alignItems: "flex-start" },
-    companyLabel: { fontSize: 9, color: "#aaa", width: 55, flexShrink: 0 },
-    companyValue: { fontSize: 9, color: "#444", flex: 1 },
+    // ═══ TITLE ═══
+    title: { textAlign: "center", fontSize: 14, fontWeight: "bold", marginBottom: 4 },
+    subtitle: { textAlign: "center", fontSize: 10, marginBottom: 12 },
 
-    // Title block (right side)
-    titleCol: { alignItems: "flex-end", flexShrink: 0, minWidth: 120 },
-    titleBig: { fontSize: 22, fontWeight: "bold", color: accent, marginBottom: 8 },
-    titleNum: { fontSize: 11, fontWeight: "bold", color: "#333", marginBottom: 8 },
-    titleDateRow: { flexDirection: "row", marginBottom: 3, justifyContent: "flex-end" },
-    titleDateLabel: { fontSize: 9, color: "#aaa", marginRight: 4 },
-    titleDateValue: { fontSize: 9, fontWeight: "bold", color: "#333" },
+    // ═══ PARTIES (two-column) ═══
+    partiesRow: { flexDirection: "row", borderWidth: 1, borderColor: "#000", marginBottom: 8 },
+    partyLeft: { flex: 1, padding: 6, borderRightWidth: 1, borderColor: "#000" },
+    partyRight: { flex: 1, padding: 6 },
+    partyLabel: { fontSize: 8, fontWeight: "bold", marginBottom: 4 },
+    partyText: { fontSize: 8, marginBottom: 2 },
+    logoImg: { width: 70, height: 35, objectFit: "contain", alignSelf: "flex-end", marginBottom: 4 },
 
-    // ── CLIENT ──
-    sectionTitle: {
-      fontSize: 10,
-      fontWeight: "bold",
-      color: accent,
-      marginBottom: 8,
-      marginTop: 18,
-    },
-    clientBox: { borderWidth: 1, borderColor: "#ddd", borderRadius: 4, padding: 12 },
-    clientRow: { flexDirection: "row", marginBottom: 5, alignItems: "flex-start" },
-    clabel: { width: 70, fontSize: 9, color: "#aaa", flexShrink: 0 },
-    cval: { flex: 1, fontSize: 9, color: "#222", fontWeight: "bold" },
+    // ═══ OBJECT ═══
+    objectRow: { flexDirection: "row", borderWidth: 1, borderColor: "#000", padding: 6, marginBottom: 8 },
+    objectLabel: { width: 55, fontSize: 8, fontWeight: "bold" },
+    objectValue: { flex: 1, fontSize: 8 },
 
-    // ── TABLE ──
-    table: { marginTop: 10 },
-    thead: {
-      flexDirection: "row",
-      backgroundColor: accent,
-      paddingTop: 8,
-      paddingBottom: 8,
-      paddingLeft: 8,
-      paddingRight: 8,
-      borderTopLeftRadius: 4,
-      borderTopRightRadius: 4,
-    },
-    th: { fontSize: 8, fontWeight: "bold", color: "#fff" },
-    trow: {
-      flexDirection: "row",
-      paddingTop: 8,
-      paddingBottom: 8,
-      paddingLeft: 8,
-      paddingRight: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: "#eee",
-    },
-    trowAlt: {
-      flexDirection: "row",
-      paddingTop: 8,
-      paddingBottom: 8,
-      paddingLeft: 8,
-      paddingRight: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: "#eee",
-      backgroundColor: "#f9f9f9",
-    },
-    td: { fontSize: 9 },
+    // ═══ TABLE ═══
+    table: { marginBottom: 8 },
+    thead: { flexDirection: "row", backgroundColor: "#ddd", borderWidth: 1, borderColor: "#000" },
+    th: { fontSize: 8, fontWeight: "bold", padding: 4 },
+    trow: { flexDirection: "row", borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderColor: "#000" },
+    td: { fontSize: 8, padding: 4 },
 
-    // ── SUMMARY ──
-    summaryWrap: { marginTop: 16, alignItems: "flex-end" },
-    summaryBox: { width: 220, borderWidth: 1, borderColor: "#ddd", borderRadius: 4, padding: 10 },
-    srow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
-    slab: { fontSize: 9, color: "#666" },
-    sval: { fontSize: 9, fontWeight: "bold" },
-    stotalRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginTop: 8,
-      paddingTop: 8,
-      borderTopWidth: 2,
-      borderTopColor: accent,
-    },
-    stotalLab: { fontSize: 12, fontWeight: "bold" },
-    stotalVal: { fontSize: 12, fontWeight: "bold", color: accent },
+    // ═══ SUMMARY ═══
+    summaryTable: { marginBottom: 10 },
+    srow: { flexDirection: "row", borderWidth: 1, borderColor: "#000", borderTopWidth: 0 },
+    slab: { width: 130, fontSize: 8, fontWeight: "bold", padding: 4, backgroundColor: "#ddd", borderRightWidth: 1, borderColor: "#000" },
+    sval: { flex: 1, fontSize: 8, padding: 4, textAlign: "right", paddingRight: 8 },
 
-    // ── NOTES ──
-    notesBox: {
-      marginTop: 16,
-      padding: 10,
-      backgroundColor: "#f9f9f9",
-      borderRadius: 4,
-      borderLeftWidth: 3,
-      borderLeftColor: accent,
-    },
-    notesText: { fontSize: 9, color: "#666" },
+    // ═══ SIGNATURES ═══
+    signTitle: { textAlign: "center", fontSize: 8, fontWeight: "bold", marginBottom: 6, marginTop: 6 },
+    signTable: { marginTop: 4 },
+    signHeader: { flexDirection: "row", backgroundColor: "#ddd", borderWidth: 1, borderColor: "#000" },
+    signH: { fontSize: 7, fontWeight: "bold", padding: 3, textAlign: "center" },
+    signRow: { flexDirection: "row", borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderColor: "#000", minHeight: 22 },
+    signCell: { fontSize: 7, padding: 3, borderRightWidth: 1, borderColor: "#000" },
 
-    // ── FOOTER ──
-    footer: { position: "absolute", bottom: 35, left: 40, right: 40 },
-    footLine: { borderTopWidth: 1.5, borderTopColor: accent, marginBottom: 10 },
-    footText: { fontSize: 8, color: "#bbb", textAlign: "center", marginBottom: 22 },
-    signRow: { flexDirection: "row", justifyContent: "space-between" },
-    signCol: { alignItems: "center", width: 140 },
-    signLine: { borderTopWidth: 1, borderTopColor: "#ddd", width: "100%", marginBottom: 4 },
-    signLab: { fontSize: 8, color: "#aaa" },
+    // ═══ NOTES ═══
+    notesBox: { marginTop: 8, borderWidth: 1, borderColor: "#000", padding: 6 },
+    notesLabel: { fontSize: 7, fontWeight: "bold", marginBottom: 2 },
+    notesText: { fontSize: 7, color: "#333" },
   });
 
   const subtotal = (items || []).reduce(
@@ -144,184 +72,120 @@ export function OfferPDF({ offer, items, company }: Props) {
 
   const transportTotal = (items || []).reduce((sum: number, item: any) => sum + (item.transportCost || 0), 0);
   const pumpTotal = (items || []).reduce((sum: number, item: any) => sum + (item.pumpCost || 0), 0);
+  const netTotal = subtotal - transportTotal - pumpTotal;
+  const vat = netTotal * 0.20;
+  const grandTotal = netTotal + vat;
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
 
-        {/* ═══ HEADER ═══ */}
-        <View style={styles.header}>
-          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-            {hasLogo ? <Image src={logoPath!} style={styles.logo} /> : null}
-            <View style={[styles.companyCol, hasLogo ? { marginLeft: 14 } : {}]}>
-              <Text style={styles.companyName}>{c.companyName || "-"}</Text>
-              {c.eik ? (
-                <View style={styles.companyRow}>
-                  <Text style={styles.companyLabel}>ЕИК:</Text>
-                  <Text style={styles.companyValue}>{c.eik}{c.vatNumber ? ` / ДДС: ${c.vatNumber}` : ""}</Text>
-                </View>
-              ) : null}
-              {c.address ? (
-                <View style={styles.companyRow}>
-                  <Text style={styles.companyLabel}>Адрес:</Text>
-                  <Text style={styles.companyValue}>{[c.city, c.address].filter(Boolean).join(", ")}</Text>
-                </View>
-              ) : null}
-              {c.phone ? (
-                <View style={styles.companyRow}>
-                  <Text style={styles.companyLabel}>Телефон:</Text>
-                  <Text style={styles.companyValue}>{c.phone}</Text>
-                </View>
-              ) : null}
-            </View>
-          </View>
+        {/* ═══ TITLE ═══ */}
+        <Text style={styles.title}>ОФЕРТА</Text>
+        <Text style={styles.subtitle}>№ {offer.number} / {offer.date || "-"}{offer.validUntil ? ` — валидна до ${offer.validUntil}` : ""}</Text>
 
-          {/* Right side — clean title block */}
-          <View style={styles.titleCol}>
-            <Text style={styles.titleBig}>ОФЕРТА</Text>
-            <Text style={styles.titleNum}>№ {offer.number}</Text>
-            <View style={styles.titleDateRow}>
-              <Text style={styles.titleDateLabel}>Дата:</Text>
-              <Text style={styles.titleDateValue}>{offer.date || "-"}</Text>
-            </View>
-            <View style={styles.titleDateRow}>
-              <Text style={styles.titleDateLabel}>Важност:</Text>
-              <Text style={styles.titleDateValue}>{offer.validUntil || "-"}</Text>
-            </View>
+        {/* ═══ PARTIES ═══ */}
+        <View style={styles.partiesRow}>
+          <View style={styles.partyLeft}>
+            <Text style={styles.partyLabel}>ВЪЗЛОЖИТЕЛ:</Text>
+            <Text style={styles.partyText}>{offer.clientCompany || offer.clientName || "-"}</Text>
+            {offer.clientEik ? <Text style={styles.partyText}>ЕИК: {offer.clientEik}</Text> : null}
+            {offer.clientVatNumber ? <Text style={styles.partyText}>ИН по ЗДДС: {offer.clientVatNumber}</Text> : null}
+            {offer.clientAddress ? <Text style={styles.partyText}>{offer.clientAddress}</Text> : null}
+            {offer.clientPhone ? <Text style={styles.partyText}>Тел: {offer.clientPhone}</Text> : null}
+          </View>
+          <View style={styles.partyRight}>
+            <Text style={styles.partyLabel}>ИЗПЪЛНИТЕЛ:</Text>
+            {hasLogo ? <Image src={logoPath!} style={styles.logoImg} /> : null}
+            <Text style={styles.partyText}>{c.companyName || "-"}</Text>
+            {c.eik ? <Text style={styles.partyText}>ЕИК: {c.eik}</Text> : null}
+            {c.vatNumber ? <Text style={styles.partyText}>ИН по ЗДДС: {c.vatNumber}</Text> : null}
+            {c.address ? <Text style={styles.partyText}>{[c.city, c.address].filter(Boolean).join(", ")}</Text> : null}
+            {c.phone ? <Text style={styles.partyText}>Тел: {c.phone}</Text> : null}
           </View>
         </View>
 
-        {/* ═══ CLIENT ═══ */}
-        <Text style={styles.sectionTitle}>Данни за клиента</Text>
-        <View style={styles.clientBox}>
-          <View style={styles.clientRow}>
-            <Text style={styles.clabel}>Фирма / Име</Text>
-            <Text style={styles.cval}>{offer.clientCompany || offer.clientName || "-"}</Text>
+        {/* ═══ OBJECT ═══ */}
+        {offer.siteName ? (
+          <View style={styles.objectRow}>
+            <Text style={styles.objectLabel}>ОБЕКТ:</Text>
+            <Text style={styles.objectValue}>{offer.siteName}{offer.siteCity ? `, ${offer.siteCity}` : ""}</Text>
           </View>
-          {offer.clientEik ? (
-            <View style={styles.clientRow}>
-              <Text style={styles.clabel}>ЕИК</Text>
-              <Text style={styles.cval}>{offer.clientEik}</Text>
-            </View>
-          ) : null}
-          {offer.clientVatNumber ? (
-            <View style={styles.clientRow}>
-              <Text style={styles.clabel}>ДДС №</Text>
-              <Text style={styles.cval}>{offer.clientVatNumber}</Text>
-            </View>
-          ) : null}
-          {offer.clientAddress ? (
-            <View style={styles.clientRow}>
-              <Text style={styles.clabel}>Адрес</Text>
-              <Text style={styles.cval}>{offer.clientAddress}</Text>
-            </View>
-          ) : null}
-          {offer.clientPhone || offer.clientEmail ? (
-            <View style={styles.clientRow}>
-              <Text style={styles.clabel}>Контакт</Text>
-              <Text style={styles.cval}>
-                {[offer.clientPhone, offer.clientEmail].filter(Boolean).join(" / ")}
-              </Text>
-            </View>
-          ) : null}
-        </View>
+        ) : null}
 
         {/* ═══ TABLE ═══ */}
-        <Text style={styles.sectionTitle}>Предмет на офертата</Text>
         <View style={styles.table}>
           <View style={styles.thead}>
-            <Text style={[styles.th, { flex: 3 }]}>Описание</Text>
-            <Text style={[styles.th, { width: 55, textAlign: "center" }]}>К-во m³</Text>
-            <Text style={[styles.th, { width: 70, textAlign: "right" }]}>Цена/m³</Text>
-            <Text style={[styles.th, { width: 65, textAlign: "right" }]}>Трансп.</Text>
-            <Text style={[styles.th, { width: 55, textAlign: "right" }]}>Помпа</Text>
-            <Text style={[styles.th, { width: 70, textAlign: "right" }]}>Стойност</Text>
+            <Text style={[styles.th, { width: 24, textAlign: "center" }]}>№</Text>
+            <Text style={[styles.th, { flex: 1 }]}>Описание на СМР</Text>
+            <Text style={[styles.th, { width: 44, textAlign: "center" }]}>Мярка</Text>
+            <Text style={[styles.th, { width: 50, textAlign: "center" }]}>К-во</Text>
+            <Text style={[styles.th, { width: 58, textAlign: "right" }]}>Цена</Text>
+            <Text style={[styles.th, { width: 70, textAlign: "right" }]}>Общо</Text>
           </View>
-
           {(items || []).map((item: any, i: number) => {
             const name = item.serviceName || item.concreteTypeName || "-";
             const cls = item.concreteTypeClassName || "";
-            const rowTotal =
-              (item.quantityM3 || 0) * (item.pricePerM3 || 0) +
-              (item.transportCost || 0) +
-              (item.pumpCost || 0);
+            const rowTotal = (item.quantityM3 || 0) * (item.pricePerM3 || 0) + (item.transportCost || 0) + (item.pumpCost || 0);
+            let desc = name + (cls ? ` (${cls})` : "");
+            if (item.transportCost > 0) desc += `\nвкл. транспорт`;
+            if (item.pumpCost > 0) desc += `\nвкл. помпа`;
             return (
-              <View style={i % 2 === 0 ? styles.trow : styles.trowAlt} key={i} wrap={false}>
-                <Text style={[styles.td, { flex: 3 }]}>
-                  {name}{cls ? ` (${cls})` : ""}
-                </Text>
-                <Text style={[styles.td, { width: 55, textAlign: "center" }]}>
-                  {item.quantityM3}
-                </Text>
-                <Text style={[styles.td, { width: 70, textAlign: "right" }]}>
-                  {(item.pricePerM3 || 0).toFixed(2)} €
-                </Text>
-                <Text style={[styles.td, { width: 65, textAlign: "right" }]}>
-                  {(item.transportCost || 0).toFixed(2)} €
-                </Text>
-                <Text style={[styles.td, { width: 55, textAlign: "right" }]}>
-                  {(item.pumpCost || 0).toFixed(2)} €
-                </Text>
-                <Text style={[styles.td, { width: 70, textAlign: "right", fontWeight: "bold" }]}>
-                  {rowTotal.toFixed(2)} €
-                </Text>
+              <View style={styles.trow} key={i} wrap={false}>
+                <Text style={[styles.td, { width: 24, textAlign: "center" }]}>{i + 1}</Text>
+                <Text style={[styles.td, { flex: 1 }]}>{desc}</Text>
+                <Text style={[styles.td, { width: 44, textAlign: "center" }]}>m³</Text>
+                <Text style={[styles.td, { width: 50, textAlign: "center" }]}>{item.quantityM3}</Text>
+                <Text style={[styles.td, { width: 58, textAlign: "right" }]}>{(item.pricePerM3 || 0).toFixed(2)} €</Text>
+                <Text style={[styles.td, { width: 70, textAlign: "right" }]}>{rowTotal.toFixed(2)} €</Text>
               </View>
             );
           })}
         </View>
 
         {/* ═══ SUMMARY ═══ */}
-        <View style={styles.summaryWrap}>
-          <View style={styles.summaryBox}>
-            <View style={styles.srow}>
-              <Text style={styles.slab}>Бетон + услуги</Text>
-              <Text style={styles.sval}>{subtotal.toFixed(2)} €</Text>
-            </View>
-            {transportTotal > 0 ? (
-              <View style={styles.srow}>
-                <Text style={styles.slab}>в т.ч. транспорт</Text>
-                <Text style={styles.sval}>{transportTotal.toFixed(2)} €</Text>
-              </View>
-            ) : null}
-            {pumpTotal > 0 ? (
-              <View style={styles.srow}>
-                <Text style={styles.slab}>в т.ч. помпа</Text>
-                <Text style={styles.sval}>{pumpTotal.toFixed(2)} €</Text>
-              </View>
-            ) : null}
-            <View style={styles.stotalRow}>
-              <Text style={styles.stotalLab}>ОБЩА СТОЙНОСТ</Text>
-              <Text style={styles.stotalVal}>{subtotal.toFixed(2)} €</Text>
-            </View>
+        <View style={styles.summaryTable}>
+          <View style={styles.srow}>
+            <Text style={styles.slab}>ОБЩА СУМА:</Text>
+            <Text style={styles.sval}>{netTotal.toFixed(2)} €</Text>
+          </View>
+          <View style={styles.srow}>
+            <Text style={styles.slab}>ДДС 20%:</Text>
+            <Text style={styles.sval}>{vat.toFixed(2)} €</Text>
+          </View>
+          <View style={styles.srow}>
+            <Text style={[styles.slab, { fontWeight: "bold" }]}>КРАЙНА СУМА:</Text>
+            <Text style={[styles.sval, { fontWeight: "bold" }]}>{grandTotal.toFixed(2)} €</Text>
+          </View>
+          <View style={styles.srow}>
+            <Text style={styles.slab}>СУМА ЗА ПЛАЩАНЕ:</Text>
+            <Text style={[styles.sval, { fontWeight: "bold" }]}>{grandTotal.toFixed(2)} €</Text>
           </View>
         </View>
 
         {/* ═══ NOTES ═══ */}
         {offer.notes ? (
           <View style={styles.notesBox}>
+            <Text style={styles.notesLabel}>Забележки:</Text>
             <Text style={styles.notesText}>{offer.notes}</Text>
           </View>
         ) : null}
 
-        {/* ═══ FOOTER ═══ */}
-        <View style={styles.footer}>
-          <View style={styles.footLine} />
-          <Text style={styles.footText}>
-            {[c.companyName, c.eik ? `ЕИК ${c.eik}` : "", c.city]
-              .filter(Boolean)
-              .join("  •  ")}
-            {"  —  "}Оферта № {offer.number}, валидна до {offer.validUntil || "..."}
-          </Text>
-          <View style={styles.signRow}>
-            <View style={styles.signCol}>
-              <View style={styles.signLine} />
-              <Text style={styles.signLab}>Изготвил: ________________________</Text>
-            </View>
-            <View style={styles.signCol}>
-              <View style={styles.signLine} />
-              <Text style={styles.signLab}>Приел: ________________________</Text>
-            </View>
+        {/* ═══ SIGNATURES ═══ */}
+        <Text style={styles.signTitle}>ПОДПИСИ НА СТРАНИТЕ</Text>
+        <View style={styles.signTable}>
+          <View style={styles.signHeader}>
+            <Text style={[styles.signH, { flex: 1 }]}>ЗА ВЪЗЛОЖИТЕЛЯ:</Text>
+            <Text style={[styles.signH, { flex: 1 }]}>ЗА ИЗПЪЛНИТЕЛЯ:</Text>
           </View>
+          {["Име:", "Длъжност:", "Дата:", "Подпис:"].map((label, idx) => (
+            <View style={styles.signRow} key={idx}>
+              <Text style={[styles.signCell, { width: 80 }]}>{label}</Text>
+              <Text style={[styles.signCell, { flex: 1 }]}></Text>
+              <Text style={[styles.signCell, { width: 80 }]}>{label}</Text>
+              <Text style={[styles.signCell, { flex: 1, borderRightWidth: 0 }]}></Text>
+            </View>
+          ))}
         </View>
 
       </Page>
