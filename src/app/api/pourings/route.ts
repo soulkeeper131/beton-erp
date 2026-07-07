@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { pourings, pouringItems, sites, concreteTypes, machines } from "@/db/schema";
+import { pourings, pouringItems, sites, offers, concreteTypes, machines } from "@/db/schema";
 import { eq, desc, asc, inArray } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const siteId = searchParams.get("siteId");
+  const offerId = searchParams.get("offerId");
+
+  let where: any = undefined;
+  if (offerId) where = eq(pourings.offerId, parseInt(offerId));
+  else if (siteId) where = eq(pourings.siteId, parseInt(siteId));
 
   const result = await db.select({
     id: pourings.id,
@@ -14,17 +19,20 @@ export async function GET(request: NextRequest) {
     weather: pourings.weather,
     notes: pourings.notes,
     siteId: pourings.siteId,
+    offerId: pourings.offerId,
     machineId: pourings.machineId,
     site: { id: sites.id, name: sites.name },
+    offer: { id: offers.id, number: offers.number },
     machine: { id: machines.id, name: machines.name },
   })
     .from(pourings)
     .leftJoin(sites, eq(pourings.siteId, sites.id))
+    .leftJoin(offers, eq(pourings.offerId, offers.id))
     .leftJoin(machines, eq(pourings.machineId, machines.id))
-    .where(siteId ? eq(pourings.siteId, parseInt(siteId)) : undefined)
+    .where(where)
     .orderBy(desc(pourings.date));
 
-  // Attach items to each pouring
+  // Attach items
   const pouringIds = result.map(p => p.id);
   if (pouringIds.length > 0) {
     const allItems = await db.select({
@@ -43,7 +51,6 @@ export async function GET(request: NextRequest) {
       .orderBy(asc(pouringItems.sortOrder))
       .all();
 
-    // Group by pouringId
     const itemsMap: Record<number, any[]> = {};
     for (const item of allItems) {
       if (!itemsMap[item.pouringId]) itemsMap[item.pouringId] = [];
@@ -62,7 +69,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { siteId, date, machineId, weather, notes, items } = body;
+  const { siteId, offerId, date, machineId, weather, notes, items } = body;
 
   if (!siteId || !date || !items || items.length === 0) {
     return NextResponse.json({ error: "Обект, дата и поне един ред са задължителни" }, { status: 400 });
@@ -72,6 +79,7 @@ export async function POST(request: NextRequest) {
 
   const result = await db.insert(pourings).values({
     siteId: parseInt(siteId),
+    offerId: offerId ? parseInt(offerId) : null,
     date,
     concreteTypeId: items[0].concreteTypeId ? parseInt(items[0].concreteTypeId) : null,
     quantityM3: totalQty,

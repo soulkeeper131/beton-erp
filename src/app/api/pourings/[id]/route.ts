@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { pourings, pouringItems, sites, concreteTypes, machines } from "@/db/schema";
+import { pourings, pouringItems, sites, offers, concreteTypes, machines } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 
 export async function GET(
@@ -18,12 +18,15 @@ export async function GET(
     notes: pourings.notes,
     actPdfPath: pourings.actPdfPath,
     siteId: pourings.siteId,
+    offerId: pourings.offerId,
     machineId: pourings.machineId,
     site: { id: sites.id, name: sites.name },
+    offer: { id: offers.id, number: offers.number },
     machine: { id: machines.id, name: machines.name },
   })
     .from(pourings)
     .leftJoin(sites, eq(pourings.siteId, sites.id))
+    .leftJoin(offers, eq(pourings.offerId, offers.id))
     .leftJoin(machines, eq(pourings.machineId, machines.id))
     .where(eq(pourings.id, id))
     .limit(1);
@@ -32,7 +35,6 @@ export async function GET(
 
   const pouring = result[0] as any;
 
-  // Load items
   const items = await db.select({
     id: pouringItems.id,
     concreteTypeId: pouringItems.concreteTypeId,
@@ -64,19 +66,15 @@ export async function PATCH(
 
   const body = await request.json();
 
-  // Update main fields
   const update: Record<string, any> = {};
-  const mainFields = ["siteId", "date", "machineId", "weather", "notes", "status"];
+  const mainFields = ["siteId", "offerId", "date", "machineId", "weather", "notes", "status"];
   for (const key of mainFields) {
     if (body[key] !== undefined) update[key] = body[key];
   }
 
-  // If items provided, update items
   if (body.items && Array.isArray(body.items)) {
-    // Delete existing items
     await db.delete(pouringItems).where(eq(pouringItems.pouringId, id));
 
-    // Insert new items
     let totalQty = 0;
     for (let i = 0; i < body.items.length; i++) {
       const item = body.items[i];
@@ -104,7 +102,6 @@ export async function PATCH(
     if (!result.length) return NextResponse.json({ error: "Не е намерено" }, { status: 404 });
   }
 
-  // Return updated pouring with items
   return GET(request, { params });
 }
 

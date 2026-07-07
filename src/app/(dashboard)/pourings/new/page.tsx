@@ -16,10 +16,12 @@ export default function NewPouringPage() {
   const [sites, setSites] = useState<any[]>([]);
   const [concreteTypes, setConcreteTypes] = useState<any[]>([]);
   const [machines, setMachines] = useState<any[]>([]);
+  const [offers, setOffers] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
     siteId: "",
+    offerId: "",
     date: new Date().toISOString().split("T")[0],
     machineId: "",
     weather: "",
@@ -32,7 +34,13 @@ export default function NewPouringPage() {
     fetch("/api/sites").then(r => r.json()).then(setSites);
     fetch("/api/concrete-types").then(r => r.json()).then(setConcreteTypes);
     fetch("/api/machines").then(r => r.json()).then(setMachines);
+    fetch("/api/offers").then(r => r.json()).then(setOffers);
   }, []);
+
+  // Filter offers by selected site
+  const filteredOffers = form.siteId
+    ? offers.filter(o => o.siteId === parseInt(form.siteId) && (o.status === "sent" || o.status === "accepted"))
+    : [];
 
   const addItem = () => setItems([...items, { concreteTypeId: "", quantityM3: "", pricePerM3: "" }]);
   const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
@@ -68,6 +76,7 @@ export default function NewPouringPage() {
       body: JSON.stringify({
         ...form,
         siteId: parseInt(form.siteId),
+        offerId: form.offerId ? parseInt(form.offerId) : null,
         machineId: form.machineId ? parseInt(form.machineId) : null,
         items: items.map(i => ({
           concreteTypeId: parseInt(i.concreteTypeId),
@@ -98,7 +107,7 @@ export default function NewPouringPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Обект *</Label>
-                <Select value={form.siteId} onValueChange={(v) => setForm({ ...form, siteId: v })}>
+                <Select value={form.siteId} onValueChange={(v) => setForm({ ...form, siteId: v, offerId: "" })}>
                   <SelectTrigger><SelectValue placeholder="Избери обект" /></SelectTrigger>
                   <SelectContent>
                     {sites.map((s: any) => (
@@ -110,6 +119,18 @@ export default function NewPouringPage() {
               <div>
                 <Label>Дата *</Label>
                 <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+              </div>
+              <div>
+                <Label>Оферта</Label>
+                <Select value={form.offerId} onValueChange={(v) => setForm({ ...form, offerId: v })} disabled={!form.siteId}>
+                  <SelectTrigger><SelectValue placeholder={form.siteId ? "Избери оферта (опционално)" : "Първо избери обект"} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Без оферта</SelectItem>
+                    {filteredOffers.map((o: any) => (
+                      <SelectItem key={o.id} value={String(o.id)}>№{o.number} ({o.date})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Машина</Label>

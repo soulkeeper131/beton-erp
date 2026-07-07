@@ -169,6 +169,7 @@ export const offerItems = sqliteTable("offer_items", {
 export const pourings = sqliteTable("pourings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   siteId: integer("site_id").notNull().references(() => sites.id),
+  offerId: integer("offer_id").references(() => offers.id),
   date: text("date").notNull(),
   concreteTypeId: integer("concrete_type_id").references(() => concreteTypes.id),
   quantityM3: real("quantity_m3").notNull(),

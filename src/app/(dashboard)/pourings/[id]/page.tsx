@@ -138,6 +138,16 @@ export default function PouredDetailPage() {
               )}
             </div>
             <div>
+              <Label>Оферта</Label>
+              {poured.offer ? (
+                <a href={`/offers/${poured.offer.id}`} className="text-sm font-medium text-primary hover:underline">
+                  №{poured.offer.number}
+                </a>
+              ) : (
+                <p className="text-sm text-muted-foreground">Без оферта</p>
+              )}
+            </div>
+            <div>
               <Label>Машина</Label>
               {editing ? (
                 <Select value={form.machineId} onValueChange={(v) => setForm({ ...form, machineId: v })}>

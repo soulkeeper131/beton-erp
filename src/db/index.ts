@@ -152,6 +152,7 @@ sqlite.exec(`
   CREATE TABLE IF NOT EXISTS pourings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     site_id INTEGER NOT NULL REFERENCES sites(id),
+    offer_id INTEGER REFERENCES offers(id),
     date TEXT NOT NULL,
     concrete_type_id INTEGER REFERENCES concrete_types(id),
     quantity_m3 REAL NOT NULL,
@@ -307,6 +308,7 @@ sqlite.exec(`
 // Add columns to service_items silently (ignore if already exist)
 try { sqlite.exec(`ALTER TABLE service_items ADD COLUMN description TEXT DEFAULT NULL`); } catch {}
 try { sqlite.exec(`ALTER TABLE service_items ADD COLUMN machine_id INTEGER REFERENCES machines(id)`); } catch {}
+try { sqlite.exec(`ALTER TABLE pourings ADD COLUMN offer_id INTEGER REFERENCES offers(id)`); } catch {}
 
 // Continue table creation
 sqlite.exec(`

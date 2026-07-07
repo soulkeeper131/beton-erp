@@ -87,6 +87,7 @@ export default function OfferDetailPage() {
   const [offer, setOffer] = useState<Offer | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [pourings, setPourings] = useState<any[]>([]);
 
   const fetchOffer = useCallback(async () => {
     setLoading(true);
@@ -101,6 +102,11 @@ export default function OfferDetailPage() {
   useEffect(() => {
     fetchOffer();
   }, [fetchOffer]);
+  
+  // Load linked pourings
+  useEffect(() => {
+    fetch(`/api/pourings?offerId=${id}`).then(r => r.json()).then(d => setPourings(d || []));
+  }, [id]);
 
   const handleStatusChange = async (newStatus: string) => {
     await fetch(`/api/offers/${id}`, {
@@ -318,6 +324,44 @@ export default function OfferDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Linked Pourings */}
+      {pourings.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">📋 Актове към тази оферта</CardTitle>
+            <Button variant="outline" size="sm" onClick={() => router.push(`/pourings/new`)}>+ Нов акт</Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Дата</TableHead>
+                    <TableHead>К-во (m³)</TableHead>
+                    <TableHead>Редове</TableHead>
+                    <TableHead>Машина</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pourings.map((p: any) => (
+                    <TableRow key={p.id}>
+                      <TableCell>{p.date}</TableCell>
+                      <TableCell>{(p.quantityM3 || 0).toFixed(1)} m³</TableCell>
+                      <TableCell className="text-muted-foreground">{p.items?.length || 0} реда</TableCell>
+                      <TableCell>{p.machine?.name || "—"}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" onClick={() => router.push(`/pourings/${p.id}`)}>Детайли</Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Total */}
       <Card>
