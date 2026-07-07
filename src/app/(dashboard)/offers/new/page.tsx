@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -76,8 +76,9 @@ type ConcreteType = {
 
 export default function NewOfferPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const preselectedSiteId = searchParams.get("siteId");
+  const preselectedSiteId = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("siteId")
+    : null;
   const [clients, setClients] = useState<Client[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [concreteTypes, setConcreteTypes] = useState<ConcreteType[]>([]);
