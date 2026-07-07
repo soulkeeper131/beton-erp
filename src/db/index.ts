@@ -163,6 +163,16 @@ sqlite.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS pouring_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pouring_id INTEGER NOT NULL REFERENCES pourings(id),
+    concrete_type_id INTEGER REFERENCES concrete_types(id),
+    quantity_m3 REAL NOT NULL,
+    price_per_m3 REAL NOT NULL DEFAULT 0,
+    total REAL NOT NULL DEFAULT 0,
+    sort_order INTEGER DEFAULT 0
+  );
+
   CREATE TABLE IF NOT EXISTS act_workers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     pouring_id INTEGER NOT NULL REFERENCES pourings(id),

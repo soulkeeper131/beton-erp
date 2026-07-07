@@ -180,6 +180,17 @@ export const pourings = sqliteTable("pourings", {
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
 });
 
+// ========== POURING ITEMS (редове в акт) ==========
+export const pouringItems = sqliteTable("pouring_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  pouringId: integer("pouring_id").notNull().references(() => pourings.id),
+  concreteTypeId: integer("concrete_type_id").references(() => concreteTypes.id),
+  quantityM3: real("quantity_m3").notNull(),
+  pricePerM3: real("price_per_m3").notNull().default(0),
+  total: real("total").notNull().default(0),
+  sortOrder: integer("sort_order").default(0),
+});
+
 // ========== ACT WORKERS ==========
 export const actWorkers = sqliteTable("act_workers", {
   id: integer("id").primaryKey({ autoIncrement: true }),

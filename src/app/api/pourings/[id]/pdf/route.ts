@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import {
-  pourings, sites, clients, concreteTypes, machines,
+  pourings, pouringItems, sites, clients, concreteTypes, machines,
   actWorkers, workers, companySettings,
 } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { renderToStream } from "@react-pdf/renderer";
 import { ActPDF } from "@/components/pdf/act-pdf";
 
@@ -24,25 +24,38 @@ export async function GET(
     .select({
       id: pourings.id,
       date: pourings.date,
-      quantityM3: pourings.quantityM3,
       weather: pourings.weather,
       notes: pourings.notes,
       status: pourings.status,
       siteName: sites.name,
       siteCity: sites.city,
       clientName: clients.name,
-      concreteTypeName: concreteTypes.name,
       machineName: machines.name,
     })
     .from(pourings)
     .leftJoin(sites, eq(pourings.siteId, sites.id))
     .leftJoin(clients, eq(sites.clientId, clients.id))
-    .leftJoin(concreteTypes, eq(pourings.concreteTypeId, concreteTypes.id))
     .leftJoin(machines, eq(pourings.machineId, machines.id))
     .where(eq(pourings.id, pouringId))
     .get();
 
   if (!pouring) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Load items
+  const items = db.select({
+    quantityM3: pouringItems.quantityM3,
+    pricePerM3: pouringItems.pricePerM3,
+    total: pouringItems.total,
+    concreteTypeName: concreteTypes.name,
+  })
+    .from(pouringItems)
+    .leftJoin(concreteTypes, eq(pouringItems.concreteTypeId, concreteTypes.id))
+    .where(eq(pouringItems.pouringId, pouringId))
+    .orderBy(asc(pouringItems.sortOrder))
+    .all();
+
+  const totalQty = items.reduce((s, i) => s + (i.quantityM3 || 0), 0);
+  const totalPrice = items.reduce((s, i) => s + (i.total || 0), 0);
 
   const pouringWorkers = db
     .select({
@@ -57,7 +70,7 @@ export async function GET(
   const company = db.select().from(companySettings).get() || {};
 
   const stream = await renderToStream(
-    ActPDF({ pouring: { ...pouring, workers: pouringWorkers }, company })
+    ActPDF({ pouring: { ...pouring, items, totalQty, totalPrice, workers: pouringWorkers }, company })
   );
 
   return new Response(stream as any, {

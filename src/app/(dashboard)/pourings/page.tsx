@@ -51,8 +51,8 @@ export default function PouringsPage() {
         columns={[
           { key: "date", label: "Дата" },
           { key: "site", label: "Обект", render: (v: any) => v?.name || "—" },
-          { key: "concreteType", label: "Тип бетон", render: (v: any) => v?.name || "—" },
-          { key: "quantityM3", label: "К-во", render: (v: number) => `${v} m³` },
+          { key: "quantityM3", label: "К-во (m³)", render: (v: number) => `${(v || 0).toFixed(1)} m³` },
+          { key: "items", label: "Редове", render: (v: any[]) => v ? `${v.length} реда` : "—" },
           { key: "machine", label: "Машина", render: (v: any) => v?.name || "—" },
         ]}
         data={data}

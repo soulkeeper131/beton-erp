@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText } from "lucide-react";
+import { FileText, Plus, Trash2 } from "lucide-react";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { useIsAdmin } from "@/lib/use-is-admin";
+import { formatCurrency } from "@/lib/utils";
 
 export default function PouredDetailPage() {
   const router = useRouter();
@@ -23,6 +24,7 @@ export default function PouredDetailPage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({});
+  const [editItems, setEditItems] = useState<any[]>([]);
 
   useEffect(() => {
     fetch(`/api/pourings/${params.id}`).then(r => r.json()).then(data => {
@@ -30,17 +32,35 @@ export default function PouredDetailPage() {
       setForm({
         siteId: String(data.siteId || ""),
         date: data.date || "",
-        concreteTypeId: String(data.concreteTypeId || ""),
-        quantityM3: String(data.quantityM3 || ""),
         machineId: data.machineId ? String(data.machineId) : "",
         weather: data.weather || "",
         notes: data.notes || "",
       });
+      setEditItems((data.items || []).map((i: any) => ({
+        concreteTypeId: i.concreteTypeId ? String(i.concreteTypeId) : "",
+        quantityM3: String(i.quantityM3 || ""),
+        pricePerM3: String(i.pricePerM3 || ""),
+      })));
+      if (!data.items || data.items.length === 0) {
+        setEditItems([{ concreteTypeId: "", quantityM3: "", pricePerM3: "" }]);
+      }
     });
     fetch("/api/sites").then(r => r.json()).then(setSites);
     fetch("/api/concrete-types").then(r => r.json()).then(setConcreteTypes);
     fetch("/api/machines").then(r => r.json()).then(setMachines);
   }, [params.id]);
+
+  const addEditItem = () => setEditItems([...editItems, { concreteTypeId: "", quantityM3: "", pricePerM3: "" }]);
+  const removeEditItem = (idx: number) => setEditItems(editItems.filter((_, i) => i !== idx));
+  const updateEditItem = (idx: number, field: string, value: string) => {
+    const copy = [...editItems];
+    copy[idx][field] = value;
+    if (field === "concreteTypeId" && value) {
+      const ct = concreteTypes.find(c => String(c.id) === value);
+      if (ct) copy[idx].pricePerM3 = String(ct.pricePerM3);
+    }
+    setEditItems(copy);
+  };
 
   async function handleSave() {
     setSaving(true);
@@ -50,9 +70,12 @@ export default function PouredDetailPage() {
       body: JSON.stringify({
         ...form,
         siteId: parseInt(form.siteId),
-        concreteTypeId: parseInt(form.concreteTypeId),
-        quantityM3: parseFloat(form.quantityM3),
         machineId: form.machineId ? parseInt(form.machineId) : null,
+        items: editItems.map(i => ({
+          concreteTypeId: parseInt(i.concreteTypeId),
+          quantityM3: parseFloat(i.quantityM3),
+          pricePerM3: parseFloat(i.pricePerM3) || 0,
+        })),
       }),
     });
     if (res.ok) {
@@ -65,12 +88,11 @@ export default function PouredDetailPage() {
 
   if (!poured) return <div className="p-6">Зареждане...</div>;
 
-  const total = poured.concreteType && poured.quantityM3
-    ? (poured.concreteType.pricePerM3 * poured.quantityM3).toFixed(2)
-    : "—";
+  const totalQty = (poured.items || []).reduce((s: number, i: any) => s + (i.quantityM3 || 0), 0);
+  const totalPrice = (poured.items || []).reduce((s: number, i: any) => s + (i.total || i.quantityM3 * (i.pricePerM3 || i.concreteTypePrice || 0) || 0), 0);
 
   return (
-    <div className="max-w-xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">📋 Актуване</h1>
         <div className="flex items-center gap-2">
@@ -87,8 +109,9 @@ export default function PouredDetailPage() {
         </div>
       </div>
 
+      {/* Main info */}
       <Card>
-        <CardHeader><CardTitle>Детайли</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Основна информация</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -106,46 +129,14 @@ export default function PouredDetailPage() {
                 <p className="text-sm font-medium">{poured.site?.name || "—"}</p>
               )}
             </div>
-
-            <div>
-              <Label>Тип бетон</Label>
-              {editing ? (
-                <Select value={form.concreteTypeId} onValueChange={(v) => setForm({ ...form, concreteTypeId: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {concreteTypes.map((ct: any) => (
-                      <SelectItem key={ct.id} value={String(ct.id)}>{ct.name} — {ct.pricePerM3} лв</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="text-sm font-medium">{poured.concreteType?.name || "—"} ({poured.concreteType?.pricePerM3 || 0} лв/m³)</p>
-              )}
-            </div>
-
-            <div>
-              <Label>Количество (m³)</Label>
-              {editing ? (
-                <Input type="number" step="0.5" value={form.quantityM3} onChange={(e) => setForm({ ...form, quantityM3: e.target.value })} />
-              ) : (
-                <p className="text-lg font-bold">{poured.quantityM3} m³</p>
-              )}
-            </div>
-
-            <div>
-              <Label>Обща стойност</Label>
-              <p className="text-lg font-bold text-orange-600">{total} лв</p>
-            </div>
-
             <div>
               <Label>Дата</Label>
               {editing ? (
                 <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
               ) : (
-                <p className="text-sm">{poured.date}</p>
+                <p className="text-sm font-medium">{poured.date}</p>
               )}
             </div>
-
             <div>
               <Label>Машина</Label>
               {editing ? (
@@ -162,7 +153,6 @@ export default function PouredDetailPage() {
                 <p className="text-sm">{poured.machine?.name || "—"}</p>
               )}
             </div>
-
             <div>
               <Label>Време</Label>
               {editing ? (
@@ -172,23 +162,114 @@ export default function PouredDetailPage() {
               )}
             </div>
           </div>
-
           <div>
             <Label>Бележки</Label>
             {editing ? (
-              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} />
+              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
             ) : (
               <p className="text-sm">{poured.notes || "—"}</p>
             )}
           </div>
+        </CardContent>
+      </Card>
 
+      {/* Items */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Редове на изливане</CardTitle>
           {editing && (
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Записване..." : "💾 Запис"}
+            <Button type="button" variant="outline" size="sm" onClick={addEditItem}>
+              <Plus className="h-4 w-4 mr-1" /> Добави
             </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {editing ? (
+            <div className="space-y-3">
+              {editItems.map((item, idx) => (
+                <div key={idx} className="border rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium">Ред {idx + 1}</span>
+                    {editItems.length > 1 && (
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeEditItem(idx)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Тип бетон *</Label>
+                      <Select value={item.concreteTypeId} onValueChange={(v) => updateEditItem(idx, "concreteTypeId", v)}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Избери" /></SelectTrigger>
+                        <SelectContent>
+                          {concreteTypes.map((ct: any) => (
+                            <SelectItem key={ct.id} value={String(ct.id)}>
+                              {ct.name} — {ct.pricePerM3} лв/m³
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">К-во (m³)</Label>
+                      <Input type="number" step="0.5" min="0" className="h-8 text-sm" value={item.quantityM3}
+                        onChange={e => updateEditItem(idx, "quantityM3", e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Цена/m³</Label>
+                      <Input type="number" step="0.01" min="0" className="h-8 text-sm" value={item.pricePerM3}
+                        onChange={e => updateEditItem(idx, "pricePerM3", e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div>
+              {(!poured.items || poured.items.length === 0) ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Няма редове</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-muted-foreground">
+                      <th className="pb-2 font-medium">Тип бетон</th>
+                      <th className="pb-2 font-medium text-right">К-во (m³)</th>
+                      <th className="pb-2 font-medium text-right">Цена/m³</th>
+                      <th className="pb-2 font-medium text-right">Общо</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {poured.items.map((item: any, idx: number) => (
+                      <tr key={idx} className="border-b last:border-0">
+                        <td className="py-2">{item.concreteTypeName || `Тип #${item.concreteTypeId}`}</td>
+                        <td className="py-2 text-right">{item.quantityM3}</td>
+                        <td className="py-2 text-right">{item.pricePerM3 || item.concreteTypePrice || 0} лв</td>
+                        <td className="py-2 text-right font-medium">
+                          {formatCurrency(item.total || item.quantityM3 * (item.pricePerM3 || item.concreteTypePrice || 0))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t font-bold">
+                      <td colSpan={1} className="pt-3 text-muted-foreground">Общо</td>
+                      <td className="pt-3 text-right">{totalQty.toFixed(1)} m³</td>
+                      <td></td>
+                      <td className="pt-3 text-right text-orange-600">{formatCurrency(totalPrice)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
+
+      {editing && (
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? "Записване..." : "💾 Запис"}
+        </Button>
+      )}
 
       <PhotoGallery pouringId={params.id as string} />
     </div>

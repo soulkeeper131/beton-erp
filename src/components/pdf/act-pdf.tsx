@@ -126,14 +126,6 @@ export function ActPDF({ pouring, company }: Props) {
               <Text style={styles.fieldValue}>{pouring.date || "-"}</Text>
             </View>
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Тип бетон</Text>
-              <Text style={styles.fieldValue}>{pouring.concreteTypeName || "-"}</Text>
-            </View>
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Количество</Text>
-              <Text style={styles.fieldValue}>{pouring.quantityM3 || 0} m³</Text>
-            </View>
-            <View style={styles.field}>
               <Text style={styles.fieldLabel}>Машина (помпа)</Text>
               <Text style={styles.fieldValue}>{pouring.machineName || "-"}</Text>
             </View>
@@ -149,6 +141,42 @@ export function ActPDF({ pouring, company }: Props) {
             </View>
           </View>
         </View>
+
+        {/* ═══ ITEMS TABLE ═══ */}
+        {pouring.items && pouring.items.length > 0 ? (
+          <>
+            <Text style={styles.sectionTitle}>Изпълнени работи</Text>
+            <View style={styles.table}>
+              <View style={styles.thead}>
+                <Text style={[styles.th, { flex: 1 }]}>Тип бетон</Text>
+                <Text style={[styles.th, { width: 70, textAlign: "center" }]}>К-во (m³)</Text>
+                <Text style={[styles.th, { width: 80, textAlign: "right" }]}>Цена/m³</Text>
+                <Text style={[styles.th, { width: 90, textAlign: "right" }]}>Общо</Text>
+              </View>
+              {pouring.items.map((item: any, i: number) => (
+                <View style={styles.trow} key={i}>
+                  <Text style={[styles.td, { flex: 1 }]}>{item.concreteTypeName || "-"}</Text>
+                  <Text style={[styles.td, { width: 70, textAlign: "center" }]}>{item.quantityM3 || 0}</Text>
+                  <Text style={[styles.td, { width: 80, textAlign: "right" }]}>{(item.pricePerM3 || 0).toFixed(2)} лв</Text>
+                  <Text style={[styles.td, { width: 90, textAlign: "right", fontWeight: "bold" }]}>{(item.total || 0).toFixed(2)} лв</Text>
+                </View>
+              ))}
+              <View style={[styles.trow, { backgroundColor: "#f5f5f5", fontWeight: "bold" }]}>
+                <Text style={[styles.td, { flex: 1, fontWeight: "bold" }]}>ОБЩО</Text>
+                <Text style={[styles.td, { width: 70, textAlign: "center", fontWeight: "bold" }]}>{(pouring.totalQty || 0).toFixed(1)}</Text>
+                <Text style={[styles.td, { width: 80, textAlign: "right" }]}></Text>
+                <Text style={[styles.td, { width: 90, textAlign: "right", fontWeight: "bold" }]}>{(pouring.totalPrice || 0).toFixed(2)} лв</Text>
+              </View>
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Количество</Text>
+              <Text style={styles.fieldValue}>{pouring.totalQty || 0} m³</Text>
+            </View>
+          </>
+        )}
 
         {/* ═══ WORKERS ═══ */}
         {pouring.workers && pouring.workers.length > 0 ? (
