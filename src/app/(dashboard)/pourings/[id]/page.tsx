@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, Plus, Trash2 } from "lucide-react";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { useIsAdmin } from "@/lib/use-is-admin";
 import { formatCurrency } from "@/lib/utils";
@@ -25,6 +28,7 @@ export default function PouredDetailPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({});
   const [editItems, setEditItems] = useState<any[]>([]);
+  const [offerData, setOfferData] = useState<any>(null);
 
   useEffect(() => {
     fetch(`/api/pourings/${params.id}`).then(r => r.json()).then(data => {
@@ -43,6 +47,10 @@ export default function PouredDetailPage() {
       })));
       if (!data.items || data.items.length === 0) {
         setEditItems([{ concreteTypeId: "", quantityM3: "", pricePerM3: "" }]);
+      }
+      // Load linked offer if exists
+      if (data.offerId) {
+        fetch(`/api/offers/${data.offerId}`).then(r => r.json()).then(setOfferData);
       }
     });
     fetch("/api/sites").then(r => r.json()).then(setSites);
@@ -279,6 +287,52 @@ export default function PouredDetailPage() {
         <Button onClick={handleSave} disabled={saving}>
           {saving ? "Записване..." : "💾 Запис"}
         </Button>
+      )}
+
+      {/* Offer vs Actual comparison */}
+      {offerData && offerData.items && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">📊 Оферирано vs Актувано — Оферта №{offerData.number}</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Описание</TableHead>
+                    <TableHead className="text-right">Оферирано (m³)</TableHead>
+                    <TableHead className="text-right">Актувано (m³)</TableHead>
+                    <TableHead className="text-right">Разлика</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {offerData.items.map((oi: any, idx: number) => {
+                    const pouredItem = (poured.items || [])[idx];
+                    const offered = oi.quantityM3 || 0;
+                    const actual = pouredItem ? (pouredItem.quantityM3 || 0) : 0;
+                    const diff = actual - offered;
+                    return (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">
+                          {oi.concreteTypeName || oi.serviceName || `Ред ${idx + 1}`}
+                        </TableCell>
+                        <TableCell className="text-right">{offered.toFixed(1)}</TableCell>
+                        <TableCell className="text-right">{actual.toFixed(1)}</TableCell>
+                        <TableCell className={`text-right font-bold ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {diff > 0 ? '+' : ''}{diff.toFixed(1)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="p-3 text-xs text-muted-foreground border-t">
+              🟢 Положителна = над оферираното &nbsp;|&nbsp; 🔴 Отрицателна = под оферираното
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <PhotoGallery pouringId={params.id as string} />
