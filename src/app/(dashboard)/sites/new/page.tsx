@@ -19,6 +19,8 @@ export default function NewSitePage() {
     clientId: "",
     status: "active",
     notes: "",
+    latitude: "" as string | number,
+    longitude: "" as string | number,
   });
 
   useEffect(() => {
@@ -32,7 +34,12 @@ export default function NewSitePage() {
     const res = await fetch("/api/sites", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({...form, clientId: Number(form.clientId)}),
+      body: JSON.stringify({
+        ...form,
+        clientId: Number(form.clientId),
+        latitude: form.latitude ? Number(form.latitude) : null,
+        longitude: form.longitude ? Number(form.longitude) : null,
+      }),
     });
     if (res.ok) router.push("/sites");
     else { alert("Грешка при създаване"); setSaving(false); }
@@ -56,6 +63,16 @@ export default function NewSitePage() {
             <div className="space-y-2">
               <Label htmlFor="address">Адрес</Label>
               <Input id="address" value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="ул. Витоша 15" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="latitude">GPS ширина</Label>
+                <Input id="latitude" type="number" step="any" value={form.latitude} onChange={e => setForm({...form, latitude: e.target.value})} placeholder="42.6977" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="longitude">GPS дължина</Label>
+                <Input id="longitude" type="number" step="any" value={form.longitude} onChange={e => setForm({...form, longitude: e.target.value})} placeholder="23.3219" />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Клиент</Label>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,21 +24,27 @@ export default function NewClientPage() {
 
   const update = (f: string, v: string) => {
     setForm({ ...form, [f]: v });
-    if (f === "eik") setEikFound(false);
+    if (f === "eik") {
+      setEikFound(false);
+      // Clear previous timeout
+      if (searchTimeout.current) clearTimeout(searchTimeout.current);
+      // Auto-search after 600ms of no typing, only if valid EIK
+      if (isValidEik(v) && v !== lastSearched.current) {
+        searchTimeout.current = setTimeout(() => {
+          lastSearched.current = v;
+          handleEikSearch(v);
+        }, 600);
+      }
+    }
   };
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-trigger when EIK reaches exactly 9 or 13 digits
-  useEffect(() => {
-    if (!isValidEik(form.eik) || form.eik === lastSearched.current || searching) return;
-    lastSearched.current = form.eik;
-    handleEikSearch();
-  }, [form.eik]);
-
-  async function handleEikSearch() {
-    if (!isValidEik(form.eik)) return;
+  async function handleEikSearch(eik?: string) {
+    const searchEik = eik || form.eik;
+    if (!isValidEik(searchEik)) return;
     setSearching(true);
     try {
-      const res = await fetch(`/api/companybook?eik=${form.eik}`);
+      const res = await fetch(`/api/companybook?eik=${searchEik}`);
       const data = await res.json();
       if (data.error) { alert(data.error); setSearching(false); return; }
       setForm(prev => ({
@@ -83,7 +89,7 @@ export default function NewClientPage() {
                 {eikFound && <CheckCircle className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />}
               </div>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={handleEikSearch} disabled={searching || !isValidEik(form.eik)} className="h-10 gap-1">
+            <Button type="button" variant="outline" size="sm" onClick={() => handleEikSearch()} disabled={searching || !isValidEik(form.eik)} className="h-10 gap-1">
               <Search className="h-4 w-4" /> {searching ? "..." : "Търси"}
             </Button>
           </div>

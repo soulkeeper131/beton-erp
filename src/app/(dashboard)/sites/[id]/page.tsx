@@ -149,6 +149,8 @@ export default function SiteDetailPage() {
       startDate: site.startDate || "",
       endDate: site.endDate || "",
       notes: site.notes || "",
+      latitude: site.latitude ?? null,
+      longitude: site.longitude ?? null,
     });
     setDialogOpen(true);
   };

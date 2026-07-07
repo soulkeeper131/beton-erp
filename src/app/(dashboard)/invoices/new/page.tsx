@@ -32,6 +32,7 @@ export default function NewInvoicePage() {
   const [eikLoading, setEikLoading] = useState(false);
   const [eikFound, setEikFound] = useState(false);
   const lastEikSearched = useRef("");
+  const eikTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetch("/api/clients").then(r => r.json()).then(setClients);
@@ -47,12 +48,18 @@ export default function NewInvoicePage() {
     } catch {}
   };
 
-  // Auto-trigger when EIK reaches exactly 9 or 13 digits
-  useEffect(() => {
-    if (!isValidEik(eikSearch) || eikSearch === lastEikSearched.current || eikLoading) return;
-    lastEikSearched.current = eikSearch;
-    handleEikSearch();
-  }, [eikSearch]);
+  // Debounced auto-trigger: wait 600ms after last keystroke
+  const handleEikChange = (v: string) => {
+    setEikSearch(v);
+    setEikFound(false);
+    if (eikTimeout.current) clearTimeout(eikTimeout.current);
+    if (isValidEik(v) && v !== lastEikSearched.current) {
+      eikTimeout.current = setTimeout(() => {
+        lastEikSearched.current = v;
+        handleEikSearch(v);
+      }, 600);
+    }
+  };
 
   const subtotal = items.reduce((s, i) => s + i.quantity * i.price, 0);
   const vatAmount = items.reduce((s, i) => s + (i.quantity * i.price * i.vatRate) / 100, 0);
@@ -61,15 +68,16 @@ export default function NewInvoicePage() {
 
   const addItem = () => setItems([...items, { description: "", unit: "бр.", quantity: 1, price: 0, vatRate: 20 }]);
 
-  async function handleEikSearch() {
-    if (!isValidEik(eikSearch)) return;
+  async function handleEikSearch(eik?: string) {
+    const searchEik = eik || eikSearch;
+    if (!isValidEik(searchEik)) return;
     setEikLoading(true);
     try {
       // First check if client with this EIK already exists
-      const existing = clients.find(c => c.eik === eikSearch);
+      const existing = clients.find(c => c.eik === searchEik);
       if (existing) { setForm({...form, clientId: String(existing.id)}); setEikFound(true); setEikLoading(false); return; }
       // Search CompanyBook
-      const res = await fetch(`/api/companybook?eik=${eikSearch}`);
+      const res = await fetch(`/api/companybook?eik=${searchEik}`);
       const data = await res.json();
       if (data.error) { alert(data.error); setEikLoading(false); return; }
       // Create new client
@@ -173,12 +181,12 @@ export default function NewInvoicePage() {
               <div className="flex-1 space-y-1">
                 <Label className="text-xs">Бързо добавяне по ЕИК</Label>
                 <div className="relative">
-                  <Input className={`h-8 text-sm ${eikFound ? "pr-8 border-green-500" : ""}`} placeholder="9 или 13 цифри" value={eikSearch} onChange={e => { setEikSearch(e.target.value); setEikFound(false); }} />
+                  <Input className={`h-8 text-sm ${eikFound ? "pr-8 border-green-500" : ""}`} placeholder="9 или 13 цифри" value={eikSearch} onChange={e => handleEikChange(e.target.value)} />
                   {eikLoading && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">...</span>}
                   {eikFound && <CheckCircle className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />}
                 </div>
               </div>
-              <Button type="button" variant="outline" size="sm" className="h-8 gap-1" onClick={handleEikSearch} disabled={eikLoading || !isValidEik(eikSearch)}>
+              <Button type="button" variant="outline" size="sm" className="h-8 gap-1" onClick={() => handleEikSearch()} disabled={eikLoading || !isValidEik(eikSearch)}>
                 <Search className="h-3 w-3" /> {eikLoading ? "..." : "Търси"}
               </Button>
             </div>
