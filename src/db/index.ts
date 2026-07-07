@@ -292,11 +292,24 @@ sqlite.exec(`
     concrete_type_id INTEGER REFERENCES concrete_types(id),
     material_id INTEGER REFERENCES materials(id),
     action_name TEXT,
+    description TEXT,
     quantity REAL NOT NULL DEFAULT 1,
     unit TEXT NOT NULL DEFAULT 'бр.',
     price_per_unit REAL DEFAULT 0,
-    sort_order INTEGER DEFAULT 0
+    sort_order INTEGER DEFAULT 0,
+    machine_id INTEGER REFERENCES machines(id)
   );
+
+  -- Add columns that might be missing from older DBs
+  -- Run in JS try-catch below to handle "duplicate column" errors
+`);
+
+// Add columns to service_items silently (ignore if already exist)
+try { sqlite.exec(`ALTER TABLE service_items ADD COLUMN description TEXT DEFAULT NULL`); } catch {}
+try { sqlite.exec(`ALTER TABLE service_items ADD COLUMN machine_id INTEGER REFERENCES machines(id)`); } catch {}
+
+// Continue table creation
+sqlite.exec(`
 
   CREATE TABLE IF NOT EXISTS company_settings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

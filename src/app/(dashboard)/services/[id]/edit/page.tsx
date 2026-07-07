@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, ArrowLeft, Loader2 } from "lucide-react";
 
-const emptyItem = { concreteTypeId: "", materialId: "", actionName: "", quantity: "1", unit: "бр.", pricePerUnit: "0" };
+const emptyItem = { concreteTypeId: "", materialId: "", machineId: "", actionName: "", description: "", quantity: "1", unit: "бр.", pricePerUnit: "0" };
 
 export default function EditServicePage() {
   const router = useRouter();
@@ -20,17 +20,20 @@ export default function EditServicePage() {
   const [form, setForm] = useState({ name: "", description: "", category: "other", unit: "бр.", basePrice: "" });
   const [concreteTypes, setConcreteTypes] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
+  const [machines, setMachines] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
 
   useEffect(() => {
     Promise.all([
       fetch("/api/concrete-types").then(r => r.json()),
       fetch("/api/materials").then(r => r.json()),
+      fetch("/api/machines").then(r => r.json()),
       fetch(`/api/services/${id}`).then(r => r.json()),
       fetch(`/api/services/${id}/items`).then(r => r.json()),
-    ]).then(([ct, mat, svc, svcItems]) => {
+    ]).then(([ct, mat, mach, svc, svcItems]) => {
       setConcreteTypes(ct);
       setMaterials(mat);
+      setMachines(mach);
       if (svc && !svc.error) {
         setForm({ name: svc.name || "", description: svc.description || "", category: svc.category || "other", unit: svc.unit || "бр.", basePrice: svc.basePrice ? String(svc.basePrice) : "" });
       }
@@ -38,7 +41,9 @@ export default function EditServicePage() {
         setItems(svcItems.map((i: any) => ({
           concreteTypeId: i.concreteTypeId ? String(i.concreteTypeId) : "",
           materialId: i.materialId ? String(i.materialId) : "",
+          machineId: i.machineId ? String(i.machineId) : "",
           actionName: i.actionName || "",
+          description: i.description || "",
           quantity: String(i.quantity),
           unit: i.unit || "бр.",
           pricePerUnit: String(i.pricePerUnit),
@@ -67,18 +72,20 @@ export default function EditServicePage() {
     // Delete old items
     const existing = await fetch(`/api/services/${id}/items`).then(r => r.json());
     for (const ei of (Array.isArray(existing) ? existing : [])) {
-      await fetch(`/api/services/${id}/items/${ei.id}`, { method: "DELETE" });
+      await fetch(`/api/services/${id}/items?itemId=${ei.id}`, { method: "DELETE" });
     }
 
     // Create new items
     for (const item of items) {
-      if (!item.concreteTypeId && !item.materialId && !item.actionName) continue;
+      if (!item.concreteTypeId && !item.materialId && !item.machineId && !item.actionName) continue;
       await fetch(`/api/services/${id}/items`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           concreteTypeId: item.concreteTypeId ? parseInt(item.concreteTypeId) : null,
           materialId: item.materialId ? parseInt(item.materialId) : null,
+          machineId: item.machineId ? parseInt(item.machineId) : null,
           actionName: item.actionName || null,
+          description: item.description || null,
           quantity: parseFloat(item.quantity) || 1,
           unit: item.unit,
           pricePerUnit: parseFloat(item.pricePerUnit) || 0,
@@ -113,24 +120,25 @@ export default function EditServicePage() {
             </div>
             <div><Label>Мерна единица</Label><Input value={form.unit} onChange={e => setForm({...form, unit: e.target.value})} /></div>
           </div>
-          <div><Label>Базова цена (лв)</Label><Input type="number" value={form.basePrice} onChange={e => setForm({...form, basePrice: e.target.value})} /></div>
         </CardContent></Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Елементи на услугата</CardTitle>
-            <Button type="button" variant="outline" size="sm" onClick={addItem}><Plus className="h-4 w-4 mr-1" /> Добави</Button>
+            <CardTitle>Варианти на услугата</CardTitle>
+            <Button type="button" variant="outline" size="sm" onClick={addItem}><Plus className="h-4 w-4 mr-1" /> Добави вариант</Button>
           </CardHeader>
           <CardContent className="space-y-3">
             {items.map((item, idx) => (
               <div key={idx} className="border rounded-lg p-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium">Елемент {idx + 1}</span>
+                  <span className="text-xs font-medium">Вариант {idx + 1}</span>
                   {items.length > 1 && (
                     <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeItem(idx)}><Trash2 className="h-3 w-3" /></Button>
                   )}
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div><Label className="text-xs">Име на действие</Label><Input className="h-8 text-sm" value={item.actionName} onChange={e => updateItem(idx, "actionName", e.target.value)} placeholder="напр. Полагане" /></div>
+                  <div><Label className="text-xs">Описание (детайли)</Label><Input className="h-8 text-sm" value={item.description} onChange={e => updateItem(idx, "description", e.target.value)} placeholder="5см, с фибри" /></div>
                   <div><Label className="text-xs">Тип бетон</Label>
                     <Select value={item.concreteTypeId} onValueChange={v => updateItem(idx, "concreteTypeId", v)}>
                       <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="—" /></SelectTrigger>
@@ -143,10 +151,18 @@ export default function EditServicePage() {
                       <SelectContent>{materials.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div><Label className="text-xs">Действие</Label><Input className="h-8 text-sm" value={item.actionName} onChange={e => updateItem(idx, "actionName", e.target.value)} placeholder="Полагане" /></div>
+                  <div><Label className="text-xs">Помпа/машина</Label>
+                    <Select value={item.machineId} onValueChange={v => updateItem(idx, "machineId", v)}>
+                      <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Без</SelectItem>
+                        {machines.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.name} ({m.type})</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div><Label className="text-xs">М.Е.</Label><Input className="h-8 text-sm" value={item.unit} onChange={e => updateItem(idx, "unit", e.target.value)} /></div>
                   <div><Label className="text-xs">К-во</Label><Input type="number" className="h-8 text-sm" value={item.quantity} onChange={e => updateItem(idx, "quantity", e.target.value)} /></div>
-                  <div><Label className="text-xs">Цена/ед.</Label><Input type="number" step="0.01" className="h-8 text-sm" value={item.pricePerUnit} onChange={e => updateItem(idx, "pricePerUnit", e.target.value)} /></div>
+                  <div><Label className="text-xs">Цена/ед. (лв)</Label><Input type="number" step="0.01" className="h-8 text-sm" value={item.pricePerUnit} onChange={e => updateItem(idx, "pricePerUnit", e.target.value)} /></div>
                 </div>
               </div>
             ))}

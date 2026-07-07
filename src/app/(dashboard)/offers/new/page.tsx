@@ -81,6 +81,7 @@ export default function NewOfferPage() {
   const [concreteTypes, setConcreteTypes] = useState<ConcreteType[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [saving, setSaving] = useState(false);
+  const [catalog, setCatalog] = useState<any>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -136,6 +137,9 @@ export default function NewOfferPage() {
     fetch("/api/services")
       .then((r) => r.json())
       .then(setServices);
+    fetch("/api/catalog")
+      .then((r) => r.json())
+      .then(setCatalog);
   }, []);
 
   // Filter sites by selected client
@@ -355,6 +359,33 @@ export default function NewOfferPage() {
               <Button type="button" variant="outline" size="sm" onClick={addItem}>
                 <Plus className="h-4 w-4 mr-1" /> Добави ред
               </Button>
+              {catalog?.allVariants?.length > 0 && (
+                <Select onValueChange={(val) => {
+                  const v = catalog.allVariants.find((x: any) => String(x.id) === val);
+                  if (!v) return;
+                  append({
+                    itemType: "concrete" as const,
+                    concreteTypeId: v.concreteTypeId || null,
+                    serviceId: v.serviceId || null,
+                    quantityM3: v.quantity || 1,
+                    pricePerM3: v.pricePerUnit || 0,
+                    transportCost: 0,
+                    pumpCost: 0,
+                  });
+                }}>
+                  <SelectTrigger className="w-[260px] h-8 text-xs">
+                    <SelectValue placeholder="➕ От каталог (варианти)" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-80">
+                    {catalog.allVariants.map((v: any) => (
+                      <SelectItem key={v.id} value={String(v.id)} className="text-xs">
+                        <span className="font-medium">{v.label}</span>
+                        <span className="text-muted-foreground ml-2">{v.pricePerUnit} лв/{v.unit}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               {fields.length === 0 && (
