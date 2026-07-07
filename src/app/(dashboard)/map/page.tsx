@@ -314,6 +314,10 @@ export default function MapPage() {
       </div>
 
       {/* Map */}
+      <style>{`
+        .leaflet-pane { z-index: 1 !important; }
+        .leaflet-top, .leaflet-bottom { z-index: 2 !important; }
+      `}</style>
       <div
         ref={mapContainerRef}
         className="w-full rounded-lg border overflow-hidden"
