@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import { formatCurrency } from "@/lib/utils";
 
 export default function NewPouringPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedSiteId = searchParams.get("siteId") || "";
   const [sites, setSites] = useState<any[]>([]);
   const [concreteTypes, setConcreteTypes] = useState<any[]>([]);
   const [machines, setMachines] = useState<any[]>([]);
@@ -20,7 +22,7 @@ export default function NewPouringPage() {
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
-    siteId: "",
+    siteId: preselectedSiteId,
     offerId: "",
     date: new Date().toISOString().split("T")[0],
     machineId: "",

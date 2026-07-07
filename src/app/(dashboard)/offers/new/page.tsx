@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -76,6 +76,8 @@ type ConcreteType = {
 
 export default function NewOfferPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedSiteId = searchParams.get("siteId");
   const [clients, setClients] = useState<Client[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [concreteTypes, setConcreteTypes] = useState<ConcreteType[]>([]);
@@ -141,6 +143,16 @@ export default function NewOfferPage() {
       .then((r) => r.json())
       .then(setCatalog);
   }, []);
+
+  // Pre-select site from URL param (e.g. from map popup)
+  useEffect(() => {
+    if (!preselectedSiteId || sites.length === 0) return;
+    const site = sites.find(s => String(s.id) === preselectedSiteId);
+    if (site) {
+      form.setValue("clientId", site.clientId);
+      form.setValue("siteId", site.id);
+    }
+  }, [preselectedSiteId, sites]);
 
   // Filter sites by selected client
   const filteredSites = watchClientId
