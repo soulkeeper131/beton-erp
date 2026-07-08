@@ -362,3 +362,24 @@ export const companySettings = sqliteTable("company_settings", {
   incomingEmailFolder: text("incoming_email_folder").notNull().default("INBOX"),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
+
+// ========== CHAT SESSIONS ==========
+export const chatSessions = sqliteTable("chat_sessions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull().references(() => users.id),
+  title: text("title").notNull().default(""),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
+// ========== CHAT MESSAGES ==========
+export const chatMessages = sqliteTable("chat_messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sessionId: integer("session_id").notNull().references(() => chatSessions.id),
+  role: text("role").notNull(), // user | assistant | tool
+  content: text("content").notNull(),
+  toolCallId: text("tool_call_id"),
+  toolName: text("tool_name"),
+  metadata: text("metadata"), // JSON for pending confirmations etc.
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+});
