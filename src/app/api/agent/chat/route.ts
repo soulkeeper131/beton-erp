@@ -6,7 +6,7 @@ import { getToolsForLLM, getTool } from "@/lib/agent/tools";
 import { SYSTEM_PROMPT } from "@/lib/agent/system-prompt";
 import { db } from "@/db";
 import { chatMessages, chatSessions } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -14,14 +14,14 @@ export const maxDuration = 60;
 // Auto-create tables on first run (for fresh deploys)
 function ensureTables() {
   try {
-    db.run(`CREATE TABLE IF NOT EXISTS chat_sessions (
+    db.run(sql.raw(`CREATE TABLE IF NOT EXISTS chat_sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL REFERENCES users(id),
       title TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )`);
-    db.run(`CREATE TABLE IF NOT EXISTS chat_messages (
+    )`));
+    db.run(sql.raw(`CREATE TABLE IF NOT EXISTS chat_messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id INTEGER NOT NULL REFERENCES chat_sessions(id),
       role TEXT NOT NULL,
@@ -30,7 +30,7 @@ function ensureTables() {
       tool_name TEXT,
       metadata TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )`);
+    )`));
   } catch {}
 }
 
