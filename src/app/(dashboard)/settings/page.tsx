@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Save, Mail, CheckCircle, XCircle, Inbox } from "lucide-react";
+import { ArrowLeft, Save, Mail, CheckCircle, XCircle, Inbox, Brain } from "lucide-react";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -20,6 +20,7 @@ export default function SettingsPage() {
     smtpFrom: "", smtpSecure: false,
     imapHost: "", imapPort: 993, imapUser: "", imapPass: "",
     imapTls: true, incomingEmailFolder: "INBOX",
+    aiEnabled: true, aiModel: "deepseek-chat", aiApiKey: "",
   });
 
   useEffect(() => {
@@ -37,6 +38,8 @@ export default function SettingsPage() {
         imapHost: d.imapHost || "", imapPort: d.imapPort || 993,
         imapUser: d.imapUser || "", imapPass: d.imapPass || "",
         imapTls: !!d.imapTls, incomingEmailFolder: d.incomingEmailFolder || "INBOX",
+        aiEnabled: d.aiEnabled !== false, aiModel: d.aiModel || "deepseek-chat",
+        aiApiKey: d.aiApiKey ? "••••••••" : "",
       });
     });
   }, []);
@@ -44,44 +47,43 @@ export default function SettingsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
+    const payload = { ...form };
+    // Don't send masked key
+    if (payload.aiApiKey === "••••••••") delete (payload as any).aiApiKey;
     const res = await fetch("/api/company-settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
     setSaving(false);
-    if (res.ok) alert("✅ Запазено");
-    else alert("❌ Грешка");
+    if (res.ok) {
+      // Remask the key
+      setForm(f => ({ ...f, aiApiKey: f.aiApiKey && f.aiApiKey !== "••••••••" ? "••••••••" : f.aiApiKey }));
+      alert("✅ Запазено");
+    } else alert("❌ Грешка");
   }
 
   async function testSmtp() {
     if (!form.email) { alert("Въведи имейл за тест"); return; }
-    setTesting(true);
-    setTestResult(null);
+    setTesting(true); setTestResult(null);
     try {
       const res = await fetch("/api/smtp-test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: form.email }),
       });
       const data = await res.json();
       setTestResult({ ok: res.ok, msg: data.message || data.error });
-    } catch {
-      setTestResult({ ok: false, msg: "Грешка при свързване" });
-    }
+    } catch { setTestResult({ ok: false, msg: "Грешка при свързване" }); }
     setTesting(false);
   }
 
   async function testImap() {
-    setTesting(true);
-    setTestResult(null);
+    setTesting(true); setTestResult(null);
     try {
       const res = await fetch("/api/imap-test", { method: "POST" });
       const data = await res.json();
       setTestResult({ ok: res.ok, msg: data.message || data.error });
-    } catch {
-      setTestResult({ ok: false, msg: "Грешка при свързване" });
-    }
+    } catch { setTestResult({ ok: false, msg: "Грешка при свързване" }); }
     setTesting(false);
   }
 
@@ -116,7 +118,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Дизайн на документи */}
+        {/* Дизайн */}
         <Card>
           <CardHeader><CardTitle>🎨 Дизайн на документи</CardTitle></CardHeader>
           <CardContent className="space-y-4">
@@ -124,40 +126,66 @@ export default function SettingsPage() {
               <div>
                 <Label>Лого</Label>
                 <div className="flex items-center gap-3 mt-1">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const fd = new FormData();
-                      fd.append("file", file);
+                  <input type="file" accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0]; if (!file) return;
+                      const fd = new FormData(); fd.append("file", file);
                       const res = await fetch("/api/upload-logo", { method: "POST", body: fd });
-                      if (res.ok) alert("✅ Логото е качено");
-                      else alert("❌ Грешка при качване");
-                    }}
-                    className="text-sm"
-                  />
+                      if (res.ok) alert("✅ Логото е качено"); else alert("❌ Грешка при качване");
+                    }} className="text-sm" />
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">PNG или JPG, до 2MB. Ще се показва в PDF документите.</p>
+                <p className="text-xs text-muted-foreground mt-1">PNG или JPG, до 2MB.</p>
               </div>
               <div>
                 <Label>Акцентен цвят</Label>
                 <div className="flex items-center gap-2 mt-1">
-                  <input
-                    type="color"
-                    value={form.accentColor}
-                    onChange={e => u("accentColor", e.target.value)}
-                    className="w-10 h-10 rounded border cursor-pointer"
-                  />
-                  <Input
-                    value={form.accentColor}
-                    onChange={e => u("accentColor", e.target.value)}
-                    className="w-28 font-mono text-sm"
-                    placeholder="#f97316"
-                  />
+                  <input type="color" value={form.accentColor} onChange={e => u("accentColor", e.target.value)} className="w-10 h-10 rounded border cursor-pointer" />
+                  <Input value={form.accentColor} onChange={e => u("accentColor", e.target.value)} className="w-28 font-mono text-sm" placeholder="#f97316" />
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Използва се за заглавки и акценти в PDF-ите.</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 🤖 AI Agent */}
+        <Card>
+          <CardHeader><CardTitle><Brain className="h-5 w-5 inline mr-2" />AI Агент</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">Активиране</Label>
+                <p className="text-xs text-muted-foreground">Включва AI чат асистента в платформата</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked={form.aiEnabled} onChange={e => u("aiEnabled", e.target.checked)} className="sr-only peer" />
+                <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+              </label>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>API Ключ (DeepSeek)</Label>
+                <Input
+                  type="password"
+                  value={form.aiApiKey}
+                  onChange={e => u("aiApiKey", e.target.value)}
+                  placeholder={form.aiApiKey === "••••••••" ? "Вече е зададен" : "sk-..."}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {form.aiApiKey === "••••••••"
+                    ? "✅ Ключът е конфигуриран. Оставете празно за да не го променяте."
+                    : "Въведете DeepSeek API ключ от platform.deepseek.com"}
+                </p>
+              </div>
+              <div>
+                <Label>Модел</Label>
+                <select
+                  value={form.aiModel}
+                  onChange={e => u("aiModel", e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="deepseek-chat">DeepSeek Chat (V3)</option>
+                  <option value="deepseek-reasoner">DeepSeek Reasoner (R1)</option>
+                </select>
+                <p className="text-xs text-muted-foreground mt-1">DeepSeek Chat е по-бърз и евтин. Reasoner е по-добър за сложна логика.</p>
               </div>
             </div>
           </CardContent>
@@ -179,8 +207,7 @@ export default function SettingsPage() {
               <div><Label>Изпращач (From)</Label><Input value={form.smtpFrom} onChange={e => u("smtpFrom", e.target.value)} placeholder="office@firmata.bg" /></div>
               <div className="flex items-end gap-2">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={form.smtpSecure} onChange={e => u("smtpSecure", e.target.checked)} className="w-4 h-4" />
-                  SSL/TLS
+                  <input type="checkbox" checked={form.smtpSecure} onChange={e => u("smtpSecure", e.target.checked)} className="w-4 h-4" /> SSL/TLS
                 </label>
               </div>
             </div>
@@ -190,8 +217,7 @@ export default function SettingsPage() {
               </Button>
               {testResult && (
                 <span className={`text-sm flex items-center gap-1 ${testResult.ok ? "text-green-600" : "text-red-600"}`}>
-                  {testResult.ok ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                  {testResult.msg}
+                  {testResult.ok ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}{testResult.msg}
                 </span>
               )}
             </div>
@@ -213,8 +239,7 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
               <div><Label>Папка</Label><Input value={form.incomingEmailFolder} onChange={e => u("incomingEmailFolder", e.target.value)} placeholder="INBOX" /></div>
               <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={form.imapTls} onChange={e => u("imapTls", e.target.checked)} className="w-4 h-4" />
-                TLS
+                <input type="checkbox" checked={form.imapTls} onChange={e => u("imapTls", e.target.checked)} className="w-4 h-4" /> TLS
               </label>
             </div>
             <div className="flex items-center gap-3 pt-2">
@@ -223,8 +248,7 @@ export default function SettingsPage() {
               </Button>
               {testResult && (
                 <span className={`text-sm flex items-center gap-1 ${testResult.ok ? "text-green-600" : "text-red-600"}`}>
-                  {testResult.ok ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                  {testResult.msg}
+                  {testResult.ok ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}{testResult.msg}
                 </span>
               )}
             </div>

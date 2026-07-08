@@ -360,6 +360,9 @@ export const companySettings = sqliteTable("company_settings", {
   imapPass: text("imap_pass").notNull().default(""),
   imapTls: integer("imap_tls", { mode: "boolean" }).notNull().default(true),
   incomingEmailFolder: text("incoming_email_folder").notNull().default("INBOX"),
+  aiEnabled: integer("ai_enabled", { mode: "boolean" }).notNull().default(true),
+  aiModel: text("ai_model").notNull().default("deepseek-chat"),
+  aiApiKey: text("ai_api_key"),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 

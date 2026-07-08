@@ -19,16 +19,18 @@ interface ChatMessage {
 }
 
 async function getDeepSeekKey(): Promise<string> {
-  // Try Bitwarden first, fall back to env
+  // 1. Try company settings from DB
+  try {
+    const { companySettings } = await import("@/db/schema");
+    const settings = db.select().from(companySettings).get();
+    if (settings?.aiApiKey && settings.aiApiKey.length > 4) return settings.aiApiKey;
+  } catch {}
+
+  // 2. Try environment variable
   if (process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY.length > 4) {
     return process.env.DEEPSEEK_API_KEY;
   }
-  try {
-    const { execSync } = await import("child_process");
-    const result = execSync(`source /root/.hermes/.env && echo $DEEP...KEY`, { shell: "/bin/bash" });
-    const key = result.toString().trim();
-    if (key && key.length > 4) return key;
-  } catch {}
+
   throw new Error("DeepSeek API ключът не е конфигуриран. Добавете го в /settings или в .env файла.");
 }
 
