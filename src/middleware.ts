@@ -1,12 +1,46 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Simple middleware — cookie-based auth + API key support
+// Simple in-memory rate limiter for Edge middleware
+const rateMap = new Map<string, { count: number; reset: number }>();
+const RATE_LIMIT = 100; // requests per minute
+const WINDOW_MS = 60_000;
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateMap.get(ip);
+  if (!entry || now > entry.reset) {
+    rateMap.set(ip, { count: 1, reset: now + WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT) return false;
+  entry.count++;
+  return true;
+}
+
+// Clean up stale entries every 5 minutes (Edge-safe: runs on each request, cheap for small maps)
+if (rateMap.size > 1000) {
+  const now = Date.now();
+  for (const [k, v] of rateMap) { if (now > v.reset) rateMap.delete(k); }
+}
+
+// Simple middleware — cookie-based auth + API key support + rate limiting
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+
+  // Rate limit API routes
+  if (pathname.startsWith("/api/") && !pathname.startsWith("/api/health")) {
+    if (!checkRateLimit(ip)) {
+      return new NextResponse(JSON.stringify({ error: "Too many requests" }), {
+        status: 429,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
 
   // Public routes — allow without auth
-  const publicPaths = ["/login", "/api/auth", "/api/health"];
+  const publicPaths = ["/login", "/api/auth", "/api/health", "/manifest.json", "/sw.js"];
   if (publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     const response = NextResponse.next();
     if (!pathname.startsWith("/api/")) {

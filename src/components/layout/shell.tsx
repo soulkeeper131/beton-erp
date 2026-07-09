@@ -26,6 +26,7 @@ const navItems = [
   { href: "/services", label: "Услуги", icon: "🔧" },
   { href: "/concrete-types", label: "Типове бетон", icon: "🧱" },
   { href: "/audit-log", label: "Одит лог", icon: "📋" },
+  { href: "/users", label: "Потребители", icon: "👤", adminOnly: true },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -36,11 +37,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
 
   const roleLabels: Record<string, string> = {
-    admin: "Администратор", employee: "Служител",
+    admin: "Администратор", manager: "Мениджър", brigadir: "Бригадир", employee: "Служител",
   };
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/" && pathname.startsWith(href));
+
+  const isAdmin = (user as any)?.role === "admin";
+  const visibleNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -76,7 +80,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
         {/* Nav items */}
         <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
-          {navItems.map(item => (
+          {visibleNavItems.map(item => (
             <Link
               key={item.href}
               href={item.href}
@@ -120,7 +124,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               </svg>
             </Button>
             <span className="text-sm text-muted-foreground hidden sm:block">
-              {navItems.find(i => isActive(i.href))?.label || "Beton ERP"}
+              {visibleNavItems.find(i => isActive(i.href))?.label || "Beton ERP"}
             </span>
           </div>
 

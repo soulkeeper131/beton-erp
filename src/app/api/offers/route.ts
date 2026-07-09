@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { offers, offerItems, clients, sites } from "@/db/schema";
 import { eq, desc, and, sql, like } from "drizzle-orm";
 import { z } from "zod";
+import { notifyOfferCreated } from "@/lib/notifications";
 
 const offerSchema = z.object({
   clientId: z.coerce.number().int().positive("Изберете клиент"),
@@ -90,6 +91,26 @@ export async function POST(req: Request) {
     })
     .returning()
     .all();
+
+  // Send email notification (fire-and-forget)
+  try {
+    const client = db.select({ email: clients.email, name: clients.name, companyName: clients.companyName })
+      .from(clients).where(eq(clients.id, parsed.data.clientId)).get();
+    if (client?.email) {
+      let siteName: string | undefined;
+      if (parsed.data.siteId) {
+        const site = db.select({ name: sites.name }).from(sites).where(eq(sites.id, parsed.data.siteId)).get();
+        siteName = site?.name;
+      }
+      notifyOfferCreated({
+        number: created.number,
+        clientEmail: client.email,
+        clientName: client.companyName || client.name || "Клиент",
+        siteName,
+        total: created.total,
+      }).catch(() => {});
+    }
+  } catch {}
 
   return NextResponse.json(created, { status: 201 });
 }

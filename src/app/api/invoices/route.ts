@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { db } from "@/db";
-import { invoices, invoiceItems, clients, companySettings } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
 import { z } from "zod";
+import { db } from "@/db";
+import { invoices, invoiceItems, clients } from "@/db/schema";
+import { and, desc, eq } from "drizzle-orm";
+import { auth } from "@/auth";
+import { notifyInvoiceCreated } from "@/lib/notifications";
 
 const itemSchema = z.object({
   description: z.string().min(1),
@@ -125,6 +126,21 @@ export async function POST(req: Request) {
       total: item.quantity * item.price,
     }).run();
   }
+
+  // Send email notification (fire-and-forget — won't block response)
+  try {
+    const client = db.select({ email: clients.email, name: clients.name, companyName: clients.companyName })
+      .from(clients).where(eq(clients.id, parsed.data.clientId)).get();
+    if (client?.email) {
+      notifyInvoiceCreated({
+        number: created.number,
+        date: created.date,
+        clientEmail: client.email,
+        clientName: client.companyName || client.name || "Клиент",
+        total: created.total,
+      }).catch(() => {});
+    }
+  } catch {}
 
   return NextResponse.json(created, { status: 201 });
 }
