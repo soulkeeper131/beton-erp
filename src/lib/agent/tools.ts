@@ -328,6 +328,28 @@ async function updateInvoicePayment(params: { invoiceId: number; paymentStatus: 
   return { success: true, invoiceId: params.invoiceId, paymentStatus: params.paymentStatus };
 }
 
+async function lookupCompany(params: { eik: string }) {
+  const eik = params.eik.trim();
+  if (!/^\d{9,13}$/.test(eik)) return { error: "Невалиден ЕИК — трябва да е 9 или 13 цифри" };
+
+  const apiKey = process.env.COMPANYBOOK_API_KEY;
+  if (!apiKey) return { error: "CompanyBook API ключът не е конфигуриран. Моля, задайте COMPANYBOOK_API_KEY в средата или ме помолете да проверя настройките." };
+
+  try {
+    const res = await fetch(`https://api.companybook.bg/api/companies/${eik}?with_data=true`, {
+      headers: { "X-API-Key": process.env.COMPANYBOOK_API_KEY || "" },
+    });
+    const data = await res.json();
+    if (data.error) return { error: data.errorBG || "Фирмата не е намерена" };
+    const c = data.company;
+    const address = c.seat ? `${c.seat.settlement || ""}, ${c.seat.street || ""} ${c.seat.streetNumber || ""}`.trim().replace(/^,\s*/, "") : "";
+    return {
+      eik: c.uic, name: c.companyName?.name || "", vatNumber: `BG${c.uic}`,
+      address, city: c.seat?.settlement || "", status: c.status === "N" ? "Активна" : "Ликвидирана",
+    };
+  } catch { return { error: "Грешка при свързване с CompanyBook. Проверете COMPANYBOOK_API_KEY." }; }
+}
+
 // ─── Tool Registry ───
 
 export const agentTools: ToolDefinition[] = [
@@ -549,6 +571,12 @@ export const agentTools: ToolDefinition[] = [
     parameters: { type: "object", properties: { invoiceId: { type: "integer" }, paymentStatus: { type: "string", enum: ["unpaid", "partial", "paid"] } }, required: ["invoiceId", "paymentStatus"] },
     handler: updateInvoicePayment,
     requiresConfirmation: true,
+  },
+  {
+    name: "lookup_company",
+    description: "Проверява фирма по ЕИК в CompanyBook. Връща име, адрес, ДДС номер, статус. Използвай при въвеждане на нов клиент.",
+    parameters: { type: "object", properties: { eik: { type: "string", description: "9 или 13-цифрен ЕИК" } }, required: ["eik"] },
+    handler: lookupCompany,
   },
 ];
 
