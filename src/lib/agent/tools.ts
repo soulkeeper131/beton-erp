@@ -1,9 +1,10 @@
 // /src/lib/agent/tools.ts
 
 import { db } from "@/db";
-import { clients, offers, offerItems, pourings, pouringItems, sites, concreteTypes, services, materials, machines, siteCalendar, invoices, invoiceItems, workers } from "@/db/schema";
+import { clients, offers, offerItems, pourings, pouringItems, sites, concreteTypes, services, materials, machines, siteCalendar, invoices, invoiceItems, workers, users, companySettings } from "@/db/schema";
 import { eq, like, or, and, desc, asc } from "drizzle-orm";
 import { sql } from "drizzle-orm";
+import { hash } from "bcryptjs";
 
 export interface ToolDefinition {
   name: string;
@@ -252,6 +253,81 @@ async function getDashboardStats() {
   return { clients: clientCount, activeSites: siteCount, activeOffers: offerCount, pourings: pouringCount, totalM3 };
 }
 
+// ─── ADMIN ───
+async function listUsers() {
+  return db.select({ id: users.id, name: users.name, email: users.email, role: users.role, phone: users.phone, active: users.active }).from(users).all();
+}
+
+async function createUser(params: { name: string; email: string; password: string; role?: string; phone?: string }) {
+  const pwdHash = await hash(params.password, 10);
+  const result = db.insert(users).values({
+    name: params.name, email: params.email, passwordHash: pwdHash,
+    role: params.role || "employee", phone: params.phone || null,
+  }).returning({ id: users.id }).get();
+  return { id: result.id, name: params.name, email: params.email };
+}
+
+async function updateUser(params: { userId: number; name?: string; role?: string; active?: boolean; password?: string }) {
+  const vals: any = {};
+  if (params.name) vals.name = params.name;
+  if (params.role) vals.role = params.role;
+  if (params.active !== undefined) vals.active = params.active;
+  if (params.password) vals.passwordHash = await hash(params.password, 10);
+  vals.updatedAt = new Date().toISOString();
+  db.update(users).set(vals).where(eq(users.id, params.userId)).run();
+  return { success: true };
+}
+
+async function getSettings() {
+  const s = db.select({
+    companyName: companySettings.companyName, eik: companySettings.eik,
+    vatNumber: companySettings.vatNumber, address: companySettings.address,
+    city: companySettings.city, phone: companySettings.phone, email: companySettings.email,
+    mol: companySettings.mol, bankName: companySettings.bankName, iban: companySettings.iban,
+    bic: companySettings.bic, aiEnabled: companySettings.aiEnabled, aiModel: companySettings.aiModel,
+    smtpHost: companySettings.smtpHost, smtpUser: companySettings.smtpUser,
+  }).from(companySettings).get();
+  return s || {};
+}
+
+async function updateSettings(params: any) {
+  const vals: any = {};
+  const fields = ["companyName","eik","vatNumber","address","city","phone","email","mol","bankName","iban","bic","smtpHost","smtpPort","smtpUser","smtpPass","smtpFrom","smtpSecure","imapHost","imapPort","imapUser","imapPass","imapTls","aiEnabled","aiModel"];
+  for (const f of fields) {
+    if (params[f] !== undefined) vals[f] = params[f];
+  }
+  vals.updatedAt = new Date().toISOString();
+  db.update(companySettings).set(vals).where(eq(companySettings.id, 1)).run();
+  return { success: true, updated: Object.keys(vals).filter(k => k !== "updatedAt") };
+}
+
+async function createBackup() {
+  try {
+    const { execSync } = await import("child_process");
+    const { mkdirSync, readdirSync, statSync, unlinkSync } = await import("fs");
+    const path = await import("path");
+    const BACKUP_DIR = path.join(process.cwd(), "data", "backups");
+    mkdirSync(BACKUP_DIR, { recursive: true });
+    const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const fname = `beton-${ts}.db`;
+    execSync(`sqlite3 "${path.join(process.cwd(), "data", "beton.db")}" ".backup '${path.join(BACKUP_DIR, fname)}'"`, { timeout: 30000 });
+    const files = readdirSync(BACKUP_DIR).filter((f: string) => f.startsWith("beton-") && f.endsWith(".db")).sort().reverse();
+    if (files.length > 7) files.slice(7).forEach((f: string) => unlinkSync(path.join(BACKUP_DIR, f)));
+    const s = statSync(path.join(BACKUP_DIR, fname));
+    return { success: true, file: fname, size: s.size, backups: files.length };
+  } catch (e: any) { return { error: e.message }; }
+}
+
+async function updateOfferStatus(params: { offerId: number; status: string }) {
+  db.update(offers).set({ status: params.status }).where(eq(offers.id, params.offerId)).run();
+  return { success: true, offerId: params.offerId, status: params.status };
+}
+
+async function updateInvoicePayment(params: { invoiceId: number; paymentStatus: string }) {
+  db.update(invoices).set({ paymentStatus: params.paymentStatus }).where(eq(invoices.id, params.invoiceId)).run();
+  return { success: true, invoiceId: params.invoiceId, paymentStatus: params.paymentStatus };
+}
+
 // ─── Tool Registry ───
 
 export const agentTools: ToolDefinition[] = [
@@ -417,6 +493,61 @@ export const agentTools: ToolDefinition[] = [
     description: "Изпраща оферта по имейл на клиента.",
     parameters: { type: "object", properties: { offerId: { type: "integer" }, to: { type: "string" }, message: { type: "string" } }, required: ["offerId", "to"] },
     handler: sendOfferEmail,
+    requiresConfirmation: true,
+  },
+  // ── АДМИНИСТРИРАНЕ ──
+  {
+    name: "list_users",
+    description: "Връща списък с всички потребители на системата.",
+    parameters: { type: "object", properties: {} },
+    handler: listUsers,
+  },
+  {
+    name: "create_user",
+    description: "СЪЗДАВА нов потребител в системата.",
+    parameters: { type: "object", properties: { name: { type: "string" }, email: { type: "string" }, password: { type: "string" }, role: { type: "string", enum: ["admin", "manager", "brigadir", "employee"] }, phone: { type: "string" } }, required: ["name", "email", "password"] },
+    handler: createUser,
+    requiresConfirmation: true,
+  },
+  {
+    name: "update_user",
+    description: "ПРОМЕНЯ потребител — роля, име, активност или парола.",
+    parameters: { type: "object", properties: { userId: { type: "integer" }, name: { type: "string" }, role: { type: "string", enum: ["admin", "manager", "brigadir", "employee"] }, active: { type: "boolean" }, password: { type: "string" } }, required: ["userId"] },
+    handler: updateUser,
+    requiresConfirmation: true,
+  },
+  {
+    name: "get_settings",
+    description: "Връща текущите фирмени настройки (име, ЕИК, банка, SMTP, AI).",
+    parameters: { type: "object", properties: {} },
+    handler: getSettings,
+  },
+  {
+    name: "update_settings",
+    description: "ПРОМЕНЯ фирмените настройки (име, банка, SMTP, AI и др).",
+    parameters: { type: "object", properties: { companyName: { type: "string" }, eik: { type: "string" }, vatNumber: { type: "string" }, address: { type: "string" }, city: { type: "string" }, phone: { type: "string" }, email: { type: "string" }, mol: { type: "string" }, bankName: { type: "string" }, iban: { type: "string" }, bic: { type: "string" }, smtpHost: { type: "string" }, smtpUser: { type: "string" }, smtpPass: { type: "string" } } },
+    handler: updateSettings,
+    requiresConfirmation: true,
+  },
+  {
+    name: "create_backup",
+    description: "СЪЗДАВА backup на базата данни. Пазят се последните 7 копия.",
+    parameters: { type: "object", properties: {} },
+    handler: createBackup,
+    requiresConfirmation: true,
+  },
+  {
+    name: "update_offer_status",
+    description: "ПРОМЕНЯ статуса на оферта (draft/sent/accepted/rejected).",
+    parameters: { type: "object", properties: { offerId: { type: "integer" }, status: { type: "string", enum: ["draft", "sent", "accepted", "rejected"] } }, required: ["offerId", "status"] },
+    handler: updateOfferStatus,
+    requiresConfirmation: true,
+  },
+  {
+    name: "update_invoice_payment",
+    description: "МАРКИРА фактура като платена/неплатена.",
+    parameters: { type: "object", properties: { invoiceId: { type: "integer" }, paymentStatus: { type: "string", enum: ["unpaid", "partial", "paid"] } }, required: ["invoiceId", "paymentStatus"] },
+    handler: updateInvoicePayment,
     requiresConfirmation: true,
   },
 ];

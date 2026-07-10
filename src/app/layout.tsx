@@ -18,6 +18,11 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#f97316",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -25,6 +30,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="bg">
       <head>
         <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
