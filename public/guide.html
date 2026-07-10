@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beton ERP — Ръководство на потребителя</title>
+<style>
+:root { --orange: #f97316; --bg: #fafafa; --card: #fff; --text: #1a1a1a; --muted: #666; --border: #e5e5e5; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+.container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+h1 { font-size: 2rem; margin-bottom: 8px; }
+h1 span { color: var(--orange); }
+.subtitle { color: var(--muted); margin-bottom: 32px; }
+h2 { font-size: 1.3rem; margin: 36px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--orange); }
+h3 { font-size: 1.05rem; margin: 20px 0 10px; color: var(--orange); }
+p { margin-bottom: 12px; color: var(--muted); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+.steps { list-style: none; padding: 0; }
+.steps li { padding: 8px 0 8px 28px; position: relative; border-left: 2px solid var(--orange); margin-left: 10px; margin-bottom: 4px; }
+.steps li::before { content: "→"; position: absolute; left: -12px; top: 6px; color: var(--orange); font-weight: bold; }
+.back-link { display: inline-block; margin-bottom: 24px; color: var(--orange); text-decoration: none; }
+.back-link:hover { text-decoration: underline; }
+.tip { background: #fff8e1; border-left: 3px solid var(--orange); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 12px 0; font-size: 14px; }
+.tip strong { color: var(--orange); }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+td, th { border: 1px solid var(--border); padding: 8px 12px; text-align: left; font-size: 14px; }
+th { background: #f9f9f9; }
+@media (max-width: 600px) { .container { padding: 20px 12px; } }
+</style>
+</head>
+<body>
+<div class="container">
+<a href="/" class="back-link">← Обратно към Beton ERP</a>
+<h1>📖 <span>Ръководство</span> на потребителя</h1>
+<p class="subtitle">Как да използвате Beton ERP за управление на строителния бизнес</p>
+
+<!-- Quick Start -->
+<h2>🚀 Бърз старт</h2>
+<div class="card">
+<ol class="steps">
+<li><strong>Влезте</strong> в системата на <a href="https://beton.blv.bg/login">beton.blv.bg/login</a></li>
+<li><strong>Настройте фирмата</strong> — лого, данни, банкова сметка (⚙️ Настройки)</li>
+<li><strong>Добавете клиенти</strong> — 👥 Клиенти → Нов клиент (ЕИК се попълва автоматично)</li>
+<li><strong>Създайте обект</strong> — 🏗️ Обекти → Нов обект (с адрес и GPS)</li>
+<li><strong>Направете оферта</strong> — 📋 Оферти → Нова оферта</li>
+<li><strong>Актувайте работата</strong> — 🪣 Актуване → Нов акт</li>
+<li><strong>Издайте фактура</strong> — 🧾 Фактури → Нова фактура</li>
+</ol>
+</div>
+
+<!-- Workflow -->
+<h2>🔄 Работен процес</h2>
+<div class="card">
+<h3>1. Клиент → Обект → Оферта</h3>
+<p>Всеки обект принадлежи на клиент. Офертата се създава за конкретен обект и клиент.</p>
+<div class="tip"><strong>💡 Съвет:</strong> От страницата с картата (🗺️) можете директно да създадете оферта за избран обект.</div>
+
+<h3>2. Оферта → Акт</h3>
+<p>След приемане на оферта, създайте акт (протокол) за реално извършената работа. Една оферта може да има множество актове (поетапно изпълнение).</p>
+<div class="tip"><strong>💡 Съвет:</strong> В детайлите на акта ще видите сравнение "Оферирано vs Актувано" — така следите разликите.</div>
+
+<h3>3. Акт → Фактура</h3>
+<p>На база на актуваната работа издайте фактура. Фактурата може да се изпрати директно по имейл.</p>
+</div>
+
+<!-- Modules -->
+<h2>📋 Модули в детайли</h2>
+
+<h3>👥 Клиенти</h3>
+<div class="card">
+<p><strong>Добавяне:</strong> Попълнете име, фирма и ЕИК. При валиден 9-цифрен ЕИК системата автоматично извлича фирмените данни.</p>
+<p><strong>Търсене:</strong> Полетата за търсене са в горната част на списъка.</p>
+</div>
+
+<h3>🏗️ Обекти</h3>
+<div class="card">
+<p><strong>GPS координати:</strong> Можете да въведете ръчно или да качите снимка — системата извлича GPS от EXIF данните.</p>
+<p><strong>Снимки:</strong> Поддържат се множество снимки с автоматично извличане на локация и показване на мини-карта.</p>
+<p><strong>Статус:</strong> Активен / Завършен / Отказан</p>
+</div>
+
+<h3>🗺️ Карта</h3>
+<div class="card">
+<p>Всички обекти се показват на интерактивна карта с цветни маркери:</p>
+<table>
+<tr><td>🟠 Оранжев</td><td>Активен обект</td></tr>
+<tr><td>🔵 Син</td><td>Има оферта</td></tr>
+<tr><td>🟣 Лилав</td><td>Планиран</td></tr>
+<tr><td>🟢 Зелен</td><td>Завършен</td></tr>
+</table>
+<p>Кликнете върху маркер за детайли: прогрес бар, брой оферти/актове, общо m³.</p>
+</div>
+
+<h3>📄 Оферти</h3>
+<div class="card">
+<p><strong>Бързо попълване:</strong> Бутон "➕ От каталог" добавя автоматично редове от структурирания каталог.</p>
+<p><strong>PDF:</strong> Генерира се по Образец 19 (класически български формат) с лого, данни и подписи.</p>
+<p><strong>Статус:</strong> Чернова / Изпратена / Приета / Отказана</p>
+</div>
+
+<h3>🔨 Актуване</h3>
+<div class="card">
+<p><strong>Множество редове:</strong> Всеки акт може да съдържа множество типове бетон с различни количества.</p>
+<p><strong>Връзка с оферта:</strong> Изберете оферта при създаване — системата ще покаже сравнение.</p>
+<p><strong>PDF:</strong> Протокол по Образец 19 с таблица за работници и часове.</p>
+</div>
+
+<h3>🧾 Фактури</h3>
+<div class="card">
+<p><strong>Типове:</strong> Фактура, Проформа, Кредитно известие, Дебитно известие</p>
+<p><strong>Посока:</strong> Изходяща / Входяща</p>
+<p><strong>Плащане:</strong> Банков превод / В брой / Карта</p>
+<p><strong>Статус:</strong> Неплатена / Частично платена / Платена</p>
+<p><strong>Авто-номерация:</strong> Системата предлага следващ свободен номер.</p>
+<p><strong>Имейл:</strong> При конфигуриран SMTP, фактурата се изпраща автоматично на клиента.</p>
+</div>
+
+<h3>🤖 AI Агент</h3>
+<div class="card">
+<p>Чат бутонът 💬 (долу вдясно) отваря AI асистента. Можете да:</p>
+<ul style="margin-left:20px; color:var(--muted); font-size:14px">
+<li>Питате за каталога — "Покажи каталога"</li>
+<li>Търсите клиенти — "Търси клиент Иван"</li>
+<li>Проверявате статистики — "Каква е статистиката?"</li>
+<li>Създавате чрез глас — "Направи оферта за..."</li>
+</ul>
+<div class="tip"><strong>💡 Съвет:</strong> AI агентът разполага с 16 инструмента и може директно да създава, търси и генерира PDF-и.</div>
+</div>
+
+<!-- Settings -->
+<h2>⚙️ Настройки</h2>
+<div class="card">
+<h3>Фирмени данни</h3>
+<p>Име, ЕИК, ДДС номер, адрес, МОЛ, телефон, email — използват се във всички PDF документи.</p>
+
+<h3>Лого и цветове</h3>
+<p>Качете лого (.png/.jpg) и изберете акцентен цвят — прилага се в PDF-ите и интерфейса.</p>
+
+<h3>SMTP / Имейл</h3>
+<p>Конфигурирайте изходящ мейл сървър за изпращане на фактури и оферти.</p>
+
+<h3>AI Агент</h3>
+<p>Включете/изключете AI агента, въведете DeepSeek API ключ и изберете модел.</p>
+
+<h3>IMAP</h3>
+<p>Настройте входяща поща за автоматично разпознаване на фактури от имейли.</p>
+</div>
+
+<!-- Users & Roles -->
+<h2>👤 Потребители и роли</h2>
+<div class="card">
+<table>
+<tr><th>Роля</th><th>Права</th></tr>
+<tr><td><strong>Админ</strong></td><td>Пълен достъп — всички модули, потребители, настройки, backup, експорт</td></tr>
+<tr><td><strong>Мениджър</strong></td><td>Всички оперативни модули, без админ функции</td></tr>
+<tr><td><strong>Бригадир</strong></td><td>Актуване, обекти, снимки</td></tr>
+<tr><td><strong>Служител</strong></td><td>Базов достъп — преглед и въвеждане</td></tr>
+</table>
+<p>Управлението на потребители е достъпно само за админи през <strong>👤 Потребители</strong> в страничното меню.</p>
+</div>
+
+<!-- Backup & Export -->
+<h2>💾 Backup и Експорт</h2>
+<div class="card">
+<p><strong>Backup:</strong> Админите могат да създават backup на цялата база данни през API (<code>/api/backup</code>). Системата пази последните 7 копия.</p>
+<p><strong>CSV Експорт:</strong> Всяка таблица може да се изнесе като CSV файл с BOM за коректна кирилица в Excel: <code>/api/export?table=clients&format=csv</code></p>
+</div>
+
+<!-- Mobile -->
+<h2>📱 Мобилно ползване</h2>
+<div class="card">
+<p>Системата е напълно responsive и работи на телефон и таблет:</p>
+<ul style="margin-left:20px; color:var(--muted); font-size:14px">
+<li>Менюто се адаптира (hamburger на малък екран)</li>
+<li>Таблиците стават карти на мобилно</li>
+<li>Бутоните са full-width за лесно натискане</li>
+<li>PWA — може да се инсталира като приложение на телефона</li>
+</ul>
+</div>
+
+<!-- Tips -->
+<h2>💡 Практически съвети</h2>
+<div class="card">
+<ol class="steps">
+<li><strong>Първо клиенти, после обекти.</strong> Не можете да създадете обект без клиент.</li>
+<li><strong>Ползвайте каталога.</strong> Въведете веднъж услугите и бетоновете с цени — после ги избирайте от dropdown.</li>
+<li><strong>Качвайте снимки с GPS.</strong> Така обектите автоматично ще се позиционират на картата.</li>
+<li><strong>Следете статусите.</strong> Оферти и фактури имат статуси — актуализирайте ги редовно.</li>
+<li><strong>AI агентът помни контекста.</strong> Можете да водите продължителен разговор с него.</li>
+<li><strong>Проверявайте сравнението.</strong> В детайлите на акт винаги виждате разликата спрямо офертата.</li>
+</ol>
+</div>
+
+</div>
+</body>
+</html>

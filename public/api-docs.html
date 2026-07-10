@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beton ERP — API Документация</title>
+<style>
+:root { --orange: #f97316; --bg: #fafafa; --card: #fff; --text: #1a1a1a; --muted: #666; --border: #e5e5e5; --code: #f4f4f4; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+.container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+h1 { font-size: 2rem; margin-bottom: 8px; }
+h1 span { color: var(--orange); }
+.subtitle { color: var(--muted); margin-bottom: 32px; }
+h2 { font-size: 1.3rem; margin: 32px 0 12px; padding-bottom: 8px; border-bottom: 2px solid var(--orange); }
+h3 { font-size: 1rem; margin: 20px 0 8px; color: var(--orange); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+.method { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-right: 8px; }
+.get { background: #e8f5e9; color: #2e7d32; }
+.post { background: #e3f2fd; color: #1565c0; }
+.put { background: #fff3e0; color: #e65100; }
+.delete { background: #fce4ec; color: #c62828; }
+.endpoint { font-family: monospace; font-size: 14px; margin: 8px 0; }
+.endpoint .path { color: var(--text); }
+.desc { color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+.auth-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; margin-left: 8px; }
+.auth-needed { background: #fce4ec; color: #c62828; }
+.auth-public { background: #e8f5e9; color: #2e7d32; }
+pre { background: var(--code); padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+code { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+.endpoint-group { margin-bottom: 24px; }
+.back-link { display: inline-block; margin-bottom: 24px; color: var(--orange); text-decoration: none; }
+.back-link:hover { text-decoration: underline; }
+@media (max-width: 600px) { .container { padding: 20px 12px; } }
+</style>
+</head>
+<body>
+<div class="container">
+<a href="/" class="back-link">← Обратно към Beton ERP</a>
+<h1>📡 <span>API</span> Документация</h1>
+<p class="subtitle">REST API за Beton ERP — пълна справка на всички ендпойнти</p>
+
+<!-- Auth -->
+<h2>🔐 Автентикация</h2>
+<div class="card">
+<p>Всички защитени ендпойнти изискват <strong>едно от следните</strong>:</p>
+<ul style="margin: 8px 0 0 20px; color: var(--muted); font-size:14px">
+<li>Session cookie (от логнат потребител)</li>
+<li><code>Authorization: Bearer &lt;API_KEY&gt;</code> header</li>
+</ul>
+<br>
+<pre><code># Session-based
+curl https://beton.blv.bg/api/clients
+
+# API Key
+curl -H "Authorization: Bearer *** /api/clients</code></pre>
+</div>
+
+<!-- Clients -->
+<h2>🏢 Клиенти</h2>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/clients</span></div>
+<div class="desc">Списък на всички клиенти</div>
+<pre><code>curl https://beton.blv.bg/api/clients</code></pre>
+</div>
+<div class="card">
+<span class="method post">POST</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/clients</span></div>
+<div class="desc">Създаване на нов клиент. EIK се валидира автоматично през CompanyBook.</div>
+<pre><code>curl -X POST https://beton.blv.bg/api/clients \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Иван","companyName":"Фирма ЕООД","eik":"123456789","email":"info@firma.bg"}'</code></pre>
+</div>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/clients/:id</span></div>
+<div class="desc">Детайли за конкретен клиент</div>
+</div>
+
+<!-- Sites -->
+<h2>🏗️ Обекти</h2>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/sites</span></div>
+<div class="desc">Списък на всички обекти</div>
+</div>
+<div class="card">
+<span class="method post">POST</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/sites</span></div>
+<div class="desc">Създаване на нов обект</div>
+<pre><code>curl -X POST https://beton.blv.bg/api/sites \
+  -H "Content-Type: application/json" \
+  -d '{"clientId":1,"name":"ЖК Младост","city":"София","address":"ул. Примерна 1","latitude":42.65,"longitude":23.35}'</code></pre>
+</div>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/sites/map</span></div>
+<div class="desc">Обекти за картата — връща обогатени данни с прогрес, оферти и актове</div>
+</div>
+<div class="card">
+<span class="method post">POST</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/photos</span></div>
+<div class="desc">Качване на снимки (multipart). Извлича GPS от EXIF автоматично.</div>
+</div>
+
+<!-- Offers -->
+<h2>📄 Оферти</h2>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/offers</span></div>
+<div class="desc">Списък на всички оферти</div>
+</div>
+<div class="card">
+<span class="method post">POST</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/offers</span></div>
+<div class="desc">Създаване на нова оферта</div>
+<pre><code>curl -X POST https://beton.blv.bg/api/offers \
+  -H "Content-Type: application/json" \
+  -d '{"clientId":1,"siteId":2,"date":"2026-07-15","notes":"Спешно"}'</code></pre>
+</div>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/offers/:id/pdf</span></div>
+<div class="desc">PDF на оферта (Образец 19)</div>
+</div>
+
+<!-- Pourings -->
+<h2>🔨 Актуване</h2>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/pourings</span></div>
+<div class="desc">Списък на всички актове</div>
+</div>
+<div class="card">
+<span class="method post">POST</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/pourings</span></div>
+<div class="desc">Създаване на нов акт (с множество редове)</div>
+<pre><code>curl -X POST https://beton.blv.bg/api/pourings \
+  -H "Content-Type: application/json" \
+  -d '{"siteId":1,"offerId":5,"date":"2026-07-15","items":[{"description":"B25","unit":"m³","quantity":50,"price":185,"vatRate":20}]}'</code></pre>
+</div>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/pourings/:id/pdf</span></div>
+<div class="desc">PDF на акт (Образец 19) — Протокол за извършена работа</div>
+</div>
+
+<!-- Invoices -->
+<h2>🧾 Фактури</h2>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/invoices</span></div>
+<div class="desc">Списък на всички фактури. Query: <code>?status=unpaid</code></div>
+</div>
+<div class="card">
+<span class="method post">POST</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/invoices</span></div>
+<div class="desc">Създаване на нова фактура. Автоматично изпраща имейл при конфигуриран SMTP.</div>
+<pre><code>curl -X POST https://beton.blv.bg/api/invoices \
+  -H "Content-Type: application/json" \
+  -d '{"clientId":1,"number":"1","date":"2026-07-15","dueDate":"2026-07-30","taxEventDate":"2026-07-15","type":"invoice","currency":"EUR","items":[{"description":"Бетон B25","quantity":100,"price":185,"vatRate":20}]}'</code></pre>
+</div>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/invoices/next-number</span></div>
+<div class="desc">Следващ свободен номер на фактура</div>
+</div>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/invoices/:id/pdf</span></div>
+<div class="desc">PDF на фактура (Образец 19, ОРИГИНАЛ)</div>
+</div>
+
+<!-- Catalog -->
+<h2>📦 Каталог</h2>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/catalog</span></div>
+<div class="desc">Структуриран каталог — бетони, услуги, машини, материали</div>
+<pre><code>curl https://beton.blv.bg/api/catalog
+# {"concreteTypes":[...], "services":[...], "machines":[...], "materials":[...]}</code></pre>
+</div>
+
+<!-- Machines, Workers, Materials, Services, ConcreteTypes -->
+<h2>🚛 Машини, 👷 Работници, 📦 Склад, 🛠️ Услуги, 🧱 Бетон</h2>
+<div class="card">
+<p>Всички тези модули следват еднакъв CRUD pattern:</p>
+<br>
+<span class="method get">GET</span> <code>/api/machines</code> — списък<br>
+<span class="method post">POST</span> <code>/api/machines</code> — създаване<br>
+<span class="method get">GET</span> <code>/api/machines/:id</code> — детайли<br>
+<span class="method put">PUT</span> <code>/api/machines/:id</code> — редакция<br>
+<span class="method delete">DELETE</span> <code>/api/machines/:id</code> — изтриване<br>
+<br>
+<div class="desc">Същото за: <code>/api/workers</code>, <code>/api/materials</code>, <code>/api/services</code>, <code>/api/concrete-types</code></div>
+</div>
+
+<!-- AI Agent -->
+<h2>🤖 AI Агент</h2>
+<div class="card">
+<span class="method post">POST</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/agent/chat</span></div>
+<div class="desc">Чат с DeepSeek AI агента. Поддържа 16 инструмента (търсене, създаване, PDF генериране).</div>
+<pre><code>curl -X POST https://beton.blv.bg/api/agent/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Покажи каталога","sessionId":"abc123"}'</code></pre>
+</div>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/tools</span></div>
+<div class="desc">Дефиниции на всички AI инструменти (OpenAI Function Calling формат)</div>
+</div>
+<div class="card">
+<span class="method post">POST</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/tools/call</span></div>
+<div class="desc">Директно извикване на инструмент от външен AI (Claude, GPT)</div>
+</div>
+
+<!-- Admin -->
+<h2>⚙️ Административни (само admin)</h2>
+<div class="card">
+<span class="method get">GET</span> / <span class="method post">POST</span> <span class="auth-badge auth-needed">admin</span>
+<div class="endpoint"><span class="path">/api/users</span></div>
+<div class="desc">Списък и създаване на потребители</div>
+</div>
+<div class="card">
+<span class="method put">PUT</span> / <span class="method delete">DELETE</span> <span class="auth-badge auth-needed">admin</span>
+<div class="endpoint"><span class="path">/api/users/:id</span></div>
+<div class="desc">Редакция и изтриване на потребител</div>
+</div>
+<div class="card">
+<span class="method post">POST</span><span class="auth-badge auth-needed">admin</span>
+<div class="endpoint"><span class="path">/api/backup</span></div>
+<div class="desc">Създаване на backup на SQLite базата (пази 7 копия)</div>
+</div>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">admin</span>
+<div class="endpoint"><span class="path">/api/export?table=clients&format=csv</span></div>
+<div class="desc">CSV експорт на таблица (BOM за Excel кирилица). Таблици: clients, sites, offers, pourings, invoices, machines, workers, materials</div>
+</div>
+
+<!-- Email -->
+<h2>📧 Email</h2>
+<div class="card">
+<span class="method post">POST</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/smtp-test</span></div>
+<div class="desc">Тест на SMTP настройките</div>
+</div>
+<div class="card">
+<span class="method post">POST</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/send-email</span></div>
+<div class="desc">Изпращане на имейл (с опционален PDF attachment)</div>
+</div>
+
+<!-- Other -->
+<h2>🔧 Други</h2>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-public">public</span>
+<div class="endpoint"><span class="path">/api/health</span></div>
+<div class="desc">Health check — винаги достъпен</div>
+</div>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/dashboard/stats</span></div>
+<div class="desc">Статистики за dashboard: брой клиенти, обекти, оферти, месечни приходи</div>
+</div>
+<div class="card">
+<span class="method get">GET</span><span class="auth-badge auth-needed">auth</span>
+<div class="endpoint"><span class="path">/api/companybook?eik=123456789</span></div>
+<div class="desc">Търсене на фирма по ЕИК през CompanyBook API</div>
+</div>
+
+<!-- Rate Limits -->
+<h2>⏱️ Rate Limiting</h2>
+<div class="card">
+<p>100 заявки/минута/IP. При overlimit → <strong>429 Too Many Requests</strong>.</p>
+</div>
+
+</div>
+</body>
+</html>
