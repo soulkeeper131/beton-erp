@@ -363,6 +363,7 @@ export const companySettings = sqliteTable("company_settings", {
   aiEnabled: integer("ai_enabled", { mode: "boolean" }).notNull().default(true),
   aiModel: text("ai_model").notNull().default("deepseek-chat"),
   aiApiKey: text("ai_api_key"),
+  companybookApiKey: text("companybook_api_key"),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 

@@ -310,7 +310,7 @@ async function createBackup() {
     mkdirSync(BACKUP_DIR, { recursive: true });
     const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
     const fname = `beton-${ts}.db`;
-    execSync(`sqlite3 "${path.join(process.cwd(), "data", "beton.db")}" ".backup '${path.join(BACKUP_DIR, fname)}'"`, { timeout: 30000 });
+    execSync(`sqlite3 "${path.join(process.cwd(), "data", "sqlite.db")}" ".backup '${path.join(BACKUP_DIR, fname)}'"`, { timeout: 30000 });
     const files = readdirSync(BACKUP_DIR).filter((f: string) => f.startsWith("beton-") && f.endsWith(".db")).sort().reverse();
     if (files.length > 7) files.slice(7).forEach((f: string) => unlinkSync(path.join(BACKUP_DIR, f)));
     const s = statSync(path.join(BACKUP_DIR, fname));
@@ -332,8 +332,8 @@ async function lookupCompany(params: { eik: string }) {
   const eik = params.eik.trim();
   if (!/^\d{9,13}$/.test(eik)) return { error: "Невалиден ЕИК — трябва да е 9 или 13 цифри" };
 
-  const apiKey = process.env.COMPANYBOOK_API_KEY;
-  if (!apiKey) return { error: "CompanyBook API ключът не е конфигуриран. Моля, задайте COMPANYBOOK_API_KEY в средата или ме помолете да проверя настройките." };
+  const apiKey = process.env.COMPANYBOOK_API_KEY || db.select({ key: companySettings.companybookApiKey }).from(companySettings).get()?.key || "";
+  if (!apiKey) return { error: "CompanyBook API ключът не е конфигуриран. Задайте го в Настройки → Интеграции." };
 
   try {
     const res = await fetch(`https://api.companybook.bg/api/companies/${eik}?with_data=true`, {

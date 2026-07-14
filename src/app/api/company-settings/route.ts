@@ -31,6 +31,8 @@ const settingsSchema = z.object({
   imapPass: z.string().optional().default(""),
   imapTls: z.boolean().optional().default(true),
   incomingEmailFolder: z.string().optional().default("INBOX"),
+  aiApiKey: z.string().optional().default(""),
+  companybookApiKey: z.string().optional().default(""),
 });
 
 export async function GET() {

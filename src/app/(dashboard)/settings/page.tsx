@@ -40,6 +40,7 @@ export default function SettingsPage() {
         imapTls: !!d.imapTls, incomingEmailFolder: d.incomingEmailFolder || "INBOX",
         aiEnabled: d.aiEnabled !== false, aiModel: d.aiModel || "deepseek-chat",
         aiApiKey: d.aiApiKey ? "••••••••" : "",
+        companybookApiKey: d.companybookApiKey ? "••••••••" : "",
       });
     });
   }, []);
@@ -50,6 +51,7 @@ export default function SettingsPage() {
     const payload = { ...form };
     // Don't send masked key
     if (payload.aiApiKey === "••••••••") delete (payload as any).aiApiKey;
+    if (payload.companybookApiKey === "••••••••") delete (payload as any).companybookApiKey;
     const res = await fetch("/api/company-settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -175,6 +177,22 @@ export default function SettingsPage() {
                     : "Въведете DeepSeek API ключ от platform.deepseek.com"}
                 </p>
               </div>
+              <div>
+                <Label>CompanyBook API Ключ</Label>
+                <Input
+                  type="password"
+                  value={form.companybookApiKey}
+                  onChange={e => u("companybookApiKey", e.target.value)}
+                  placeholder={form.companybookApiKey === "••••••••" ? "Вече е зададен" : "cb-..."}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {form.companybookApiKey === "••••••••"
+                    ? "✅ Ключът е конфигуриран."
+                    : "За автоматична проверка на фирми по ЕИК. От companybook.bg"}
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Модел</Label>
                 <select

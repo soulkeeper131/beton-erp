@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
+import { db } from "@/db";
+import { companySettings } from "@/db/schema";
 
 const BASE = "https://api.companybook.bg/api";
 
 export async function GET(req: Request) {
-  const apiKey = process.env.COMPANYBOOK_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "API ключът не е конфигуриран" }, { status: 500 });
+  let apiKey = process.env.COMPANYBOOK_API_KEY;
+  if (!apiKey) {
+    const settings = db.select({ key: companySettings.companybookApiKey }).from(companySettings).get();
+    apiKey = settings?.key || "";
+  }
+  if (!apiKey) return NextResponse.json({ error: "COMPANYBOOK_API_KEY не е конфигуриран — задайте го в Настройки" }, { status: 500 });
 
   const { searchParams } = new URL(req.url);
   const eik = searchParams.get("eik")?.trim();

@@ -7,7 +7,7 @@ import { requireAdmin } from "@/lib/auth-helpers";
 export const dynamic = "force-dynamic";
 
 const BACKUP_DIR = path.join(process.cwd(), "data", "backups");
-const DB_PATH = path.join(process.cwd(), "data", "beton.db");
+const DB_PATH = path.join(process.cwd(), "data", "sqlite.db");
 const MAX_BACKUPS = 7;
 
 // GET /api/backup — list existing backups
