@@ -21,6 +21,7 @@ export default function SettingsPage() {
     imapHost: "", imapPort: 993, imapUser: "", imapPass: "",
     imapTls: true, incomingEmailFolder: "INBOX",
     aiEnabled: true, aiModel: "deepseek-chat", aiApiKey: "",
+    companybookApiKey: "",
   });
 
   useEffect(() => {
