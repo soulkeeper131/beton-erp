@@ -60,49 +60,94 @@ export default function ChatWidget() {
     if (!msg || loading) return;
 
     setInput("");
-    setMessages(prev => [...prev, { role: "user", content: msg }]);
+    const userMsg: Message = { role: "user", content: msg };
+    setMessages(prev => [...prev, userMsg]);
     setLoading(true);
 
     try {
+      const fetchBody: any = { message: msg, sessionId };
+      // If there's a pending confirmation, send it
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg?.pendingAction && msg.toLowerCase().includes("потвърждавам")) {
+        fetchBody.confirm = true;
+        fetchBody.pendingAction = lastMsg.pendingAction;
+      }
+
       const res = await fetch("/api/agent/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg, sessionId }),
+        body: JSON.stringify(fetchBody),
       });
 
       if (!res.ok) {
         const err = await res.json();
-        setMessages(prev => [...prev, {
-          role: "assistant",
-          content: `❌ ${err.error || "Грешка"}`
-        }]);
+        setMessages(prev => [...prev, { role: "assistant", content: `❌ ${err.error || "Грешка"}` }]);
         setLoading(false);
         return;
       }
 
-      const data = await res.json();
-      setSessionId(data.sessionId);
+      const contentType = res.headers.get("content-type") || "";
 
-      if (data.needsConfirmation) {
-        setMessages(prev => [...prev, {
-          role: "assistant",
-          content: data.response,
-          needsConfirmation: true,
-          pendingAction: data.pendingAction,
-        }]);
+      if (contentType.includes("text/event-stream")) {
+        // Streaming response
+        const reader = res.body?.getReader();
+        if (!reader) { setLoading(false); return; }
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let streamedContent = "";
+        const assistantMsg: Message = { role: "assistant", content: "" };
+        setMessages(prev => [...prev, assistantMsg]);
+        setLoading(false); // Stop loading animation, text will stream
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith("data: ")) continue;
+            try {
+              const data = JSON.parse(trimmed.slice(6));
+              if (data.delta) {
+                streamedContent += data.delta;
+                setMessages(prev => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  if (last?.role === "assistant") {
+                    updated[updated.length - 1] = { ...last, content: streamedContent };
+                  }
+                  return updated;
+                });
+              }
+              if (data.done) {
+                setSessionId(data.sessionId);
+              }
+            } catch {}
+          }
+        }
       } else {
-        setMessages(prev => [...prev, {
-          role: "assistant",
-          content: data.response,
-        }]);
+        // JSON response (confirmation or error)
+        const data = await res.json();
+        setSessionId(data.sessionId);
+
+        if (data.needsConfirmation) {
+          setMessages(prev => [...prev, {
+            role: "assistant", content: data.response,
+            needsConfirmation: true, pendingAction: data.pendingAction,
+          }]);
+        } else {
+          setMessages(prev => [...prev, { role: "assistant", content: data.response }]);
+        }
+        setLoading(false);
       }
     } catch (e: any) {
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: `❌ Грешка при свързване: ${e.message}`
-      }]);
+      setMessages(prev => [...prev, { role: "assistant", content: `❌ Грешка при свързване: ${e.message}` }]);
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
