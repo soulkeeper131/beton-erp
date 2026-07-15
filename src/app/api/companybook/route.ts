@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { companySettings } from "@/db/schema";
 
+export const dynamic = "force-dynamic";
+
 const BASE = "https://api.companybook.bg/api";
 
 export async function GET(req: Request) {
