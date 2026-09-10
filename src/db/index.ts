@@ -349,8 +349,8 @@ const invoiceCols = [
   'ALTER TABLE invoices ADD COLUMN payment_status TEXT NOT NULL DEFAULT "unpaid"',
   'ALTER TABLE invoices ADD COLUMN related_invoice_id INTEGER REFERENCES invoices(id)',
   'ALTER TABLE invoices ADD COLUMN tax_exemption_reason TEXT',
-  'ALTER TABLE invoices ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime("now"))',
-  'ALTER TABLE invoices ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime("now"))',
+  'ALTER TABLE invoices ADD COLUMN created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP',
+  'ALTER TABLE invoices ADD COLUMN updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP',
   'ALTER TABLE invoice_items ADD COLUMN vat_rate REAL NOT NULL DEFAULT 20',
 ];
 for (const sql of invoiceCols) {
@@ -464,3 +464,14 @@ for (const sql of imapCols) {
 
 // Migration: accent color
 try { sqlite.exec('ALTER TABLE company_settings ADD COLUMN accent_color TEXT NOT NULL DEFAULT "#f97316"'); } catch(e: any) { if (!e.message.includes('duplicate')) {} }
+
+// Migration: AI settings (chat agent) + CompanyBook key
+const aiCols = [
+  'ALTER TABLE company_settings ADD COLUMN ai_enabled INTEGER NOT NULL DEFAULT 1',
+  'ALTER TABLE company_settings ADD COLUMN ai_model TEXT NOT NULL DEFAULT "deepseek-chat"',
+  'ALTER TABLE company_settings ADD COLUMN ai_api_key TEXT',
+  'ALTER TABLE company_settings ADD COLUMN companybook_api_key TEXT',
+];
+for (const sql of aiCols) {
+  try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) console.error('AI settings migration failed:', sql.substring(0, 70), e.message); }
+}
