@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { pourings, pouringItems, sites, offers, concreteTypes, machines } from "@/db/schema";
+import {
+  pourings, pouringItems, sites, offers, concreteTypes, machines,
+  actWorkers, actMaterials, workers, materials,
+} from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +55,34 @@ export async function GET(
     .orderBy(asc(pouringItems.sortOrder))
     .all();
 
+  const pouringWorkers = db.select({
+    id: actWorkers.id,
+    workerId: actWorkers.workerId,
+    hours: actWorkers.hours,
+    rate: actWorkers.rate,
+    total: actWorkers.total,
+    workerName: workers.name,
+  })
+    .from(actWorkers)
+    .leftJoin(workers, eq(actWorkers.workerId, workers.id))
+    .where(eq(actWorkers.pouringId, id))
+    .all();
+
+  const pouringMaterials = db.select({
+    id: actMaterials.id,
+    materialId: actMaterials.materialId,
+    quantity: actMaterials.quantity,
+    materialName: materials.name,
+    unit: materials.unit,
+  })
+    .from(actMaterials)
+    .leftJoin(materials, eq(actMaterials.materialId, materials.id))
+    .where(eq(actMaterials.pouringId, id))
+    .all();
+
   pouring.items = items;
+  pouring.workers = pouringWorkers;
+  pouring.materials = pouringMaterials;
   pouring.quantityM3 = items.reduce((s: number, i: any) => s + (i.quantityM3 || 0), 0);
   pouring.total = items.reduce((s: number, i: any) => s + (i.total || 0), 0);
 
@@ -99,6 +129,32 @@ export async function PATCH(
       : null;
   }
 
+  if (body.workers && Array.isArray(body.workers)) {
+    await db.delete(actWorkers).where(eq(actWorkers.pouringId, id));
+    for (const w of body.workers) {
+      const hours = parseFloat(w.hours) || 0;
+      const rate = parseFloat(w.rate) || 0;
+      await db.insert(actWorkers).values({
+        pouringId: id,
+        workerId: parseInt(w.workerId),
+        hours,
+        rate,
+        total: hours * rate,
+      });
+    }
+  }
+
+  if (body.materials && Array.isArray(body.materials)) {
+    await db.delete(actMaterials).where(eq(actMaterials.pouringId, id));
+    for (const m of body.materials) {
+      await db.insert(actMaterials).values({
+        pouringId: id,
+        materialId: parseInt(m.materialId),
+        quantity: parseFloat(m.quantity) || 0,
+      });
+    }
+  }
+
   if (Object.keys(update).length > 0) {
     const result = await db.update(pourings).set(update).where(eq(pourings.id, id)).returning();
     if (!result.length) return NextResponse.json({ error: "Не е намерено" }, { status: 404 });
@@ -115,6 +171,8 @@ export async function DELETE(
   if (isNaN(id)) return NextResponse.json({ error: "Невалиден ID" }, { status: 400 });
 
   await db.delete(pouringItems).where(eq(pouringItems.pouringId, id));
+  await db.delete(actWorkers).where(eq(actWorkers.pouringId, id));
+  await db.delete(actMaterials).where(eq(actMaterials.pouringId, id));
   await db.delete(pourings).where(eq(pourings.id, id));
   return NextResponse.json({ message: "Изтрито" });
 }

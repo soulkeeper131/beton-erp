@@ -3,7 +3,7 @@ import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import {
   pourings, pouringItems, sites, clients, concreteTypes, machines,
-  actWorkers, workers, companySettings,
+  actWorkers, actMaterials, workers, materials, companySettings,
 } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { renderToStream } from "@react-pdf/renderer";
@@ -67,10 +67,21 @@ export async function GET(
     .where(eq(actWorkers.pouringId, pouringId))
     .all();
 
+  const pouringMaterials = db
+    .select({
+      materialName: materials.name,
+      unit: materials.unit,
+      quantity: actMaterials.quantity,
+    })
+    .from(actMaterials)
+    .leftJoin(materials, eq(actMaterials.materialId, materials.id))
+    .where(eq(actMaterials.pouringId, pouringId))
+    .all();
+
   const company = db.select().from(companySettings).get() || {};
 
   const stream = await renderToStream(
-    ActPDF({ pouring: { ...pouring, items, totalQty, totalPrice, workers: pouringWorkers }, company })
+    ActPDF({ pouring: { ...pouring, items, totalQty, totalPrice, workers: pouringWorkers, materials: pouringMaterials }, company })
   );
 
   return new Response(stream as any, {

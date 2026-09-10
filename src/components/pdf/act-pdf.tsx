@@ -163,6 +163,22 @@ export function ActPDF({ pouring, company }: Props) {
           </>
         ) : null}
 
+        {/* Materials */}
+        {pouring.materials && pouring.materials.length > 0 ? (
+          <View style={styles.table}>
+            <View style={styles.thead}>
+              <Text style={[styles.th, { flex: 1 }]}>Материал</Text>
+              <Text style={[styles.th, { width: 80, textAlign: "center" }]}>Количество</Text>
+            </View>
+            {pouring.materials.map((m: any, i: number) => (
+              <View style={styles.trow} key={i} wrap={false}>
+                <Text style={[styles.td, { flex: 1 }]}>{m.materialName || "-"}</Text>
+                <Text style={[styles.td, { width: 80, textAlign: "center" }]}>{m.quantity} {m.unit || ""}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         {/* Notes */}
         {pouring.notes ? (
           <View style={styles.notesBox}>

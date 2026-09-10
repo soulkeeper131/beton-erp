@@ -21,6 +21,7 @@ const navItems = [
   { href: "/pourings", label: "Актуване", icon: "🪣" },
   { href: "/machines", label: "Машини", icon: "🚛" },
   { href: "/workers", label: "Работници", icon: "👷" },
+  { href: "/attendance", label: "Явки", icon: "🕒" },
   { href: "/materials", label: "Склад", icon: "📦" },
   { href: "/invoices", label: "Фактури", icon: "🧾" },
   { href: "/services", label: "Услуги", icon: "🔧" },
@@ -28,6 +29,9 @@ const navItems = [
   { href: "/audit-log", label: "Одит лог", icon: "📋" },
   { href: "/users", label: "Потребители", icon: "👤", adminOnly: true },
 ];
+
+// Бригадир вижда само обекти, карта, календар и актове (снимки)
+const brigadirAllowed = ["/", "/sites", "/map", "/calendar", "/pourings"];
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
@@ -44,7 +48,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
     pathname === href || (href !== "/" && pathname.startsWith(href));
 
   const isAdmin = (user as any)?.role === "admin";
-  const visibleNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
+  const role = (user as any)?.role;
+  const visibleNavItems = navItems.filter(item => {
+    if (item.adminOnly && !isAdmin) return false;
+    if (role === "brigadir" && !brigadirAllowed.includes(item.href)) return false;
+    return true;
+  });
 
   return (
     <div className="min-h-screen flex bg-background">

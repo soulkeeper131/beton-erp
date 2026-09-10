@@ -36,6 +36,7 @@ export default function MaterialsPage() {
         ]}
         data={data}
         loading={loading}
+        onEdit={(id) => router.push(`/materials/${id}`)}
         onDelete={handleDelete}
         isAdmin={isAdmin}
         emptyText="Няма материали"

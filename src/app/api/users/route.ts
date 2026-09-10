@@ -39,6 +39,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Email, парола и име са задължителни" }, { status: 400 });
   }
 
+  const allowedRoles = ["admin", "manager", "brigadir", "employee"];
+  const finalRole = role || "employee";
+  if (!allowedRoles.includes(finalRole)) {
+    return NextResponse.json({ error: "Невалидна роля" }, { status: 400 });
+  }
+
   // Check existing
   const existing = db.select({ id: users.id }).from(users).where(eq(users.email, email)).get();
   if (existing) {
@@ -50,9 +56,9 @@ export async function POST(req: Request) {
     email,
     passwordHash,
     name,
-    role: role || "employee",
+    role: finalRole,
     phone: phone || null,
   }).returning({ id: users.id }).get();
 
-  return NextResponse.json({ id: result.id, email, name, role: role || "employee", phone }, { status: 201 });
+  return NextResponse.json({ id: result.id, email, name, role: finalRole, phone }, { status: 201 });
 }

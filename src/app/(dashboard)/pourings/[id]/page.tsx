@@ -24,10 +24,14 @@ export default function PouredDetailPage() {
   const [sites, setSites] = useState<any[]>([]);
   const [concreteTypes, setConcreteTypes] = useState<any[]>([]);
   const [machines, setMachines] = useState<any[]>([]);
+  const [workers, setWorkers] = useState<any[]>([]);
+  const [materialsList, setMaterialsList] = useState<any[]>([]);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({});
   const [editItems, setEditItems] = useState<any[]>([]);
+  const [editWorkers, setEditWorkers] = useState<any[]>([]);
+  const [editMaterials, setEditMaterials] = useState<any[]>([]);
   const [offerData, setOfferData] = useState<any>(null);
 
   useEffect(() => {
@@ -48,6 +52,15 @@ export default function PouredDetailPage() {
       if (!data.items || data.items.length === 0) {
         setEditItems([{ concreteTypeId: "", quantityM3: "", pricePerM3: "" }]);
       }
+      setEditWorkers((data.workers || []).map((w: any) => ({
+        workerId: w.workerId ? String(w.workerId) : "",
+        hours: String(w.hours || ""),
+        rate: String(w.rate || ""),
+      })));
+      setEditMaterials((data.materials || []).map((m: any) => ({
+        materialId: m.materialId ? String(m.materialId) : "",
+        quantity: String(m.quantity || ""),
+      })));
       // Load linked offer if exists
       if (data.offerId) {
         fetch(`/api/offers/${data.offerId}`).then(r => r.json()).then(setOfferData);
@@ -56,6 +69,8 @@ export default function PouredDetailPage() {
     fetch("/api/sites").then(r => r.json()).then(setSites);
     fetch("/api/concrete-types").then(r => r.json()).then(setConcreteTypes);
     fetch("/api/machines").then(r => r.json()).then(setMachines);
+    fetch("/api/workers").then(r => r.json()).then(setWorkers);
+    fetch("/api/materials").then(r => r.json()).then(setMaterialsList);
   }, [params.id]);
 
   const addEditItem = () => setEditItems([...editItems, { concreteTypeId: "", quantityM3: "", pricePerM3: "" }]);
@@ -68,6 +83,26 @@ export default function PouredDetailPage() {
       if (ct) copy[idx].pricePerM3 = String(ct.pricePerM3);
     }
     setEditItems(copy);
+  };
+
+  const addEditWorker = () => setEditWorkers([...editWorkers, { workerId: "", hours: "", rate: "" }]);
+  const removeEditWorker = (idx: number) => setEditWorkers(editWorkers.filter((_, i) => i !== idx));
+  const updateEditWorker = (idx: number, field: string, value: string) => {
+    const copy = [...editWorkers];
+    copy[idx][field] = value;
+    if (field === "workerId" && value) {
+      const w = workers.find(x => String(x.id) === value);
+      if (w && (!copy[idx].rate || copy[idx].rate === "0")) copy[idx].rate = String(w.dailyRate || "");
+    }
+    setEditWorkers(copy);
+  };
+
+  const addEditMaterial = () => setEditMaterials([...editMaterials, { materialId: "", quantity: "" }]);
+  const removeEditMaterial = (idx: number) => setEditMaterials(editMaterials.filter((_, i) => i !== idx));
+  const updateEditMaterial = (idx: number, field: string, value: string) => {
+    const copy = [...editMaterials];
+    copy[idx][field] = value;
+    setEditMaterials(copy);
   };
 
   async function handleSave() {
@@ -83,6 +118,15 @@ export default function PouredDetailPage() {
           concreteTypeId: parseInt(i.concreteTypeId),
           quantityM3: parseFloat(i.quantityM3),
           pricePerM3: parseFloat(i.pricePerM3) || 0,
+        })),
+        workers: editWorkers.filter(w => w.workerId).map(w => ({
+          workerId: parseInt(w.workerId),
+          hours: parseFloat(w.hours) || 0,
+          rate: parseFloat(w.rate) || 0,
+        })),
+        materials: editMaterials.filter(m => m.materialId).map(m => ({
+          materialId: parseInt(m.materialId),
+          quantity: parseFloat(m.quantity) || 0,
         })),
       }),
     });
@@ -276,6 +320,155 @@ export default function PouredDetailPage() {
                       <td className="pt-3 text-right text-orange-600">{formatCurrency(totalPrice)}</td>
                     </tr>
                   </tfoot>
+                </table>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Workers */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>👷 Работници</CardTitle>
+          {editing && (
+            <Button type="button" variant="outline" size="sm" onClick={addEditWorker}>
+              <Plus className="h-4 w-4 mr-1" /> Добави
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {editing ? (
+            <div className="space-y-3">
+              {editWorkers.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Няма работници</p>}
+              {editWorkers.map((w, idx) => (
+                <div key={idx} className="border rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium">Работник {idx + 1}</span>
+                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeEditWorker(idx)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Работник *</Label>
+                      <Select value={w.workerId} onValueChange={(v) => updateEditWorker(idx, "workerId", v)}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Избери" /></SelectTrigger>
+                        <SelectContent>
+                          {workers.map((x: any) => (
+                            <SelectItem key={x.id} value={String(x.id)}>{x.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Часа</Label>
+                      <Input type="number" step="0.5" min="0" className="h-8 text-sm" value={w.hours}
+                        onChange={e => updateEditWorker(idx, "hours", e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Ставка (€/ч)</Label>
+                      <Input type="number" step="0.01" min="0" className="h-8 text-sm" value={w.rate}
+                        onChange={e => updateEditWorker(idx, "rate", e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div>
+              {(!poured.workers || poured.workers.length === 0) ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Няма работници</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-muted-foreground">
+                      <th className="pb-2 font-medium">Работник</th>
+                      <th className="pb-2 font-medium text-right">Часа</th>
+                      <th className="pb-2 font-medium text-right">Ставка</th>
+                      <th className="pb-2 font-medium text-right">Общо</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {poured.workers.map((w: any, idx: number) => (
+                      <tr key={idx} className="border-b last:border-0">
+                        <td className="py-2">{w.workerName || `#${w.workerId}`}</td>
+                        <td className="py-2 text-right">{w.hours}</td>
+                        <td className="py-2 text-right">{w.rate} €</td>
+                        <td className="py-2 text-right font-medium">{formatCurrency(w.total || 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Materials */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>📦 Материали</CardTitle>
+          {editing && (
+            <Button type="button" variant="outline" size="sm" onClick={addEditMaterial}>
+              <Plus className="h-4 w-4 mr-1" /> Добави
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {editing ? (
+            <div className="space-y-3">
+              {editMaterials.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Няма материали</p>}
+              {editMaterials.map((m, idx) => (
+                <div key={idx} className="border rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium">Материал {idx + 1}</span>
+                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeEditMaterial(idx)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Материал *</Label>
+                      <Select value={m.materialId} onValueChange={(v) => updateEditMaterial(idx, "materialId", v)}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Избери" /></SelectTrigger>
+                        <SelectContent>
+                          {materialsList.map((x: any) => (
+                            <SelectItem key={x.id} value={String(x.id)}>{x.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Количество</Label>
+                      <Input type="number" step="0.01" min="0" className="h-8 text-sm" value={m.quantity}
+                        onChange={e => updateEditMaterial(idx, "quantity", e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div>
+              {(!poured.materials || poured.materials.length === 0) ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Няма материали</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-muted-foreground">
+                      <th className="pb-2 font-medium">Материал</th>
+                      <th className="pb-2 font-medium text-right">Количество</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {poured.materials.map((m: any, idx: number) => (
+                      <tr key={idx} className="border-b last:border-0">
+                        <td className="py-2">{m.materialName || `#${m.materialId}`}</td>
+                        <td className="py-2 text-right">{m.quantity} {m.unit || ""}</td>
+                      </tr>
+                    ))}
+                  </tbody>
                 </table>
               )}
             </div>
