@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
   pourings, pouringItems, sites, offers, concreteTypes, machines,
-  actWorkers, actMaterials, workers, materials,
+  actWorkers, actMaterials, actPhotos, workers, materials,
 } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 
@@ -173,6 +173,7 @@ export async function DELETE(
   await db.delete(pouringItems).where(eq(pouringItems.pouringId, id));
   await db.delete(actWorkers).where(eq(actWorkers.pouringId, id));
   await db.delete(actMaterials).where(eq(actMaterials.pouringId, id));
+  await db.delete(actPhotos).where(eq(actPhotos.pouringId, id));
   await db.delete(pourings).where(eq(pourings.id, id));
   return NextResponse.json({ message: "Изтрито" });
 }

@@ -40,8 +40,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const id = parseInt(params.id);
-  db.delete(machines).where(eq(machines.id, id)).run();
+  // Първо свързаните ремонти, после машината (иначе FK constraint)
   db.delete(machineMaintenance).where(eq(machineMaintenance.machineId, id)).run();
+  db.delete(machines).where(eq(machines.id, id)).run();
   auditLog({ action: "DELETE", entityType: "machines", entityId: id });
   return NextResponse.json({ success: true });
 }

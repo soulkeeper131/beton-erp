@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { workers } from "@/db/schema";
+import { workers, workerAttendance, actWorkers } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +30,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
   const id = parseInt(params.id);
   if (isNaN(id)) return NextResponse.json({ error: "Невалиден ID" }, { status: 400 });
-  await db.delete(workers).where(eq(workers.id, id));
+  // Каскадно изтриване на свързаните явки и актове
+  db.delete(workerAttendance).where(eq(workerAttendance.workerId, id)).run();
+  db.delete(actWorkers).where(eq(actWorkers.workerId, id)).run();
+  db.delete(workers).where(eq(workers.id, id)).run();
   return NextResponse.json({ message: "Изтрито" });
 }

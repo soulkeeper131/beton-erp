@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
-import { materials } from "@/db/schema";
+import { materials, materialDeliveries, actMaterials } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +28,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
   const id = parseInt(params.id);
   if (isNaN(id)) return NextResponse.json({ error: "Невалиден ID" }, { status: 400 });
-  await db.delete(materials).where(eq(materials.id, id));
+  // Каскадно изтриване на свързаните движения и актове, за да не чупи FK constraint
+  db.delete(materialDeliveries).where(eq(materialDeliveries.materialId, id)).run();
+  db.delete(actMaterials).where(eq(actMaterials.materialId, id)).run();
+  db.delete(materials).where(eq(materials.id, id)).run();
   return NextResponse.json({ message: "Изтрито" });
 }
