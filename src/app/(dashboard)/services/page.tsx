@@ -34,7 +34,7 @@ export default function ServicesPage() {
           { key: "name", label: "Име" },
           { key: "category", label: "Категория", render: (v: string) => catLabels[v] || v },
           { key: "unit", label: "М.Е." },
-          { key: "basePrice", label: "Цена", render: (v: number) => v ? `${v} лв` : "—" },
+          { key: "basePrice", label: "Цена", render: (v: number) => v ? `${v} €` : "—" },
         ]}
         data={data}
         loading={loading}

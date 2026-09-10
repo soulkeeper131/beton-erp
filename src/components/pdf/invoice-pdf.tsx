@@ -111,6 +111,11 @@ export function InvoicePDF({ invoice, items, company }: Props) {
   const subtotal = invoice.subtotal || 0;
   const vat = invoice.vatAmount || 0;
   const total = invoice.total || 0;
+  const discountTotal =
+    (invoice.discountPercent || 0) > 0 || (invoice.discountAmount || 0) > 0
+      ? (subtotal * (invoice.discountPercent || 0)) / 100 + (invoice.discountAmount || 0)
+      : 0;
+  const netBase = subtotal - discountTotal;
 
   return (
     <Document>
@@ -249,15 +254,25 @@ export function InvoicePDF({ invoice, items, company }: Props) {
         <View style={styles.summaryWrap}>
           <View style={styles.summaryBox}>
             <View style={styles.srow}>
-              <Text style={styles.slab}>Данъчна основа</Text>
+              <Text style={styles.slab}>Сборна стойност (без ДДС)</Text>
               <Text style={styles.sval}>{subtotal.toFixed(2)} €</Text>
+            </View>
+            {discountTotal > 0 ? (
+              <View style={styles.srow}>
+                <Text style={styles.slab}>Отстъпка</Text>
+                <Text style={styles.sval}>-{discountTotal.toFixed(2)} €</Text>
+              </View>
+            ) : null}
+            <View style={styles.srow}>
+              <Text style={styles.slab}>Данъчна основа (без ДДС)</Text>
+              <Text style={styles.sval}>{netBase.toFixed(2)} €</Text>
             </View>
             <View style={styles.srow}>
               <Text style={styles.slab}>ДДС {invoice.vatRate || 20}%</Text>
               <Text style={styles.sval}>{vat.toFixed(2)} €</Text>
             </View>
             <View style={styles.srowTotal}>
-              <Text style={styles.slabTotal}>ОБЩО ЗА ПЛАЩАНЕ</Text>
+              <Text style={styles.slabTotal}>ОБЩО ЗА ПЛАЩАНЕ (с ДДС)</Text>
               <Text style={styles.svalTotal}>{total.toFixed(2)} €</Text>
             </View>
           </View>

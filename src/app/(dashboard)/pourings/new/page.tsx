@@ -187,7 +187,7 @@ export default function NewPouringPage() {
                     <SelectContent>
                       {concreteTypes.map((ct: any) => (
                         <SelectItem key={ct.id} value={String(ct.id)}>
-                          {ct.name} — {ct.pricePerM3} лв/m³
+                          {ct.name} — {ct.pricePerM3} €/m³
                         </SelectItem>
                       ))}
                     </SelectContent>

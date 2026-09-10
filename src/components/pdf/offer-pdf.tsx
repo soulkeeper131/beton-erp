@@ -64,15 +64,12 @@ export function OfferPDF({ offer, items, company }: Props) {
     notesText: { fontSize: 7, color: "#333" },
   });
 
-  const subtotal = (items || []).reduce(
+  const netTotal = (items || []).reduce(
     (sum: number, item: any) =>
       sum + (item.quantityM3 || 0) * (item.pricePerM3 || 0) + (item.transportCost || 0) + (item.pumpCost || 0),
     0
   );
 
-  const transportTotal = (items || []).reduce((sum: number, item: any) => sum + (item.transportCost || 0), 0);
-  const pumpTotal = (items || []).reduce((sum: number, item: any) => sum + (item.pumpCost || 0), 0);
-  const netTotal = subtotal - transportTotal - pumpTotal;
   const vat = netTotal * 0.20;
   const grandTotal = netTotal + vat;
 
@@ -146,7 +143,7 @@ export function OfferPDF({ offer, items, company }: Props) {
         {/* ═══ SUMMARY ═══ */}
         <View style={styles.summaryTable}>
           <View style={styles.srow}>
-            <Text style={styles.slab}>ОБЩА СУМА:</Text>
+            <Text style={styles.slab}>ОБЩА СУМА (без ДДС):</Text>
             <Text style={styles.sval}>{netTotal.toFixed(2)} €</Text>
           </View>
           <View style={styles.srow}>
@@ -154,7 +151,7 @@ export function OfferPDF({ offer, items, company }: Props) {
             <Text style={styles.sval}>{vat.toFixed(2)} €</Text>
           </View>
           <View style={styles.srow}>
-            <Text style={[styles.slab, { fontWeight: "bold" }]}>КРАЙНА СУМА:</Text>
+            <Text style={[styles.slab, { fontWeight: "bold" }]}>КРАЙНА СУМА (с ДДС):</Text>
             <Text style={[styles.sval, { fontWeight: "bold" }]}>{grandTotal.toFixed(2)} €</Text>
           </View>
           <View style={styles.srow}>

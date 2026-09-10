@@ -84,48 +84,56 @@ export async function POST(req: Request) {
 
   const items = parsed.data.items;
   const subtotal = items.reduce((s, i) => s + i.quantity * i.price, 0);
-  const vatAmount = items.reduce((s, i) => s + (i.quantity * i.price * i.vatRate) / 100, 0);
-  const afterDiscount = subtotal - (subtotal * parsed.data.discountPercent / 100) - parsed.data.discountAmount;
-  const total = afterDiscount + vatAmount;
+  const discountTotal = (subtotal * parsed.data.discountPercent) / 100 + parsed.data.discountAmount;
+  const netBase = subtotal - discountTotal;
+  // ДДС върху данъчната основа (след отстъпка), с пропорционална ефективна ставка при смесени ставки
+  const vatOnFull = items.reduce((s, i) => s + (i.quantity * i.price * i.vatRate) / 100, 0);
+  const effRate = subtotal > 0 ? vatOnFull / subtotal : 0;
+  const vatAmount = netBase * effRate;
+  const total = netBase + vatAmount;
 
-  const created = db
-    .insert(invoices)
-    .values({
-      clientId: parsed.data.clientId,
-      supplierId: parsed.data.supplierId || null,
-      number: parsed.data.number,
-      date: parsed.data.date,
-      dueDate: parsed.data.dueDate,
-      taxEventDate: parsed.data.taxEventDate,
-      direction: parsed.data.direction,
-      type: parsed.data.type,
-      currency: parsed.data.currency,
-      subtotal: afterDiscount,
-      discountPercent: parsed.data.discountPercent,
-      discountAmount: parsed.data.discountAmount,
-      vatRate: items[0]?.vatRate || 20,
-      vatAmount,
-      total,
-      paymentMethod: parsed.data.paymentMethod,
-      paymentStatus: parsed.data.paymentStatus,
-      relatedInvoiceId: parsed.data.relatedInvoiceId || null,
-      taxExemptionReason: parsed.data.taxExemptionReason || null,
-      notes: parsed.data.notes || null,
-    })
-    .returning()
-    .get();
+  const created = db.transaction((tx) => {
+    const inv = tx
+      .insert(invoices)
+      .values({
+        clientId: parsed.data.clientId,
+        supplierId: parsed.data.supplierId || null,
+        number: parsed.data.number,
+        date: parsed.data.date,
+        dueDate: parsed.data.dueDate,
+        taxEventDate: parsed.data.taxEventDate,
+        direction: parsed.data.direction,
+        type: parsed.data.type,
+        currency: parsed.data.currency,
+        subtotal,
+        discountPercent: parsed.data.discountPercent,
+        discountAmount: parsed.data.discountAmount,
+        vatRate: items[0]?.vatRate || 20,
+        vatAmount,
+        total,
+        paymentMethod: parsed.data.paymentMethod,
+        paymentStatus: parsed.data.paymentStatus,
+        relatedInvoiceId: parsed.data.relatedInvoiceId || null,
+        taxExemptionReason: parsed.data.taxExemptionReason || null,
+        notes: parsed.data.notes || null,
+      })
+      .returning()
+      .get();
 
-  for (const item of items) {
-    db.insert(invoiceItems).values({
-      invoiceId: created.id,
-      description: item.description,
-      unit: item.unit,
-      quantity: item.quantity,
-      price: item.price,
-      vatRate: item.vatRate,
-      total: item.quantity * item.price,
-    }).run();
-  }
+    for (const item of items) {
+      tx.insert(invoiceItems).values({
+        invoiceId: inv.id,
+        description: item.description,
+        unit: item.unit,
+        quantity: item.quantity,
+        price: item.price,
+        vatRate: item.vatRate,
+        total: item.quantity * item.price,
+      }).run();
+    }
+
+    return inv;
+  });
 
   // Send email notification (fire-and-forget — won't block response)
   try {

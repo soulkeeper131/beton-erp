@@ -34,7 +34,7 @@ export default function OffersPage() {
           { key: "number", label: "Номер" },
           { key: "client", label: "Клиент", render: (v: any) => v?.name || "—" },
           { key: "date", label: "Дата" },
-          { key: "total", label: "Сума", render: (v: number) => `${v.toFixed(2)} лв` },
+          { key: "total", label: "Сума", render: (v: number) => `${v.toFixed(2)} €` },
           { key: "status", label: "Статус", render: (v: string) => statusLabels[v] || v },
         ]}
         data={data}

@@ -76,7 +76,7 @@ export default function NewServicePage() {
             </div>
             <div><Label>Мерна единица</Label><Input value={form.unit} onChange={e => setForm({...form, unit: e.target.value})} /></div>
           </div>
-          <div><Label>Базова цена (лв)</Label><Input type="number" value={form.basePrice} onChange={e => setForm({...form, basePrice: e.target.value})} /></div>
+          <div><Label>Базова цена (€)</Label><Input type="number" value={form.basePrice} onChange={e => setForm({...form, basePrice: e.target.value})} /></div>
         </CardContent></Card>
 
         <Card>

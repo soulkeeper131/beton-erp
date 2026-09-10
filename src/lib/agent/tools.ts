@@ -499,7 +499,7 @@ export const agentTools: ToolDefinition[] = [
   {
     name: "create_worker",
     description: "СЪЗДАВА нов работник.",
-    parameters: { type: "object", properties: { name: { type: "string", description: "Име на работника" }, phone: { type: "string" }, dailyRate: { type: "number", description: "Дневна ставка в лв" } }, required: ["name", "dailyRate"] },
+    parameters: { type: "object", properties: { name: { type: "string", description: "Име на работника" }, phone: { type: "string" }, dailyRate: { type: "number", description: "Дневна ставка в €" } }, required: ["name", "dailyRate"] },
     handler: createWorker,
     requiresConfirmation: true,
   },

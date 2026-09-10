@@ -162,7 +162,7 @@ export default function EditServicePage() {
                   </div>
                   <div><Label className="text-xs">М.Е.</Label><Input className="h-8 text-sm" value={item.unit} onChange={e => updateItem(idx, "unit", e.target.value)} /></div>
                   <div><Label className="text-xs">К-во</Label><Input type="number" className="h-8 text-sm" value={item.quantity} onChange={e => updateItem(idx, "quantity", e.target.value)} /></div>
-                  <div><Label className="text-xs">Цена/ед. (лв)</Label><Input type="number" step="0.01" className="h-8 text-sm" value={item.pricePerUnit} onChange={e => updateItem(idx, "pricePerUnit", e.target.value)} /></div>
+                  <div><Label className="text-xs">Цена/ед. (€)</Label><Input type="number" step="0.01" className="h-8 text-sm" value={item.pricePerUnit} onChange={e => updateItem(idx, "pricePerUnit", e.target.value)} /></div>
                 </div>
               </div>
             ))}

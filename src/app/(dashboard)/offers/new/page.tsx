@@ -393,7 +393,7 @@ export default function NewOfferPage() {
                     {catalog.allVariants.map((v: any) => (
                       <SelectItem key={v.id} value={String(v.id)} className="text-xs">
                         <span className="font-medium">{v.label}</span>
-                        <span className="text-muted-foreground ml-2">{v.pricePerUnit} лв/{v.unit}</span>
+                        <span className="text-muted-foreground ml-2">{v.pricePerUnit} €/{v.unit}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -541,7 +541,7 @@ export default function NewOfferPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs">
-                              Цена/m³ (лв) *
+                              Цена/m³ (€) *
                             </FormLabel>
                             <FormControl>
                               <Input
@@ -565,7 +565,7 @@ export default function NewOfferPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs">
-                              Транспорт (лв)
+                              Транспорт (€)
                             </FormLabel>
                             <FormControl>
                               <Input
@@ -589,7 +589,7 @@ export default function NewOfferPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs">
-                              Помпа (лв)
+                              Помпа (€)
                             </FormLabel>
                             <FormControl>
                               <Input

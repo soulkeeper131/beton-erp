@@ -175,7 +175,7 @@ export default function EditMachinePage() {
                 </Select>
               </div>
               <div><Label className="text-xs">Км</Label><Input type="number" className="h-8 text-sm" value={newRepair.mileageAtRepair} onChange={e => setNewRepair({...newRepair, mileageAtRepair: parseInt(e.target.value) || 0})} /></div>
-              <div><Label className="text-xs">Сума (лв)</Label><Input type="number" step="0.01" className="h-8 text-sm" value={newRepair.cost} onChange={e => setNewRepair({...newRepair, cost: parseFloat(e.target.value) || 0})} /></div>
+              <div><Label className="text-xs">Сума (€)</Label><Input type="number" step="0.01" className="h-8 text-sm" value={newRepair.cost} onChange={e => setNewRepair({...newRepair, cost: parseFloat(e.target.value) || 0})} /></div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div><Label className="text-xs">Описание *</Label><Input className="h-8 text-sm" value={newRepair.description} onChange={e => setNewRepair({...newRepair, description: e.target.value})} placeholder="напр. Смяна на масло" /></div>
@@ -204,7 +204,7 @@ export default function EditMachinePage() {
                     </div>
                     <p className="text-sm">{r.description}</p>
                     <div className="flex gap-3 text-xs text-muted-foreground">
-                      {r.cost > 0 && <span>{r.cost.toFixed(2)} лв</span>}
+                      {r.cost > 0 && <span>{r.cost.toFixed(2)} €</span>}
                       {r.provider && <span>│ {r.provider}</span>}
                       {r.notes && <span>│ {r.notes}</span>}
                     </div>

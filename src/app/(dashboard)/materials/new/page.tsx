@@ -29,7 +29,7 @@ export default function NewMaterialPage() {
           <div><Label>Мерна единица *</Label><Input value={form.unit} onChange={e => setForm({...form, unit: e.target.value})} placeholder="кг, тон, м³, бр." /></div>
           <div><Label>Количество</Label><Input type="number" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} /></div>
           <div><Label>Мин. праг</Label><Input type="number" value={form.minThreshold} onChange={e => setForm({...form, minThreshold: e.target.value})} /></div>
-          <div><Label>Цена за единица (лв)</Label><Input type="number" value={form.pricePerUnit} onChange={e => setForm({...form, pricePerUnit: e.target.value})} /></div>
+          <div><Label>Цена за единица (€)</Label><Input type="number" value={form.pricePerUnit} onChange={e => setForm({...form, pricePerUnit: e.target.value})} /></div>
           <div><Label>Бележки</Label><Input value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} /></div>
           <div className="flex gap-3">
             <Button type="submit" disabled={saving}>{saving ? "Записване..." : "💾 Запис"}</Button>

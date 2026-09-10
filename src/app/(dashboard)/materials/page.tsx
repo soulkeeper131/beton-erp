@@ -32,7 +32,7 @@ export default function MaterialsPage() {
           { key: "name", label: "Име" },
           { key: "quantity", label: "Наличност", render: (v: number, row: any) => `${v} ${row.unit || ""}` },
           { key: "minThreshold", label: "Мин. праг", render: (v: number, row: any) => `${v} ${row.unit || ""}` },
-          { key: "pricePerUnit", label: "Цена", render: (v: number | null) => v ? `${v} лв` : "—" },
+          { key: "pricePerUnit", label: "Цена", render: (v: number | null) => v ? `${v} €` : "—" },
         ]}
         data={data}
         loading={loading}

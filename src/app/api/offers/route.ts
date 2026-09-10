@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { offers, offerItems, clients, sites } from "@/db/schema";
-import { eq, desc, and, sql, like } from "drizzle-orm";
+import { eq, desc, like } from "drizzle-orm";
 import { z } from "zod";
 import { notifyOfferCreated } from "@/lib/notifications";
 
@@ -63,19 +63,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  // Auto-generate offer number
+  // Auto-generate offer number (MAX + 1, за да няма колазии след изтриване)
   const currentYear = new Date().getFullYear();
   const prefix = `ОФ-${currentYear}-`;
 
-  // Count existing offers for this year
-  const existing = db
-    .select({ count: sql<number>`count(*)` })
+  const last = db
+    .select({ number: offers.number })
     .from(offers)
     .where(like(offers.number, `${prefix}%`))
+    .orderBy(desc(offers.number))
+    .limit(1)
     .get();
 
-  const count = existing?.count ?? 0;
-  const number = generateNumber("ОФ", count);
+  let seq = 0;
+  if (last?.number) {
+    const m = last.number.match(/(\d+)$/);
+    if (m) seq = parseInt(m[1], 10);
+  }
+  const number = `${prefix}${String(seq + 1).padStart(4, "0")}`;
 
   const [created] = db
     .insert(offers)
@@ -113,9 +118,4 @@ export async function POST(req: Request) {
   } catch {}
 
   return NextResponse.json(created, { status: 201 });
-}
-
-function generateNumber(prefix: string, count: number): string {
-  const year = new Date().getFullYear();
-  return `${prefix}-${year}-${String(count + 1).padStart(4, "0")}`;
 }

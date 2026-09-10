@@ -33,7 +33,7 @@ export default function WorkersPage() {
         columns={[
           { key: "name", label: "Име" },
           { key: "phone", label: "Телефон" },
-          { key: "dailyRate", label: "Дневна ставка", render: (v: number) => `${v} лв` },
+          { key: "dailyRate", label: "Дневна ставка", render: (v: number) => `${v} €` },
           { key: "status", label: "Статус", render: (v: string) => statusLabels[v] || v },
         ]}
         data={data}

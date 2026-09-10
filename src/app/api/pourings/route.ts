@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { db } from "@/db";
 import { pourings, pouringItems, sites, offers, concreteTypes, machines } from "@/db/schema";
 import { eq, desc, asc, inArray } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { searchParams } = new URL(request.url);
   const siteId = searchParams.get("siteId");
   const offerId = searchParams.get("offerId");
@@ -68,6 +72,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await request.json();
   const { siteId, offerId, date, machineId, weather, notes, items } = body;
 
@@ -77,33 +84,35 @@ export async function POST(request: NextRequest) {
 
   const totalQty = items.reduce((s: number, i: any) => s + (parseFloat(i.quantityM3) || 0), 0);
 
-  const result = await db.insert(pourings).values({
-    siteId: parseInt(siteId),
-    offerId: offerId ? parseInt(offerId) : null,
-    date,
-    concreteTypeId: items[0].concreteTypeId ? parseInt(items[0].concreteTypeId) : null,
-    quantityM3: totalQty,
-    machineId: machineId ? parseInt(machineId) : null,
-    weather: weather || null,
-    notes: notes || null,
-    status: "completed",
-  }).returning();
+  const pouring = db.transaction((tx) => {
+    const p = tx.insert(pourings).values({
+      siteId: parseInt(siteId),
+      offerId: offerId ? parseInt(offerId) : null,
+      date,
+      concreteTypeId: items[0].concreteTypeId ? parseInt(items[0].concreteTypeId) : null,
+      quantityM3: totalQty,
+      machineId: machineId ? parseInt(machineId) : null,
+      weather: weather || null,
+      notes: notes || null,
+      status: "completed",
+    }).returning().get();
 
-  const pouring = result[0];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const qty = parseFloat(item.quantityM3) || 0;
+      const price = parseFloat(item.pricePerM3) || 0;
+      tx.insert(pouringItems).values({
+        pouringId: p.id,
+        concreteTypeId: item.concreteTypeId ? parseInt(item.concreteTypeId) : null,
+        quantityM3: qty,
+        pricePerM3: price,
+        total: qty * price,
+        sortOrder: i,
+      });
+    }
 
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    const qty = parseFloat(item.quantityM3) || 0;
-    const price = parseFloat(item.pricePerM3) || 0;
-    await db.insert(pouringItems).values({
-      pouringId: pouring.id,
-      concreteTypeId: item.concreteTypeId ? parseInt(item.concreteTypeId) : null,
-      quantityM3: qty,
-      pricePerM3: price,
-      total: qty * price,
-      sortOrder: i,
-    });
-  }
+    return p;
+  });
 
   return NextResponse.json(pouring, { status: 201 });
 }

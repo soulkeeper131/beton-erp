@@ -30,7 +30,7 @@ export default function ConcreteTypesPage() {
       <DataList
         columns={[
           { key: "name", label: "Име" },
-          { key: "pricePerM3", label: "Цена/m³", render: (v: number) => `${v} лв` },
+          { key: "pricePerM3", label: "Цена/m³", render: (v: number) => `${v} €` },
           { key: "description", label: "Описание" },
         ]}
         data={data}

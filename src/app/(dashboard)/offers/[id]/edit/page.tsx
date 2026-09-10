@@ -297,13 +297,13 @@ export default function EditOfferPage() {
                         <FormItem><FormLabel className="text-xs">Количество *</FormLabel><FormControl><Input type="number" step="0.1" min="0.1" className="h-9" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={form.control} name={`items.${index}.pricePerM3`} render={({ field }) => (
-                        <FormItem><FormLabel className="text-xs">Цена (лв) *</FormLabel><FormControl><Input type="number" step="0.01" min="0" className="h-9" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel className="text-xs">Цена (€) *</FormLabel><FormControl><Input type="number" step="0.01" min="0" className="h-9" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={form.control} name={`items.${index}.transportCost`} render={({ field }) => (
-                        <FormItem><FormLabel className="text-xs">Транспорт (лв)</FormLabel><FormControl><Input type="number" step="0.01" min="0" className="h-9" value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel className="text-xs">Транспорт (€)</FormLabel><FormControl><Input type="number" step="0.01" min="0" className="h-9" value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={form.control} name={`items.${index}.pumpCost`} render={({ field }) => (
-                        <FormItem><FormLabel className="text-xs">Помпа (лв)</FormLabel><FormControl><Input type="number" step="0.01" min="0" className="h-9" value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel className="text-xs">Помпа (€)</FormLabel><FormControl><Input type="number" step="0.01" min="0" className="h-9" value={field.value ?? 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
                       )} />
                     </div>
                     <div className="text-right text-sm font-semibold">Общо за реда: {formatCurrency(itemTotal)}</div>

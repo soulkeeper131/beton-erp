@@ -34,8 +34,8 @@ export default function NewWorkerPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div><Label>Име *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
             <div><Label>Телефон</Label><Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} /></div>
-            <div><Label>Дневна ставка (лв) *</Label><Input type="number" value={form.dailyRate} onChange={e => setForm({...form, dailyRate: e.target.value})} /></div>
-            <div><Label>Извънреден труд (лв/ч)</Label><Input type="number" value={form.overtimeRate} onChange={e => setForm({...form, overtimeRate: e.target.value})} /></div>
+            <div><Label>Дневна ставка (€) *</Label><Input type="number" value={form.dailyRate} onChange={e => setForm({...form, dailyRate: e.target.value})} /></div>
+            <div><Label>Извънреден труд (€/ч)</Label><Input type="number" value={form.overtimeRate} onChange={e => setForm({...form, overtimeRate: e.target.value})} /></div>
             <div><Label>Дата на наемане</Label><Input type="date" value={form.hireDate} onChange={e => setForm({...form, hireDate: e.target.value})} /></div>
             <div><Label>Бележки</Label><Input value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} /></div>
             <div className="flex gap-3">

@@ -117,8 +117,8 @@ export function ActPDF({ pouring, company }: Props) {
                 <Text style={[styles.td, { width: 24, textAlign: "center" }]}>{i + 1}</Text>
                 <Text style={[styles.td, { flex: 1 }]}>{item.concreteTypeName || "-"}</Text>
                 <Text style={[styles.td, { width: 50, textAlign: "center" }]}>{item.quantityM3 || 0}</Text>
-                <Text style={[styles.td, { width: 58, textAlign: "right" }]}>{(item.pricePerM3 || 0).toFixed(2)} лв</Text>
-                <Text style={[styles.td, { width: 70, textAlign: "right" }]}>{(item.total || 0).toFixed(2)} лв</Text>
+                <Text style={[styles.td, { width: 58, textAlign: "right" }]}>{(item.pricePerM3 || 0).toFixed(2)} €</Text>
+                <Text style={[styles.td, { width: 70, textAlign: "right" }]}>{(item.total || 0).toFixed(2)} €</Text>
               </View>
             ))}
           </View>
@@ -132,16 +132,16 @@ export function ActPDF({ pouring, company }: Props) {
         {/* Summary */}
         <View style={styles.summaryTable}>
           <View style={styles.srow}>
-            <Text style={styles.slab}>ОБЩА СУМА:</Text>
-            <Text style={styles.sval}>{totalPrice.toFixed(2)} лв</Text>
+            <Text style={styles.slab}>ОБЩА СУМА (без ДДС):</Text>
+            <Text style={styles.sval}>{totalPrice.toFixed(2)} €</Text>
           </View>
           <View style={styles.srow}>
             <Text style={styles.slab}>ДДС 20%:</Text>
-            <Text style={styles.sval}>{vat.toFixed(2)} лв</Text>
+            <Text style={styles.sval}>{vat.toFixed(2)} €</Text>
           </View>
           <View style={styles.srow}>
-            <Text style={[styles.slab, { fontWeight: "bold" }]}>КРАЙНА СУМА:</Text>
-            <Text style={[styles.sval, { fontWeight: "bold" }]}>{grandTotal.toFixed(2)} лв</Text>
+            <Text style={[styles.slab, { fontWeight: "bold" }]}>КРАЙНА СУМА (с ДДС):</Text>
+            <Text style={[styles.sval, { fontWeight: "bold" }]}>{grandTotal.toFixed(2)} €</Text>
           </View>
         </View>
 

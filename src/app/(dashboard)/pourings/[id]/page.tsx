@@ -222,7 +222,7 @@ export default function PouredDetailPage() {
                         <SelectContent>
                           {concreteTypes.map((ct: any) => (
                             <SelectItem key={ct.id} value={String(ct.id)}>
-                              {ct.name} — {ct.pricePerM3} лв/m³
+                              {ct.name} — {ct.pricePerM3} €/m³
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -261,7 +261,7 @@ export default function PouredDetailPage() {
                       <tr key={idx} className="border-b last:border-0">
                         <td className="py-2">{item.concreteTypeName || `Тип #${item.concreteTypeId}`}</td>
                         <td className="py-2 text-right">{item.quantityM3}</td>
-                        <td className="py-2 text-right">{item.pricePerM3 || item.concreteTypePrice || 0} лв</td>
+                        <td className="py-2 text-right">{item.pricePerM3 || item.concreteTypePrice || 0} €</td>
                         <td className="py-2 text-right font-medium">
                           {formatCurrency(item.total || item.quantityM3 * (item.pricePerM3 || item.concreteTypePrice || 0))}
                         </td>
