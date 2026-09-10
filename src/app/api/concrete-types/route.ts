@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { concreteTypes } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
@@ -12,9 +12,9 @@ const concreteTypeSchema = z.object({
   description: z.string().optional().default(""),
 });
 
-export async function GET() {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function GET(req: Request) {
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const types = await db
     .select()
@@ -26,8 +26,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const parsed = concreteTypeSchema.safeParse(body);

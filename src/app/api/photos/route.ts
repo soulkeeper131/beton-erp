@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { actPhotos } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -34,8 +34,8 @@ function extractGPS(buffer: Buffer): { latitude: number | null; longitude: numbe
 }
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(request);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
   const pouringId = searchParams.get("pouringId");
@@ -51,8 +51,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(request);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
@@ -94,8 +94,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(request);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");

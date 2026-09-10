@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 // GET /api/users/[id] — get single user
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  const session = await requireAdmin();
+  const session = await requireAdmin(_req);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session === "forbidden") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -29,7 +29,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
 // PUT /api/users/[id] — update user
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
-  const session = await requireAdmin();
+  const session = await requireAdmin(req);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session === "forbidden") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -61,7 +61,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 // DELETE /api/users/[id] — delete user
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
-  const session = await requireAdmin();
+  const session = await requireAdmin(_req);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session === "forbidden") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 

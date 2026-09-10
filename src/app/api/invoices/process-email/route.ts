@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { companySettings, invoices, invoiceItems, clients } from "@/db/schema";
 import { fetchUnreadInvoices } from "@/lib/imap";
@@ -8,9 +8,9 @@ import { eq, sql } from "drizzle-orm";
 import { writeFileSync, mkdirSync } from "fs";
 import path from "path";
 
-export async function POST() {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function POST(req: Request) {
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const settings = db.select().from(companySettings).limit(1).get();
   if (!settings?.imapHost) {

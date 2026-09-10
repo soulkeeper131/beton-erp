@@ -11,8 +11,8 @@ const DB_PATH = path.join(process.cwd(), "data", "sqlite.db");
 const MAX_BACKUPS = 7;
 
 // GET /api/backup — list existing backups
-export async function GET() {
-  const session = await requireAdmin();
+export async function GET(req: Request) {
+  const session = await requireAdmin(req);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session === "forbidden") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -38,8 +38,8 @@ export async function GET() {
 }
 
 // POST /api/backup — create a new backup
-export async function POST() {
-  const session = await requireAdmin();
+export async function POST(req: Request) {
+  const session = await requireAdmin(req);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session === "forbidden") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { companySettings } from "@/db/schema";
 import nodemailer from "nodemailer";
@@ -14,8 +14,8 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const parsed = schema.safeParse(body);

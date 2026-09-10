@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { concreteTypes } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -17,8 +17,8 @@ export async function GET(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const ct = await db
     .select()
@@ -34,8 +34,8 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const parsed = updateSchema.safeParse(body);
@@ -65,8 +65,8 @@ export async function DELETE(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // Soft delete: set active = false
   const [updated] = await db

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getAuth } from "@/lib/auth-helpers";
 
 // Free Nominatim API (OpenStreetMap) — 1 req/sec max, cache where possible
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(request);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
   const lat = searchParams.get("lat");

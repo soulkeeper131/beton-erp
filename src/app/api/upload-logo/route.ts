@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { companySettings } from "@/db/schema";
 import { writeFileSync, mkdirSync } from "fs";
 import path from "path";
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user || (session.user as any).role !== "admin") {
+  const { session, isApiKey } = await getAuth(req);
+  if (!isApiKey && (!session?.user || (session.user as any).role !== "admin")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { invoices, invoiceItems, clients } from "@/db/schema";
 import { and, desc, eq } from "drizzle-orm";
-import { auth } from "@/auth";
+import { getAuth } from "@/lib/auth-helpers";
 import { notifyInvoiceCreated } from "@/lib/notifications";
 
 const itemSchema = z.object({
@@ -35,8 +35,8 @@ const invoiceSchema = z.object({
 });
 
 export async function GET(req: Request) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const statusFilter = searchParams.get("status");
@@ -73,8 +73,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const parsed = invoiceSchema.safeParse(body);

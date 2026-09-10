@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getAuth } from "@/lib/auth-helpers";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
@@ -8,8 +8,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { filename: string } }
 ) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(request);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const filename = params.filename;
   // Prevent path traversal

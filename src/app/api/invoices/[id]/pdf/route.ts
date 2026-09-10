@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { invoices, invoiceItems, clients, companySettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -12,8 +12,8 @@ export async function GET(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const invoiceId = parseInt(params.id);
 

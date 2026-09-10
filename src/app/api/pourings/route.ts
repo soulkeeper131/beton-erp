@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { pourings, pouringItems, sites, offers, concreteTypes, machines } from "@/db/schema";
 import { eq, desc, asc, inArray } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(request);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
   const siteId = searchParams.get("siteId");
@@ -72,8 +72,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(request);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
   const { siteId, offerId, date, machineId, weather, notes, items } = body;

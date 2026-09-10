@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { offers, offerItems, clients, sites } from "@/db/schema";
 import { eq, desc, like } from "drizzle-orm";
@@ -15,8 +15,8 @@ const offerSchema = z.object({
 });
 
 export async function GET(req: Request) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status") || "";
@@ -54,8 +54,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const parsed = offerSchema.safeParse(body);

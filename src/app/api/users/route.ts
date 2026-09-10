@@ -8,8 +8,8 @@ import { requireAdmin } from "@/lib/auth-helpers";
 export const dynamic = "force-dynamic";
 
 // GET /api/users — list all users (admin only)
-export async function GET() {
-  const session = await requireAdmin();
+export async function GET(req: Request) {
+  const session = await requireAdmin(req);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session === "forbidden") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -28,7 +28,7 @@ export async function GET() {
 
 // POST /api/users — create user (admin only)
 export async function POST(req: Request) {
-  const session = await requireAdmin();
+  const session = await requireAdmin(req);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session === "forbidden") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 

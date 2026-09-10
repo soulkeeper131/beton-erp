@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { companySettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -35,9 +35,9 @@ const settingsSchema = z.object({
   companybookApiKey: z.string().optional().default(""),
 });
 
-export async function GET() {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function GET(req: Request) {
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const settings = db.select().from(companySettings).limit(1).get();
   if (!settings) {
@@ -48,8 +48,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   // Convert checkbox value to boolean

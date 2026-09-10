@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 // GET /api/export?table=clients&format=csv (admin only)
 export async function GET(req: Request) {
-  const session = await requireAdmin();
+  const session = await requireAdmin(req);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session === "forbidden") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 

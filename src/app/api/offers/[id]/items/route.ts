@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { offers, offerItems } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
@@ -44,8 +44,8 @@ export async function POST(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const offerId = parseInt(params.id);
   const body = await req.json();
@@ -83,8 +83,8 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const offerId = parseInt(params.id);
   const { searchParams } = new URL(req.url);
@@ -139,8 +139,8 @@ export async function DELETE(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const offerId = parseInt(params.id);
   const { searchParams } = new URL(req.url);
