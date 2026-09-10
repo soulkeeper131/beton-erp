@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { serviceItems, concreteTypes, materials, machines } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   const serviceId = parseInt(params.id);
   const result = await db.select({

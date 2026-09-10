@@ -5,6 +5,8 @@ import { offers, offerItems } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 const itemSchema = z.object({
   concreteTypeId: z.coerce.number().int().positive().optional().nullable(),
   serviceId: z.coerce.number().int().positive().optional().nullable(),

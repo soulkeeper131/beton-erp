@@ -3,6 +3,8 @@ import { getAuth } from "@/lib/auth-helpers";
 import { readFileSync, existsSync } from "fs";
 import path from "path";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
   const { session, isApiKey } = await getAuth(req);
   if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

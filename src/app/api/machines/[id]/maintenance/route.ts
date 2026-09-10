@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import path from "path";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json();
   const db = new Database(path.join(process.cwd(), "data", "sqlite.db"));

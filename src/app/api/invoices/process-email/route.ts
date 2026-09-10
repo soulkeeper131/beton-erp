@@ -8,6 +8,8 @@ import { eq, sql } from "drizzle-orm";
 import { writeFileSync, mkdirSync } from "fs";
 import path from "path";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request) {
   const { session, isApiKey } = await getAuth(req);
   if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

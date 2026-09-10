@@ -4,6 +4,8 @@ import { db } from "@/db";
 import { siteCalendar, sites } from "@/db/schema";
 import { eq, gte, lte, and } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   const { session, isApiKey } = await getAuth(request);
   if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

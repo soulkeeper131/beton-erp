@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { templates } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const result = await db.select().from(templates).orderBy(templates.name);
   return NextResponse.json(result);

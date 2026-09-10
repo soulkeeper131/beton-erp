@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { workers } from "@/db/schema";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const result = await db.select().from(workers).orderBy(workers.name);
   return NextResponse.json(result);

@@ -5,6 +5,8 @@ import { concreteTypes } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
   className: z.string().optional().nullable(),

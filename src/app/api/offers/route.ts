@@ -6,6 +6,8 @@ import { eq, desc, like } from "drizzle-orm";
 import { z } from "zod";
 import { notifyOfferCreated } from "@/lib/notifications";
 
+export const dynamic = "force-dynamic";
+
 const offerSchema = z.object({
   clientId: z.coerce.number().int().positive("Изберете клиент"),
   siteId: z.coerce.number().int().optional().nullable(),

@@ -4,6 +4,8 @@ import { db } from "@/db";
 import { pourings, pouringItems, sites, offers, concreteTypes, machines } from "@/db/schema";
 import { eq, desc, asc, inArray } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   const { session, isApiKey } = await getAuth(request);
   if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth-helpers";
 
+export const dynamic = "force-dynamic";
+
 // Free Nominatim API (OpenStreetMap) — 1 req/sec max, cache where possible
 export async function GET(request: NextRequest) {
   const { session, isApiKey } = await getAuth(request);

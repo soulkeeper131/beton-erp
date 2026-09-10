@@ -6,6 +6,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { getAuth } from "@/lib/auth-helpers";
 import { notifyInvoiceCreated } from "@/lib/notifications";
 
+export const dynamic = "force-dynamic";
+
 const itemSchema = z.object({
   description: z.string().min(1),
   unit: z.string().default("бр."),

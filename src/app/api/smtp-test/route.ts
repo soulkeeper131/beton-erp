@@ -4,6 +4,8 @@ import { db } from "@/db";
 import { companySettings } from "@/db/schema";
 import nodemailer from "nodemailer";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   const { session, isApiKey } = await getAuth(req);
   if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { services } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   const id = parseInt(params.id);
   if (isNaN(id)) return NextResponse.json({ error: "Невалиден ID" }, { status: 400 });

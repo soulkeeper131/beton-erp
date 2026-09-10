@@ -5,6 +5,8 @@ import { clients } from "@/db/schema";
 import { eq, like, or, asc } from "drizzle-orm";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 const clientSchema = z.object({
   name: z.string().min(1, "Името е задължително"),
   companyName: z.string().optional().default(""),

@@ -5,6 +5,8 @@ import { companySettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 const settingsSchema = z.object({
   companyName: z.string().optional().default(""),
   companyNameBG: z.string().optional().default(""),

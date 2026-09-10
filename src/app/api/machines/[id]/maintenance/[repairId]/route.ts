@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import path from "path";
 
+export const dynamic = "force-dynamic";
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string; repairId: string } }

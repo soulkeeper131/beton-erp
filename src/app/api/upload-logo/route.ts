@@ -5,6 +5,8 @@ import { companySettings } from "@/db/schema";
 import { writeFileSync, mkdirSync } from "fs";
 import path from "path";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request) {
   const { session, isApiKey } = await getAuth(req);
   if (!isApiKey && (!session?.user || (session.user as any).role !== "admin")) {

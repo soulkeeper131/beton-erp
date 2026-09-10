@@ -5,6 +5,8 @@ import { sites, clients } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 const siteSchema = z.object({
   clientId: z.number().int().positive("Клиентът е задължителен"),
   name: z.string().min(1, "Името е задължително"),

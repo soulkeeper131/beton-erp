@@ -5,6 +5,8 @@ import { companySettings } from "@/db/schema";
 import nodemailer from "nodemailer";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 const schema = z.object({
   to: z.string().email(),
   subject: z.string().min(1),

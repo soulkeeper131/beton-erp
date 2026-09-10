@@ -4,6 +4,8 @@ import { machines, machineMaintenance } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { auditLog } from "@/lib/audit";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const machine = db.select().from(machines).where(eq(machines.id, parseInt(params.id))).get();
   if (!machine) return NextResponse.json({ error: "Not found" }, { status: 404 });

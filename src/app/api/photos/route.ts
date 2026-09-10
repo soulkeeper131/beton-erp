@@ -7,6 +7,8 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import exifreader from "exifreader";
 
+export const dynamic = "force-dynamic";
+
 const UPLOAD_DIR = join(process.cwd(), "data", "uploads");
 
 function extractGPS(buffer: Buffer): { latitude: number | null; longitude: number | null } {

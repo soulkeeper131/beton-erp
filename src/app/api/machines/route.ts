@@ -4,6 +4,8 @@ import { machines } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { auditLog } from "@/lib/audit";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const rows = db.select().from(machines).all();
   return NextResponse.json(rows);
