@@ -156,10 +156,10 @@ export default function UsersPage() {
                         </td>
                         <td className="p-3">
                           <div className="flex justify-end gap-1">
-                            <Button size="sm" variant="ghost" onClick={() => openEdit(u)}>
+                            <Button size="sm" variant="ghost" onClick={() => openEdit(u)} aria-label="Редактирай" title="Редактирай">
                               <Pencil className="w-4 h-4" />
                             </Button>
-                            <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-800" onClick={() => deleteUser(u)}>
+                            <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-800" onClick={() => deleteUser(u)} aria-label="Изтрий" title="Изтрий">
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>

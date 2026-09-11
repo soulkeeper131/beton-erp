@@ -264,7 +264,7 @@ export default function MapPage() {
         <h1 className="text-2xl font-bold">
           🗺️ Карта на обектите{" "}
           <span className="text-sm font-normal text-muted-foreground">
-            ({sites.length} обекта)
+            ({sites.length} {sites.length === 1 ? "обект" : "обекта"})
           </span>
         </h1>
       </div>
