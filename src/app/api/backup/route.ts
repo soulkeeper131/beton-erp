@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { execSync } from "child_process";
-import { readFileSync, readdirSync, unlinkSync, statSync, mkdirSync } from "fs";
+import { readdirSync, unlinkSync, statSync, mkdirSync } from "fs";
 import path from "path";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { isOffsiteConfigured, uploadBackupToS3 } from "@/lib/offsite";
+import { rawDb } from "@/db";
 
 export const dynamic = "force-dynamic";
 
@@ -51,8 +51,8 @@ export async function POST(req: Request) {
     const backupName = `beton-${timestamp}.db`;
     const backupPath = path.join(BACKUP_DIR, backupName);
 
-    // Use sqlite3 .backup command for consistent backup
-    execSync(`sqlite3 "${DB_PATH}" ".backup '${backupPath}'"`, { timeout: 30000 });
+    // Онлайн backup през better-sqlite3 (консистентен snapshot, WAL-safe)
+    await rawDb.backup(backupPath);
 
     // Rotate: keep only the last MAX_BACKUPS
     const files = readdirSync(BACKUP_DIR)

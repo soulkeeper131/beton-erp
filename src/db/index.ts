@@ -457,6 +457,7 @@ if (userCount.cnt === 0) {
 }
 
 export const db = drizzle(sqlite, { schema });
+export const rawDb = sqlite; // better-sqlite3 Database — за онлайн backup (.backup)
 
 // Migration: machines overhaul — vehicle fleet management
 const machineCols = [
