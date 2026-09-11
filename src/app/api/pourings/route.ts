@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
         pricePerM3: price,
         total: qty * price,
         sortOrder: i,
-      });
+      }).run();
     }
 
     return p;
