@@ -47,7 +47,7 @@
 ## P2 — Качество и мащаб
 
 - [x] **Автоматични тестове** — Vitest: бизнес логика (ДДС/валута/номера/дати), DB smoke, force-dynamic guard. `npm test`.
-- [ ] **Offsite backup** — криптиран backup към S3/Drive (в момента само локална ротация). ⏸️ *Отложено — чака избор на S3 provider (Backblaze B2 / AWS S3 / Coolify storage) + credentials.*
+- [~] **Offsite backup** — ✅ механизъм готов: S3-съвместим upload (`src/lib/offsite.ts`, env-driven: S3_ENDPOINT/REGION/BUCKET/ACCESS_KEY_ID/SECRET_ACCESS_KEY) + daily cron `beton-daily-backup` (3:00). ⏳ Остава: избор на provider + credentials (Backblaze B2 препоръчан). Фикс: локалният backup също беше счупен (нямаше `sqlite3` CLI в контейнера) — вече ползва better-sqlite3 `.backup()`.
 - [x] **Schema drift изчистване** — уеднаквяване на `schema.ts` ↔ `index.ts` миграциите.
 - [ ] **PWA push notifications** — за наряди и срокове. ⏸️ *Отложено — чака VAPID ключове + решение за целева аудитория.*
 - [ ] **Многоезичност** — ниско приоритетно (вътрешен инструмент).
