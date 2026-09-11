@@ -10,6 +10,7 @@ export const users = sqliteTable("users", {
   role: text("role").notNull().default("employee"), // admin | employee
   phone: text("phone"),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
+  mustChangePassword: integer("must_change_password", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
@@ -75,6 +76,8 @@ export const machines = sqliteTable("machines", {
   lastMaintenanceDate: text("last_maintenance_date"),
   nextMaintenanceDate: text("next_maintenance_date"),
   notes: text("notes"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
 // ========== MACHINE MAINTENANCE ==========
@@ -102,6 +105,8 @@ export const workers = sqliteTable("workers", {
   status: text("status").notNull().default("active"),
   hireDate: text("hire_date"),
   notes: text("notes"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
 // ========== WORKER ATTENDANCE ==========
@@ -125,6 +130,8 @@ export const materials = sqliteTable("materials", {
   minThreshold: real("min_threshold").default(0),
   pricePerUnit: real("price_per_unit"),
   notes: text("notes"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
 // ========== MATERIAL DELIVERIES ==========

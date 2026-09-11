@@ -65,6 +65,36 @@ export function Shell({ children }: { children: React.ReactNode }) {
     setUnreadCount(0);
   }
 
+  const mustChangePassword = (user as any)?.mustChangePassword === true;
+  const [pwCurrent, setPwCurrent] = useState("");
+  const [pwNew, setPwNew] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError] = useState("");
+
+  async function handleChangePassword() {
+    if (!pwNew || pwNew.length < 6) {
+      setPwError("Новата парола трябва да е поне 6 символа");
+      return;
+    }
+    setPwSaving(true);
+    setPwError("");
+    const res = await fetch("/api/users/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
+    });
+    setPwSaving(false);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      setPwError(err.error || "Грешка при смяна на паролата");
+      return;
+    }
+    setPwCurrent("");
+    setPwNew("");
+    // Принудително презареди, за да се обнови сесията
+    window.location.reload();
+  }
+
   const roleLabels: Record<string, string> = {
     admin: "Администратор", manager: "Мениджър", brigadir: "Бригадир", employee: "Служител",
   };
@@ -245,6 +275,29 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
         {/* Page content */}
         <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full">
+          {mustChangePassword && (
+            <div className="mb-4 p-4 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/40">
+              <p className="text-sm font-medium">⚠️ Трябва да смениш паролата си, за да продължиш.</p>
+              <div className="flex flex-wrap items-end gap-2 mt-2">
+                <div className="flex flex-col">
+                  <span className="text-xs text-muted-foreground">Текуща парола</span>
+                  <input type="password" className="h-9 rounded-md border px-2 text-sm" value={pwCurrent} onChange={(e) => setPwCurrent(e.target.value)} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-muted-foreground">Нова парола (мин. 6)</span>
+                  <input type="password" className="h-9 rounded-md border px-2 text-sm" value={pwNew} onChange={(e) => setPwNew(e.target.value)} />
+                </div>
+                <button
+                  onClick={handleChangePassword}
+                  disabled={pwSaving}
+                  className="h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
+                >
+                  {pwSaving ? "Смяна..." : "Смени паролата"}
+                </button>
+              </div>
+              {pwError && <p className="text-xs text-destructive mt-1">{pwError}</p>}
+            </div>
+          )}
           {children}
         </main>
       </div>

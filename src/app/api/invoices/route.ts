@@ -5,6 +5,7 @@ import { invoices, invoiceItems, clients } from "@/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { getAuth } from "@/lib/auth-helpers";
 import { notifyInvoiceCreated } from "@/lib/notifications";
+import { calcInvoiceTotals } from "@/lib/calc";
 
 export const dynamic = "force-dynamic";
 
@@ -85,14 +86,11 @@ export async function POST(req: Request) {
   }
 
   const items = parsed.data.items;
-  const subtotal = items.reduce((s, i) => s + i.quantity * i.price, 0);
-  const discountTotal = (subtotal * parsed.data.discountPercent) / 100 + parsed.data.discountAmount;
-  const netBase = subtotal - discountTotal;
-  // ДДС върху данъчната основа (след отстъпка), с пропорционална ефективна ставка при смесени ставки
-  const vatOnFull = items.reduce((s, i) => s + (i.quantity * i.price * i.vatRate) / 100, 0);
-  const effRate = subtotal > 0 ? vatOnFull / subtotal : 0;
-  const vatAmount = netBase * effRate;
-  const total = netBase + vatAmount;
+  const { subtotal, vatAmount, total } = calcInvoiceTotals(
+    items,
+    parsed.data.discountPercent,
+    parsed.data.discountAmount,
+  );
 
   const created = db.transaction((tx) => {
     const inv = tx

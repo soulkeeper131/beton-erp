@@ -17,6 +17,7 @@ sqlite.exec(`
     role TEXT NOT NULL DEFAULT 'employee',
     phone TEXT,
     active INTEGER NOT NULL DEFAULT 1,
+    must_change_password INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
@@ -62,13 +63,22 @@ sqlite.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     type TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'other',
     plate_number TEXT,
     fuel_type TEXT,
+    year TEXT,
+    vin TEXT,
+    mileage INTEGER DEFAULT 0,
+    vignette_expiry TEXT,
+    insurance_expiry TEXT,
+    tech_inspection_expiry TEXT,
     status TEXT NOT NULL DEFAULT 'available',
     location TEXT,
     last_maintenance_date TEXT,
     next_maintenance_date TEXT,
-    notes TEXT
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
   CREATE TABLE IF NOT EXISTS machine_maintenance (
@@ -78,6 +88,9 @@ sqlite.exec(`
     type TEXT NOT NULL,
     description TEXT,
     cost REAL DEFAULT 0,
+    provider TEXT,
+    document_path TEXT,
+    mileage_at_repair INTEGER,
     next_date TEXT,
     notes TEXT
   );
@@ -90,7 +103,9 @@ sqlite.exec(`
     overtime_rate REAL,
     status TEXT NOT NULL DEFAULT 'active',
     hire_date TEXT,
-    notes TEXT
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
   CREATE TABLE IF NOT EXISTS worker_attendance (
@@ -111,7 +126,9 @@ sqlite.exec(`
     quantity REAL NOT NULL DEFAULT 0,
     min_threshold REAL DEFAULT 0,
     price_per_unit REAL,
-    notes TEXT
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
   CREATE TABLE IF NOT EXISTS material_deliveries (
@@ -328,13 +345,30 @@ sqlite.exec(`
     iban TEXT NOT NULL DEFAULT '',
     bic TEXT NOT NULL DEFAULT '',
     logo_path TEXT,
+    accent_color TEXT NOT NULL DEFAULT '#f97316',
+    smtp_host TEXT NOT NULL DEFAULT '',
+    smtp_port INTEGER NOT NULL DEFAULT 587,
+    smtp_user TEXT NOT NULL DEFAULT '',
+    smtp_pass TEXT NOT NULL DEFAULT '',
+    smtp_from TEXT NOT NULL DEFAULT '',
+    smtp_secure INTEGER NOT NULL DEFAULT 0,
+    imap_host TEXT NOT NULL DEFAULT '',
+    imap_port INTEGER NOT NULL DEFAULT 993,
+    imap_user TEXT NOT NULL DEFAULT '',
+    imap_pass TEXT NOT NULL DEFAULT '',
+    imap_tls INTEGER NOT NULL DEFAULT 1,
+    incoming_email_folder TEXT NOT NULL DEFAULT 'INBOX',
+    ai_enabled INTEGER NOT NULL DEFAULT 1,
+    ai_model TEXT NOT NULL DEFAULT 'deepseek-chat',
+    ai_api_key TEXT,
+    companybook_api_key TEXT,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 `);
 
 // Migration: add city column to sites (safe to run multiple times)
-try { sqlite.exec('ALTER TABLE sites ADD COLUMN city TEXT NOT NULL DEFAULT ""'); } catch (e: any) { if (!e.message.includes('duplicate')) console.log('city column already exists'); }
-try { sqlite.exec('ALTER TABLE offer_items ADD COLUMN service_id INTEGER REFERENCES services(id)'); } catch (e: any) { if (!e.message.includes('duplicate')) console.log('service_id column already exists'); }
+try { sqlite.exec('ALTER TABLE sites ADD COLUMN city TEXT NOT NULL DEFAULT ""'); } catch (e: any) { if (!e.message.includes('duplicate')) console.error('sites city migration:', e.message); }
+try { sqlite.exec('ALTER TABLE offer_items ADD COLUMN service_id INTEGER REFERENCES services(id)'); } catch (e: any) { if (!e.message.includes('duplicate')) console.error('offer_items service_id migration:', e.message); }
 
 // Migration: invoice overhaul
 const invoiceCols = [
@@ -388,7 +422,7 @@ if (userCount.cnt === 0) {
   ];
   
   const insertUser = sqlite.prepare(
-    'INSERT OR IGNORE INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)'
+    'INSERT OR IGNORE INTO users (email, password_hash, name, role, must_change_password) VALUES (?, ?, ?, ?, 1)'
   );
   
   for (const u of seedUsers) {
@@ -433,7 +467,7 @@ const machineCols = [
   'ALTER TABLE machine_maintenance ADD COLUMN mileage_at_repair INTEGER',
 ];
 for (const sql of machineCols) {
-  try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) {} }
+  try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) console.error('Migration failed:', e.message); }
 }
 
 // Migration: SMTP settings
@@ -446,7 +480,7 @@ const smtpCols = [
   'ALTER TABLE company_settings ADD COLUMN smtp_secure INTEGER NOT NULL DEFAULT 0',
 ];
 for (const sql of smtpCols) {
-  try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) {} }
+  try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) console.error('Migration failed:', e.message); }
 }
 
 // Migration: IMAP settings
@@ -459,11 +493,11 @@ const imapCols = [
   'ALTER TABLE company_settings ADD COLUMN incoming_email_folder TEXT NOT NULL DEFAULT "INBOX"',
 ];
 for (const sql of imapCols) {
-  try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) {} }
+  try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) console.error('Migration failed:', e.message); }
 }
 
 // Migration: accent color
-try { sqlite.exec('ALTER TABLE company_settings ADD COLUMN accent_color TEXT NOT NULL DEFAULT "#f97316"'); } catch(e: any) { if (!e.message.includes('duplicate')) {} }
+try { sqlite.exec('ALTER TABLE company_settings ADD COLUMN accent_color TEXT NOT NULL DEFAULT "#f97316"'); } catch(e: any) { if (!e.message.includes('duplicate')) console.error('Migration failed:', e.message); }
 
 // Migration: AI settings (chat agent) + CompanyBook key
 const aiCols = [
@@ -508,4 +542,43 @@ sqlite.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )
 `);
+
+// ===== Chat tables (AI agent) =====
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS chat_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    title TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS chat_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES chat_sessions(id),
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    tool_call_id TEXT,
+    tool_name TEXT,
+    metadata TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
+// Migration: created_at/updated_at на machines/workers/materials (стари бази)
+const timestampCols = [
+  'ALTER TABLE machines ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
+  'ALTER TABLE machines ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
+  'ALTER TABLE workers ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
+  'ALTER TABLE workers ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
+  'ALTER TABLE materials ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
+  'ALTER TABLE materials ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
+];
+for (const sql of timestampCols) {
+  try { sqlite.exec(sql); } catch (e: any) { if (!e.message.includes('duplicate')) console.error('Migration failed:', sql.substring(0, 70), e.message); }
+}
+
+// Migration: must_change_password на users (стари бази)
+try { sqlite.exec('ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0'); } catch (e: any) { if (!e.message.includes('duplicate')) console.error('users must_change_password migration:', e.message); }
+
 
