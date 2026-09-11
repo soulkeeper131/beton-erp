@@ -383,8 +383,6 @@ const invoiceCols = [
   'ALTER TABLE invoices ADD COLUMN payment_status TEXT NOT NULL DEFAULT "unpaid"',
   'ALTER TABLE invoices ADD COLUMN related_invoice_id INTEGER REFERENCES invoices(id)',
   'ALTER TABLE invoices ADD COLUMN tax_exemption_reason TEXT',
-  'ALTER TABLE invoices ADD COLUMN created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP',
-  'ALTER TABLE invoices ADD COLUMN updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP',
   'ALTER TABLE invoice_items ADD COLUMN vat_rate REAL NOT NULL DEFAULT 20',
 ];
 for (const sql of invoiceCols) {
@@ -392,6 +390,13 @@ for (const sql of invoiceCols) {
     if (!e.message.includes('duplicate')) console.error('Invoice migration failed:', sql.substring(0, 80), e.message);
   }
 }
+
+// created_at/updated_at на invoices — SQLite НЕ позволява non-constant default в ALTER,
+// затова добавяме nullable + backfill.
+try { sqlite.exec('ALTER TABLE invoices ADD COLUMN created_at TEXT'); } catch(e: any) { if (!e.message.includes('duplicate')) console.error('invoices created_at migration:', e.message); }
+try { sqlite.exec('ALTER TABLE invoices ADD COLUMN updated_at TEXT'); } catch(e: any) { if (!e.message.includes('duplicate')) console.error('invoices updated_at migration:', e.message); }
+try { sqlite.exec("UPDATE invoices SET created_at = datetime('now') WHERE created_at IS NULL"); } catch {}
+try { sqlite.exec("UPDATE invoices SET updated_at = datetime('now') WHERE updated_at IS NULL"); } catch {}
 
 // Migration: add GPS location to act_photos
 try { sqlite.exec('ALTER TABLE act_photos ADD COLUMN latitude REAL'); } catch (e: any) { if (!e.message.includes('duplicate')) console.error('lat migration:', e.message); }
@@ -566,16 +571,13 @@ sqlite.exec(`
 `);
 
 // Migration: created_at/updated_at на machines/workers/materials (стари бази)
-const timestampCols = [
-  'ALTER TABLE machines ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
-  'ALTER TABLE machines ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
-  'ALTER TABLE workers ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
-  'ALTER TABLE workers ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
-  'ALTER TABLE materials ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
-  'ALTER TABLE materials ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
-];
-for (const sql of timestampCols) {
-  try { sqlite.exec(sql); } catch (e: any) { if (!e.message.includes('duplicate')) console.error('Migration failed:', sql.substring(0, 70), e.message); }
+// SQLite НЕ позволява non-constant default в ALTER → nullable + backfill.
+const timestampTables = ['machines', 'workers', 'materials'];
+for (const t of timestampTables) {
+  for (const col of ['created_at', 'updated_at']) {
+    try { sqlite.exec(`ALTER TABLE ${t} ADD COLUMN ${col} TEXT`); } catch (e: any) { if (!e.message.includes('duplicate')) console.error(`${t}.${col} migration:`, e.message); }
+    try { sqlite.exec(`UPDATE ${t} SET ${col} = datetime('now') WHERE ${col} IS NULL`); } catch {}
+  }
 }
 
 // Migration: must_change_password на users (стари бази)
