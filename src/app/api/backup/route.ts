@@ -3,6 +3,7 @@ import { execSync } from "child_process";
 import { readFileSync, readdirSync, unlinkSync, statSync, mkdirSync } from "fs";
 import path from "path";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { isOffsiteConfigured, uploadBackupToS3 } from "@/lib/offsite";
 
 export const dynamic = "force-dynamic";
 
@@ -66,10 +67,25 @@ export async function POST(req: Request) {
     }
 
     const stat = statSync(backupPath);
+
+    // Offsite upload (ако е конфигуриран) — не блокира локалния backup при грешка
+    let offsite: { url: string; size: number } | null = null;
+    let offsiteError: string | null = null;
+    if (isOffsiteConfigured()) {
+      try {
+        offsite = await uploadBackupToS3(backupPath, `beton-erp/${backupName}`);
+      } catch (err: any) {
+        offsiteError = err.message;
+      }
+    }
+
     return NextResponse.json({
       success: true,
       backup: { name: backupName, size: stat.size, date: stat.mtime.toISOString() },
       totalBackups: Math.min(files.length, MAX_BACKUPS),
+      offsite: offsite
+        ? { uploaded: true, url: offsite.url, size: offsite.size }
+        : { uploaded: false, configured: isOffsiteConfigured(), error: offsiteError },
     });
   } catch (err: any) {
     return NextResponse.json({ error: `Backup failed: ${err.message}` }, { status: 500 });
