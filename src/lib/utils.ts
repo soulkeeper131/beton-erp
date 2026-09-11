@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("bg-BG", { style: "currency", currency: "BGN" }).format(amount);
+  return new Intl.NumberFormat("bg-BG", { style: "currency", currency: "EUR" }).format(amount);
 }
 
 export function formatDate(date: string | Date): string {

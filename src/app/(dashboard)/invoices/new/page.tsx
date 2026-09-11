@@ -305,7 +305,7 @@ export default function NewInvoicePage() {
               {form.discountPercent > 0 && <div className="text-sm text-muted-foreground">Отстъпка {form.discountPercent}%: -{formatCurrency(subtotal * form.discountPercent / 100)}</div>}
               {form.discountAmount > 0 && <div className="text-sm text-muted-foreground">Отстъпка: -{formatCurrency(form.discountAmount)}</div>}
               <div className="text-sm text-muted-foreground">ДДС: {formatCurrency(vatAmount)}</div>
-              <div className="text-xl font-bold">Общо: {formatCurrency(total)} {form.currency}</div>
+              <div className="text-xl font-bold">Общо: {formatCurrency(total)}</div>
             </div>
           </CardContent>
         </Card>

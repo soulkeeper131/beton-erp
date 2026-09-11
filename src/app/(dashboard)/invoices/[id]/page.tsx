@@ -57,7 +57,7 @@ export default function InvoiceDetailPage() {
             }}
           />
           <div className="text-right">
-          <div className="text-2xl font-bold">{formatCurrency(invoice.total)} {invoice.currency}</div>
+          <div className="text-2xl font-bold">{formatCurrency(invoice.total)}</div>
           <span className="text-sm text-muted-foreground">{paymentLabels[invoice.paymentStatus]}</span>
         </div>
         </div>
@@ -163,7 +163,7 @@ export default function InvoiceDetailPage() {
             {invoice.discountPercent > 0 && <div className="text-muted-foreground">Отстъпка {invoice.discountPercent}%: -{formatCurrency(invoice.subtotal * invoice.discountPercent / 100)}</div>}
             {invoice.discountAmount > 0 && <div className="text-muted-foreground">Отстъпка: -{formatCurrency(invoice.discountAmount)}</div>}
             <div className="text-muted-foreground">ДДС ({invoice.vatRate}%): {formatCurrency(invoice.vatAmount)}</div>
-            <div className="text-xl font-bold pt-1 border-t">Общо: {formatCurrency(invoice.total)} {invoice.currency}</div>
+            <div className="text-xl font-bold pt-1 border-t">Общо: {formatCurrency(invoice.total)}</div>
           </div>
         </CardContent>
       </Card>

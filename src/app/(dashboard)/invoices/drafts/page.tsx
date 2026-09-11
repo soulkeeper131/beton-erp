@@ -117,12 +117,12 @@ export default function InvoiceDraftsPage() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Сума: </span>
-                    <span className="font-bold">{formatCurrency(draft.total)} {draft.currency}</span>
+                    <span className="font-bold">{formatCurrency(draft.total)}</span>
                   </div>
                   {draft.vatAmount > 0 && (
                     <div>
                       <span className="text-muted-foreground">ДДС: </span>
-                      {formatCurrency(draft.vatAmount)} EUR
+                      {formatCurrency(draft.vatAmount)}
                     </div>
                   )}
                   {meta?.originalNumber && (

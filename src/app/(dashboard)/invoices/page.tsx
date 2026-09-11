@@ -72,7 +72,7 @@ export default function InvoicesPage() {
           { key: "client", label: tab === "incoming" ? "Доставчик" : "Клиент", render: (v: any) => v?.companyName || v?.name || "—" },
           { key: "date", label: "Дата", render: (v: string) => formatDate(v) },
           { key: "type", label: "Вид", render: (v: string) => ({invoice:"Ф-ра",proforma:"Проф.",credit_note:"Кред.изв.",debit_note:"Деб.изв."} as any)[v] || v },
-          { key: "total", label: "Сума", render: (v: number, row: any) => `${formatCurrency(v)} ${row.currency || "EUR"}` },
+          { key: "total", label: "Сума", render: (v: number, row: any) => formatCurrency(v) },
           { key: "paymentStatus", label: "Плат.", render: (v: string) => paymentLabels[v] || v },
         ]}
         data={filtered}

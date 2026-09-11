@@ -475,3 +475,37 @@ const aiCols = [
 for (const sql of aiCols) {
   try { sqlite.exec(sql); } catch(e: any) { if (!e.message.includes('duplicate')) console.error('AI settings migration failed:', sql.substring(0, 70), e.message); }
 }
+
+// ===== Notifications table (in-app alerts) =====
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    entity_type TEXT,
+    entity_id INTEGER,
+    severity TEXT NOT NULL DEFAULT 'info',
+    is_read INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
+// ===== Recurring invoices (periodic billing) =====
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS recurring_invoices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id INTEGER NOT NULL REFERENCES clients(id),
+    name TEXT NOT NULL,
+    frequency TEXT NOT NULL DEFAULT 'monthly',
+    day_of_month INTEGER DEFAULT 1,
+    next_date TEXT NOT NULL,
+    direction TEXT NOT NULL DEFAULT 'outgoing',
+    items TEXT NOT NULL DEFAULT '[]',
+    notes TEXT,
+    active INTEGER NOT NULL DEFAULT 1,
+    last_generated TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+

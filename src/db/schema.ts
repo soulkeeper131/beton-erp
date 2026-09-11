@@ -387,3 +387,32 @@ export const chatMessages = sqliteTable("chat_messages", {
   metadata: text("metadata"), // JSON for pending confirmations etc.
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
 });
+
+// ========== NOTIFICATIONS ==========
+export const notifications = sqliteTable("notifications", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  type: text("type").notNull(), // machine_doc | low_stock | unpaid_invoice
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  entityType: text("entity_type"),
+  entityId: integer("entity_id"),
+  severity: text("severity").notNull().default("info"), // info | warning | critical
+  isRead: integer("is_read", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+});
+
+// ========== RECURRING INVOICES ==========
+export const recurringInvoices = sqliteTable("recurring_invoices", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clientId: integer("client_id").notNull().references(() => clients.id),
+  name: text("name").notNull(),
+  frequency: text("frequency").notNull().default("monthly"), // monthly | weekly
+  dayOfMonth: integer("day_of_month").default(1),
+  nextDate: text("next_date").notNull(),
+  direction: text("direction").notNull().default("outgoing"),
+  items: text("items").notNull().default("[]"), // JSON array
+  notes: text("notes"),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  lastGenerated: text("last_generated"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+});
