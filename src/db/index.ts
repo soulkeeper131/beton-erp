@@ -3,9 +3,9 @@ import Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
 import * as schema from './schema';
 
-const sqlite = new Database('./data/sqlite.db');
-sqlite.pragma('journal_mode = WAL');
-sqlite.pragma('foreign_keys = ON');
+const sqlite = new Database('./data/sqlite.db', { timeout: 10000 });
+try { sqlite.pragma('journal_mode = WAL'); } catch {}
+try { sqlite.pragma('foreign_keys = ON'); } catch {}
 
 // Auto-create tables on first run
 sqlite.exec(`
