@@ -232,7 +232,7 @@ export function InvoicePDF({ invoice, items, company }: Props) {
                 <Text style={[styles.td, { width: 35 }]}>{item.unit || "бр."}</Text>
                 <Text style={[styles.td, { width: 40 }]}>{item.quantity}</Text>
                 <Text style={[styles.td, { width: 50 }]}>{(item.price || 0).toFixed(2)}</Text>
-                <Text style={[styles.td, { width: 35 }]}>{item.vatRate || 20}%</Text>
+                <Text style={[styles.td, { width: 35 }]}>{item.vatRate ?? 20}%</Text>
                 <Text style={[styles.td, { width: 60 }]}>{(item.total || 0).toFixed(2)}</Text>
               </View>
             ))}
@@ -268,7 +268,7 @@ export function InvoicePDF({ invoice, items, company }: Props) {
               <Text style={styles.sval}>{netBase.toFixed(2)} €</Text>
             </View>
             <View style={styles.srow}>
-              <Text style={styles.slab}>ДДС {invoice.vatRate || 20}%</Text>
+              <Text style={styles.slab}>ДДС {invoice.vatRate ?? 20}%</Text>
               <Text style={styles.sval}>{vat.toFixed(2)} €</Text>
             </View>
             <View style={styles.srowTotal}>

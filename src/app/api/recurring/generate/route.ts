@@ -3,7 +3,8 @@ import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { eq, lte, and, sql } from "drizzle-orm";
 import { getAuth } from "@/lib/auth-helpers";
-import { calcInvoiceTotals, nextRecurringDate, nextInvoiceNumber } from "@/lib/calc";
+import { calcInvoiceTotals, nextRecurringDate } from "@/lib/calc";
+import { getNextInvoiceNumber } from "@/lib/invoice-number";
 
 export const dynamic = "force-dynamic";
 
@@ -32,14 +33,7 @@ export async function POST(req: Request) {
     const { subtotal, vatAmount, total } = calcInvoiceTotals(items);
 
     // Номер: следващ изходящ номер (MAX подход, без колазии)
-    const maxRow = db
-      .select({ number: schema.invoices.number })
-      .from(schema.invoices)
-      .where(eq(schema.invoices.direction, "outgoing"))
-      .orderBy(sql`id desc`)
-      .limit(100)
-      .all();
-    const number = nextInvoiceNumber("outgoing", maxRow.map((r) => r.number || ""));
+    const number = getNextInvoiceNumber(rec.direction === "incoming" ? "incoming" : "outgoing");
 
     // dueDate = +30 дни
     const dueDate = nextRecurringDate(today, "monthly");

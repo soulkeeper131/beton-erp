@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   calcInvoiceTotals,
+  roundMoney,
   nextRecurringDate,
   nextInvoiceNumber,
   formatEuro,
@@ -103,5 +104,23 @@ describe("addDays/addMonths", () => {
   it("addMonths clamp-ва към последния ден на месеца", () => {
     expect(addMonths("2026-01-31", 1)).toBe("2026-02-28");
     expect(addMonths("2026-01-15", 1)).toBe("2026-02-15");
+  });
+});
+
+describe("закръгляне до стотинка", () => {
+  it("roundMoney", () => {
+    expect(roundMoney(0.1 + 0.2)).toBe(0.3);
+    expect(roundMoney(1.005)).toBe(1.01);
+    expect(roundMoney(-2.345)).toBe(-2.34);
+  });
+  it("сумите на фактурата са точни стотинки и общо = основа + ДДС", () => {
+    const r = calcInvoiceTotals([{ quantity: 3, price: 33.33, vatRate: 20 }, { quantity: 0.7, price: 12.1, vatRate: 9 }]);
+    for (const v of [r.subtotal, r.netBase, r.vatAmount, r.total]) expect(Math.round(v * 100) / 100).toBe(v);
+    expect(r.total).toBe(roundMoney(r.netBase + r.vatAmount));
+  });
+  it("0% ДДС не става 20%", () => {
+    const r = calcInvoiceTotals([{ quantity: 1, price: 100, vatRate: 0 }]);
+    expect(r.vatAmount).toBe(0);
+    expect(r.total).toBe(100);
   });
 });

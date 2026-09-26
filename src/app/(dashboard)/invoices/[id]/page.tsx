@@ -12,6 +12,31 @@ export default function InvoiceDetailPage() {
   const router = useRouter();
   const [invoice, setInvoice] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  async function patch(data: Record<string, string>) {
+    setBusy(true);
+    const r = await fetch(`/api/invoices/${params.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const d = await r.json().catch(() => null);
+    if (r.ok) setInvoice((prev: any) => ({ ...prev, ...d }));
+    else alert(d?.error || "Грешка");
+    setBusy(false);
+  }
+
+  async function remove() {
+    if (!confirm("Да изтрия ли черновата?")) return;
+    setBusy(true);
+    const r = await fetch(`/api/invoices/${params.id}`, { method: "DELETE" });
+    if (r.ok) router.push("/invoices");
+    else {
+      alert((await r.json().catch(() => null))?.error || "Грешка");
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/invoices/${params.id}`).then(r => r.json()).then(d => {
@@ -33,6 +58,31 @@ export default function InvoiceDetailPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <Button variant="ghost" onClick={() => router.push("/invoices")} className="gap-2"><ArrowLeft className="h-4 w-4" /> Назад</Button>
+
+      <div className="flex flex-wrap items-center gap-2 rounded-md border p-3 text-sm">
+        {invoice.status === "draft" ? (
+          <>
+            <span className="font-medium">Чернова</span>
+            <span className="text-muted-foreground">— не участва в оборота, докато не е издадена</span>
+            <div className="ml-auto flex gap-2">
+              <Button size="sm" disabled={busy} onClick={() => patch({ status: "sent" })}>✅ Издай</Button>
+              <Button size="sm" variant="outline" disabled={busy} onClick={remove}>🗑️ Изтрий</Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <span className="font-medium">Издадена</span>
+            <span className="text-muted-foreground">— корекции само с кредитно/дебитно известие</span>
+            <div className="ml-auto flex gap-1">
+              {(["unpaid", "partial", "paid"] as const).map((ps) => (
+                <Button key={ps} size="sm" disabled={busy} variant={invoice.paymentStatus === ps ? "default" : "outline"} onClick={() => patch({ paymentStatus: ps })}>
+                  {paymentLabels[ps]}
+                </Button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
       <div className="flex items-start justify-between flex-wrap gap-2">
         <div>

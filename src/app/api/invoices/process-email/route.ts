@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getNextInvoiceNumber } from "@/lib/invoice-number";
 import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { companySettings, invoices, invoiceItems, clients } from "@/db/schema";
@@ -74,12 +75,7 @@ export async function POST(req: Request) {
       }
 
       // Generate next incoming number
-      const countResult = db.select({ count: sql<number>`count(*)` })
-        .from(invoices)
-        .where(eq(invoices.direction, "incoming"))
-        .get();
-      const count = countResult?.count || 0;
-      const autoNumber = `ВХ-${String(count + 1).padStart(6, "0")}`;
+      const autoNumber = getNextInvoiceNumber("incoming");
 
       // Use parsed date or email date
       const invoiceDate = parsed.date || email.date.toISOString().split("T")[0];

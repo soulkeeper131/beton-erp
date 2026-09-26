@@ -5,7 +5,8 @@ import { invoices, invoiceItems, clients } from "@/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { getAuth } from "@/lib/auth-helpers";
 import { notifyInvoiceCreated } from "@/lib/notifications";
-import { calcInvoiceTotals } from "@/lib/calc";
+import { calcInvoiceTotals, roundMoney } from "@/lib/calc";
+import { isInvoiceNumberTaken } from "@/lib/invoice-number";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,20 @@ export async function POST(req: Request) {
   }
 
   const items = parsed.data.items;
+  const isNote = parsed.data.type === "credit_note" || parsed.data.type === "debit_note";
+
+  if (isInvoiceNumberTaken(parsed.data.direction, parsed.data.number)) {
+    return NextResponse.json({ error: `Номер ${parsed.data.number} вече съществува` }, { status: 409 });
+  }
+  // Кредитно/дебитно известие трябва да сочи фактурата, която коригира (чл. 115 ЗДДС)
+  if (isNote) {
+    const related = parsed.data.relatedInvoiceId
+      ? db.select({ id: invoices.id }).from(invoices).where(eq(invoices.id, parsed.data.relatedInvoiceId)).get()
+      : null;
+    if (!related) {
+      return NextResponse.json({ error: "Изберете фактурата, към която е известието" }, { status: 400 });
+    }
+  }
   const { subtotal, vatAmount, total } = calcInvoiceTotals(
     items,
     parsed.data.discountPercent,
@@ -108,12 +123,12 @@ export async function POST(req: Request) {
         subtotal,
         discountPercent: parsed.data.discountPercent,
         discountAmount: parsed.data.discountAmount,
-        vatRate: items[0]?.vatRate || 20,
+        vatRate: items[0]?.vatRate ?? 20,
         vatAmount,
         total,
         paymentMethod: parsed.data.paymentMethod,
         paymentStatus: parsed.data.paymentStatus,
-        relatedInvoiceId: parsed.data.relatedInvoiceId || null,
+        relatedInvoiceId: isNote ? parsed.data.relatedInvoiceId : null,
         taxExemptionReason: parsed.data.taxExemptionReason || null,
         notes: parsed.data.notes || null,
       })
@@ -128,7 +143,7 @@ export async function POST(req: Request) {
         quantity: item.quantity,
         price: item.price,
         vatRate: item.vatRate,
-        total: item.quantity * item.price,
+        total: roundMoney(item.quantity * item.price),
       }).run();
     }
 

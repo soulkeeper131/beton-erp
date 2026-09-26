@@ -24,9 +24,22 @@ export function calcInvoiceTotals(
     0,
   );
   const effRate = subtotal > 0 ? vatOnFull / subtotal : 0;
-  const vatAmount = netBase * effRate;
-  const total = netBase + vatAmount;
-  return { subtotal, discountTotal, netBase, vatAmount, effRate, total };
+  // Сумите се пазят закръглени до стотинка; общото = основа + ДДС (след закръгляне)
+  const vatAmount = roundMoney(netBase * effRate);
+  const total = roundMoney(roundMoney(netBase) + vatAmount);
+  return {
+    subtotal: roundMoney(subtotal),
+    discountTotal: roundMoney(discountTotal),
+    netBase: roundMoney(netBase),
+    vatAmount,
+    effRate,
+    total,
+  };
+}
+
+/** Закръгляне до стотинка (избягва 0.1+0.2 артефакти). */
+export function roundMoney(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
 export function addDays(date: string, days: number): string {

@@ -1,6 +1,8 @@
 // /src/lib/agent/tools.ts
 
 import { db } from "@/db";
+import { calcInvoiceTotals, roundMoney } from "@/lib/calc";
+import { getNextInvoiceNumber } from "@/lib/invoice-number";
 import { clients, offers, offerItems, pourings, pouringItems, sites, concreteTypes, services, materials, machines, siteCalendar, invoices, invoiceItems, workers, users, companySettings } from "@/db/schema";
 import { eq, like, or, and, desc, asc } from "drizzle-orm";
 import { sql } from "drizzle-orm";
@@ -209,22 +211,19 @@ async function createWorker(params: { name: string; phone?: string; dailyRate: n
 
 async function createInvoice(params: { clientId: number; date: string; dueDate: string; items: any[]; type?: string; notes?: string }) {
   const { clientId, date, dueDate, items, type, notes } = params;
-  const subtotal = items.reduce((s: number, i: any) => s + i.quantity * i.price, 0);
-  const vatAmount = items.reduce((s: number, i: any) => s + (i.quantity * i.price * (i.vatRate || 20)) / 100, 0);
-  const total = subtotal + vatAmount;
-  const lastInv = db.select({ id: invoices.id }).from(invoices).orderBy(desc(invoices.id)).limit(1).get();
-  const nextNum = String((lastInv?.id || 0) + 1).padStart(5, "0");
+  const { subtotal, vatAmount, total } = calcInvoiceTotals(items);
+  const nextNum = getNextInvoiceNumber("outgoing");
   const result = db.insert(invoices).values({
     clientId, number: nextNum, date, dueDate, taxEventDate: date,
     type: type || "invoice", direction: "outgoing", currency: "EUR",
-    subtotal, vatAmount, total, paymentMethod: "bank", paymentStatus: "unpaid",
+    subtotal, vatRate: items[0]?.vatRate ?? 20, vatAmount, total, paymentMethod: "bank", paymentStatus: "unpaid",
     notes: notes || null,
   }).returning({ id: invoices.id }).get();
   for (const item of items) {
     db.insert(invoiceItems).values({
       invoiceId: result.id, description: item.description,
       unit: item.unit || "бр.", quantity: item.quantity, price: item.price,
-      vatRate: item.vatRate || 20, total: item.quantity * item.price,
+      vatRate: item.vatRate ?? 20, total: roundMoney(item.quantity * item.price),
     }).run();
   }
   return { id: result.id, number: nextNum, total, items: items.length };
