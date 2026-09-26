@@ -98,8 +98,8 @@ export default function EditOfferPage() {
     Promise.all([
       fetch("/api/clients").then(r => r.json()),
       fetch("/api/sites").then(r => r.json()),
-      fetch("/api/concrete-types").then(r => r.json()),
-      fetch("/api/services").then(r => r.json()),
+      fetch("/api/concrete-types?all=1").then(r => r.json()),
+      fetch("/api/services?all=1").then(r => r.json()),
       fetch(`/api/offers/${id}`).then(r => r.json()),
     ]).then(([cl, si, ct, sv, offer]) => {
       setClients(cl);

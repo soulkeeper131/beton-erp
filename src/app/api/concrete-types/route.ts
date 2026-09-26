@@ -18,9 +18,13 @@ export async function GET(req: Request) {
   const { session, isApiKey } = await getAuth(req);
   if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // По подразбиране само активните (изтритите не се предлагат в нови оферти/актове);
+  // ?all=1 — и неактивните, за страниците, които показват стари записи.
+  const all = new URL(req.url).searchParams.get("all") === "1";
   const types = await db
     .select()
     .from(concreteTypes)
+    .where(all ? undefined : eq(concreteTypes.active, true))
     .orderBy(asc(concreteTypes.name))
     .all();
 

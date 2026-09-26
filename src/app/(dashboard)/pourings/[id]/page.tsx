@@ -69,7 +69,7 @@ export default function PouredDetailPage() {
       }
     });
     fetch("/api/sites").then(r => r.json()).then(setSites);
-    fetch("/api/concrete-types").then(r => r.json()).then(setConcreteTypes);
+    fetch("/api/concrete-types?all=1").then(r => r.json()).then(setConcreteTypes);
     fetch("/api/machines").then(r => r.json()).then(setMachines);
     fetch("/api/workers").then(r => r.json()).then(setWorkers);
     fetch("/api/materials").then(r => r.json()).then(setMaterialsList);

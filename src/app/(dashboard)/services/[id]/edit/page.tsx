@@ -25,7 +25,7 @@ export default function EditServicePage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/concrete-types").then(r => r.json()),
+      fetch("/api/concrete-types?all=1").then(r => r.json()),
       fetch("/api/materials").then(r => r.json()),
       fetch("/api/machines").then(r => r.json()),
       fetch(`/api/services/${id}`).then(r => r.json()),

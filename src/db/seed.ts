@@ -43,8 +43,11 @@ async function seed() {
     { name: "Замазка", className: "SCREED", pricePerM3: 130, description: "Подова замазка" },
   ];
 
+  // Без дубли: базата вече може да има типовете (auto-seed в db/index.ts при първо
+  // пускане), а таблицата няма UNIQUE — onConflictDoNothing не пази.
+  const existing = new Set(db.select({ name: concreteTypes.name }).from(concreteTypes).all().map((t) => t.name));
   for (const t of types) {
-    await db.insert(concreteTypes).values(t).onConflictDoNothing();
+    if (!existing.has(t.name)) await db.insert(concreteTypes).values(t);
   }
 
   console.log("✅ Seed complete: 3 users, 7 concrete types");
