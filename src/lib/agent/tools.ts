@@ -3,6 +3,7 @@
 import { db } from "@/db";
 import { calcInvoiceTotals, roundMoney } from "@/lib/calc";
 import { getNextInvoiceNumber } from "@/lib/invoice-number";
+import { guardUserChange, MIN_PASSWORD, validRole } from "@/lib/users";
 import { getNextOfferNumber, offerItemSchema, offerTotal, replaceOfferItems } from "@/lib/offers";
 import { clients, offers, offerItems, pourings, pouringItems, sites, concreteTypes, services, materials, machines, siteCalendar, invoices, invoiceItems, workers, users, companySettings } from "@/db/schema";
 import { eq, like, or, and, desc, asc } from "drizzle-orm";
@@ -257,20 +258,29 @@ async function listUsers() {
 }
 
 async function createUser(params: { name: string; email: string; password: string; role?: string; phone?: string }) {
+  if (params.role && !validRole(params.role)) throw new Error("Невалидна роля");
+  if (!params.password || params.password.length < MIN_PASSWORD) throw new Error(`Паролата трябва да е поне ${MIN_PASSWORD} символа`);
   const pwdHash = await hash(params.password, 10);
   const result = db.insert(users).values({
     name: params.name, email: params.email, passwordHash: pwdHash,
-    role: params.role || "employee", phone: params.phone || null,
+    role: params.role || "employee", phone: params.phone || null, mustChangePassword: true,
   }).returning({ id: users.id }).get();
   return { id: result.id, name: params.name, email: params.email };
 }
 
 async function updateUser(params: { userId: number; name?: string; role?: string; active?: boolean; password?: string }) {
   const vals: any = {};
+  if (params.role && !validRole(params.role)) throw new Error("Невалидна роля");
+  const guard = guardUserChange(params.userId, { role: params.role, active: params.active });
+  if (guard) throw new Error(guard);
   if (params.name) vals.name = params.name;
   if (params.role) vals.role = params.role;
   if (params.active !== undefined) vals.active = params.active;
-  if (params.password) vals.passwordHash = await hash(params.password, 10);
+  if (params.password) {
+    if (params.password.length < MIN_PASSWORD) throw new Error(`Паролата трябва да е поне ${MIN_PASSWORD} символа`);
+    vals.passwordHash = await hash(params.password, 10);
+    vals.mustChangePassword = true;
+  }
   vals.updatedAt = new Date().toISOString();
   db.update(users).set(vals).where(eq(users.id, params.userId)).run();
   return { success: true };

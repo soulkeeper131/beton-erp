@@ -1,6 +1,6 @@
 import { Shell } from "@/components/layout/shell";
 import { SessionProvider } from "@/components/providers/session-provider";
-import ChatWidget from "@/components/chat/chat-widget";
+import ChatGate from "@/components/chat/chat-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +8,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <SessionProvider>
       <Shell>{children}</Shell>
-      <ChatWidget />
+      <ChatGate />
     </SessionProvider>
   );
 }

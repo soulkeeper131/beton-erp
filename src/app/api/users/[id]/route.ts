@@ -4,6 +4,7 @@ import { users } from "@/db/schema";
 import { hash } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { guardUserChange, MIN_PASSWORD, validRole } from "@/lib/users";
 
 export const dynamic = "force-dynamic";
 
@@ -49,10 +50,21 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
     updateData.email = body.email;
   }
-  if (body.role !== undefined) updateData.role = body.role;
+  if (body.role !== undefined) {
+    if (!validRole(body.role)) return NextResponse.json({ error: "Невалидна роля" }, { status: 400 });
+    updateData.role = body.role;
+  }
   if (body.phone !== undefined) updateData.phone = body.phone;
   if (body.active !== undefined) updateData.active = body.active;
-  if (body.password) updateData.passwordHash = await hash(body.password, 10);
+  if (body.password) {
+    if (String(body.password).length < MIN_PASSWORD) {
+      return NextResponse.json({ error: `Паролата трябва да е поне ${MIN_PASSWORD} символа` }, { status: 400 });
+    }
+    updateData.passwordHash = await hash(body.password, 10);
+    updateData.mustChangePassword = true; // нулирана от админ → смяна при вход
+  }
+  const guard = guardUserChange(userId, { role: updateData.role, active: updateData.active });
+  if (guard) return NextResponse.json({ error: guard }, { status: 409 });
   updateData.updatedAt = new Date().toISOString();
 
   db.update(users).set(updateData).where(eq(users.id, userId)).run();
@@ -68,6 +80,10 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   const userId = parseInt(params.id);
   const existing = db.select({ id: users.id }).from(users).where(eq(users.id, userId)).get();
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const actorId = (session as any)?.user?.id ? parseInt(String((session as any).user.id)) : undefined;
+  const guard = guardUserChange(userId, { delete: true }, actorId);
+  if (guard) return NextResponse.json({ error: guard }, { status: 409 });
 
   db.delete(users).where(eq(users.id, userId)).run();
   return NextResponse.json({ success: true });

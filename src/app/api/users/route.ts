@@ -4,6 +4,7 @@ import { users } from "@/db/schema";
 import { hash } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { MIN_PASSWORD, validRole } from "@/lib/users";
 
 export const dynamic = "force-dynamic";
 
@@ -39,10 +40,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Email, парола и име са задължителни" }, { status: 400 });
   }
 
-  const allowedRoles = ["admin", "manager", "brigadir", "employee"];
   const finalRole = role || "employee";
-  if (!allowedRoles.includes(finalRole)) {
+  if (!validRole(finalRole)) {
     return NextResponse.json({ error: "Невалидна роля" }, { status: 400 });
+  }
+  if (String(password).length < MIN_PASSWORD) {
+    return NextResponse.json({ error: `Паролата трябва да е поне ${MIN_PASSWORD} символа` }, { status: 400 });
   }
 
   // Check existing
@@ -58,6 +61,8 @@ export async function POST(req: Request) {
     name,
     role: finalRole,
     phone: phone || null,
+    // Паролата е зададена от админ — потребителят я сменя при първо влизане
+    mustChangePassword: true,
   }).returning({ id: users.id }).get();
 
   return NextResponse.json({ id: result.id, email, name, role: finalRole, phone }, { status: 201 });

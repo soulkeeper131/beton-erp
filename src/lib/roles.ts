@@ -15,6 +15,7 @@ export const BRIGADIR_BLOCKED_API = [
   "/api/imap-test",
   "/api/smtp-test",
   "/api/upload-logo",
+  "/api/agent",
 ];
 
 function matches(pathname: string, prefix: string): boolean {
