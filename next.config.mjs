@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    // pdf-parse v2 ползва pdfjs-dist с отделен worker файл — при bundle-ване worker-ът
+    // липсва („Setting up fake worker failed“), затова се зарежда от node_modules
+    serverComponentsExternalPackages: ["pdf-parse", "pdfjs-dist"],
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
