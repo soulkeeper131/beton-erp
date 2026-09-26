@@ -144,6 +144,8 @@ export default function ClientDetailPage() {
       const updated = await res.json();
       setClient(updated);
       setDialogOpen(false);
+    } else {
+      alert((await res.json().catch(() => null))?.error || "Грешка при запис");
     }
   };
 

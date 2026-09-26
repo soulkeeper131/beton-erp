@@ -42,7 +42,7 @@ export default function NewSitePage() {
       }),
     });
     if (res.ok) router.push("/sites");
-    else { alert("Грешка при създаване"); setSaving(false); }
+    else { alert((await res.json().catch(() => null))?.error || "Грешка при създаване"); setSaving(false); }
   }
 
   return (

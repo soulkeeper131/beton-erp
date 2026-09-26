@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { firstZodError } from "@/lib/acts";
+import { siteUsage } from "@/lib/clients";
 import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { sites, clients, pourings } from "@/db/schema";
@@ -8,7 +10,7 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 
 const updateSchema = z.object({
-  clientId: z.number().int().positive().optional(),
+  clientId: z.coerce.number().int().positive("Изберете клиент").optional(),
   name: z.string().min(1).optional(),
   city: z.string().optional(),
   address: z.string().min(1).optional(),
@@ -74,7 +76,7 @@ export async function PATCH(
   const body = await req.json();
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: firstZodError(parsed.error) }, { status: 400 });
   }
 
   const existing = await db
@@ -110,6 +112,11 @@ export async function DELETE(
 
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await db.delete(sites).where(eq(sites.id, parseInt(params.id)));
+  // Обект с актове/оферти/календар/явки не се трие (FK грешка → 500 досега)
+  const usage = siteUsage(existing.id);
+  if (usage.length) {
+    return NextResponse.json({ error: `Обектът има ${usage.join(", ")} и не може да се изтрие. Сменете статуса му.` }, { status: 409 });
+  }
+  await db.delete(sites).where(eq(sites.id, existing.id));
   return NextResponse.json({ success: true });
 }

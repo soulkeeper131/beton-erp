@@ -80,7 +80,7 @@ export default function EditClientPage() {
       body: JSON.stringify(form),
     });
     if (res.ok) router.push("/clients");
-    else { alert("Грешка"); setSaving(false); }
+    else { alert((await res.json().catch(() => null))?.error || "Грешка"); setSaving(false); }
   }
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin" /></div>;
