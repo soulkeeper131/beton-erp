@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, Image, Font } from "@react-pdf/renderer";
 import path from "path";
 import { existsSync } from "fs";
+import { calcInvoiceTotals } from "@/lib/calc";
 
 Font.register({
   family: "DejaVu Sans",
@@ -14,9 +15,9 @@ const typeLabels: Record<string, string> = {
   invoice: "ФАКТУРА", proforma: "ПРОФОРМА", credit_note: "КРЕДИТНО ИЗВЕСТИЕ", debit_note: "ДЕБИТНО ИЗВЕСТИЕ",
 };
 
-type Props = { invoice: any; items: any[]; company: any };
+type Props = { invoice: any; items: any[]; company: any; related?: { number: string; date: string } | null };
 
-export function InvoicePDF({ invoice, items, company }: Props) {
+export function InvoicePDF({ invoice, items, company, related }: Props) {
   const c = company || {};
   const title = typeLabels[invoice.type] || "ФАКТУРА";
   const direction = invoice.direction || "outgoing";
@@ -116,6 +117,28 @@ export function InvoicePDF({ invoice, items, company }: Props) {
       ? (subtotal * (invoice.discountPercent || 0)) / 100 + (invoice.discountAmount || 0)
       : 0;
   const netBase = subtotal - discountTotal;
+  // ДДС по ставки (чл. 114 ЗДДС) — при повече от една ставка се показва разбивка
+  const { byRate } = calcInvoiceTotals(
+    (items || []).map((i: any) => ({ quantity: i.quantity || 0, price: i.price || 0, vatRate: i.vatRate ?? 20 })),
+    invoice.discountPercent || 0,
+    invoice.discountAmount || 0,
+  );
+
+  // Страни: при входяща фактура доставчикът е контрагентът, а получателят — нашата фирма
+  const us = {
+    name: c.companyName,
+    idLine: c.eik ? `ЕИК: ${c.eik}${c.vatNumber ? ` / ДДС: ${c.vatNumber}` : ""}` : "",
+    address: [c.city, c.address].filter(Boolean).join(", "),
+    mol: c.mol ? `МОЛ: ${c.mol}` : "",
+  };
+  const them = {
+    name: invoice.clientCompany || invoice.clientName || "-",
+    idLine: invoice.clientEik ? `ЕИК: ${invoice.clientEik}${invoice.clientVatNumber ? ` / ДДС: ${invoice.clientVatNumber}` : ""}` : "",
+    address: invoice.clientAddress || "",
+    mol: "",
+  };
+  const supplier = isIncoming ? them : us;
+  const recipient = isIncoming ? us : them;
 
   return (
     <Document>
@@ -165,6 +188,9 @@ export function InvoicePDF({ invoice, items, company }: Props) {
           <View style={styles.titleCell}>
             <Text style={styles.titleText}>{isIncoming ? "ВХОДЯЩА " : ""}{title}</Text>
             <Text style={styles.titleNum}>№ {invoice.number || "-"}</Text>
+            {related ? (
+              <Text style={{ fontSize: 8, marginTop: 2 }}>към фактура № {related.number} от {related.date}</Text>
+            ) : null}
           </View>
         </View>
 
@@ -202,16 +228,17 @@ export function InvoicePDF({ invoice, items, company }: Props) {
         <View style={styles.partiesRow}>
           <View style={styles.partyLeft}>
             <Text style={styles.partyLabel}>ДОСТАВЧИК</Text>
-            {c.companyName ? <Text style={styles.partyBold}>{c.companyName}</Text> : null}
-            {c.eik ? <Text style={styles.partyText}>ЕИК: {c.eik}{c.vatNumber ? ` / ДДС: ${c.vatNumber}` : ""}</Text> : null}
-            {c.address ? <Text style={styles.partyText}>{[c.city, c.address].filter(Boolean).join(", ")}</Text> : null}
-            {c.mol ? <Text style={styles.partyText}>МОЛ: {c.mol}</Text> : null}
+            {supplier.name ? <Text style={styles.partyBold}>{supplier.name}</Text> : null}
+            {supplier.idLine ? <Text style={styles.partyText}>{supplier.idLine}</Text> : null}
+            {supplier.address ? <Text style={styles.partyText}>{supplier.address}</Text> : null}
+            {supplier.mol ? <Text style={styles.partyText}>{supplier.mol}</Text> : null}
           </View>
           <View style={styles.partyRight}>
             <Text style={styles.partyLabel}>ПОЛУЧАТЕЛ</Text>
-            <Text style={styles.partyBold}>{invoice.clientCompany || invoice.clientName || "-"}</Text>
-            {invoice.clientEik ? <Text style={styles.partyText}>ЕИК: {invoice.clientEik}{invoice.clientVatNumber ? ` / ДДС: ${invoice.clientVatNumber}` : ""}</Text> : null}
-            {invoice.clientAddress ? <Text style={styles.partyText}>{invoice.clientAddress}</Text> : null}
+            {recipient.name ? <Text style={styles.partyBold}>{recipient.name}</Text> : null}
+            {recipient.idLine ? <Text style={styles.partyText}>{recipient.idLine}</Text> : null}
+            {recipient.address ? <Text style={styles.partyText}>{recipient.address}</Text> : null}
+            {recipient.mol ? <Text style={styles.partyText}>{recipient.mol}</Text> : null}
           </View>
         </View>
 
@@ -267,10 +294,19 @@ export function InvoicePDF({ invoice, items, company }: Props) {
               <Text style={styles.slab}>Данъчна основа (без ДДС)</Text>
               <Text style={styles.sval}>{netBase.toFixed(2)} €</Text>
             </View>
-            <View style={styles.srow}>
-              <Text style={styles.slab}>ДДС {invoice.vatRate ?? 20}%</Text>
-              <Text style={styles.sval}>{vat.toFixed(2)} €</Text>
-            </View>
+            {byRate.length > 1 ? (
+              byRate.map((r) => (
+                <View style={styles.srow} key={r.rate}>
+                  <Text style={styles.slab}>ДДС {r.rate}% върху {r.base.toFixed(2)} €</Text>
+                  <Text style={styles.sval}>{r.vat.toFixed(2)} €</Text>
+                </View>
+              ))
+            ) : (
+              <View style={styles.srow}>
+                <Text style={styles.slab}>ДДС {byRate[0]?.rate ?? invoice.vatRate ?? 20}%</Text>
+                <Text style={styles.sval}>{vat.toFixed(2)} €</Text>
+              </View>
+            )}
             <View style={styles.srowTotal}>
               <Text style={styles.slabTotal}>ОБЩО ЗА ПЛАЩАНЕ (с ДДС)</Text>
               <Text style={styles.svalTotal}>{total.toFixed(2)} €</Text>

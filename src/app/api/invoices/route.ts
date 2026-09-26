@@ -88,6 +88,15 @@ export async function POST(req: Request) {
   const items = parsed.data.items;
   const isNote = parsed.data.type === "credit_note" || parsed.data.type === "debit_note";
 
+  // 0% ДДС изисква основание за неначисляване (чл. 114, ал. 1, т. 12 ЗДДС)
+  if (
+    parsed.data.direction === "outgoing" &&
+    items.some((i) => i.vatRate === 0) &&
+    !parsed.data.taxExemptionReason?.trim()
+  ) {
+    return NextResponse.json({ error: "При ред с 0% ДДС попълнете „Основание за нулева ставка“" }, { status: 400 });
+  }
+
   if (isInvoiceNumberTaken(parsed.data.direction, parsed.data.number)) {
     return NextResponse.json({ error: `Номер ${parsed.data.number} вече съществува` }, { status: 409 });
   }

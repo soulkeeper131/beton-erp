@@ -52,9 +52,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const company = db.select().from(companySettings).get();
+  const related = invoice.relatedInvoiceId
+    ? db.select({ id: invoices.id, number: invoices.number, date: invoices.date }).from(invoices).where(eq(invoices.id, invoice.relatedInvoiceId)).get()
+    : null;
   const items = db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, parseInt(params.id))).all();
 
-  return NextResponse.json({ ...invoice, items, company });
+  return NextResponse.json({ ...invoice, items, company, related });
 }
 
 // Позволени промени: издаване (чернова → издадена), плащане и бележки.

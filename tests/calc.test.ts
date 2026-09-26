@@ -111,6 +111,23 @@ describe("addDays/addMonths", () => {
   });
 });
 
+describe("ДДС по ставки", () => {
+  it("разбивка при смесени ставки, с отстъпка", () => {
+    const r = calcInvoiceTotals([
+      { quantity: 1, price: 1000, vatRate: 20 },
+      { quantity: 1, price: 500, vatRate: 9 },
+      { quantity: 1, price: 100, vatRate: 0 },
+    ], 10);
+    expect(r.byRate).toEqual([
+      { rate: 20, base: 900, vat: 180 },
+      { rate: 9, base: 450, vat: 40.5 },
+      { rate: 0, base: 90, vat: 0 },
+    ]);
+    expect(r.vatAmount).toBe(220.5);
+    expect(r.total).toBe(1660.5);
+  });
+});
+
 describe("закръгляне до стотинка", () => {
   it("roundMoney", () => {
     expect(roundMoney(0.1 + 0.2)).toBe(0.3);
