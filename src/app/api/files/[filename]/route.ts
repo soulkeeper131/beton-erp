@@ -3,6 +3,7 @@ import { getAuth } from "@/lib/auth-helpers";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { IMAGE_MIME, SAFE_FILE_HEADERS } from "@/lib/uploads";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +15,8 @@ export async function GET(
   if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const filename = params.filename;
-  // Prevent path traversal
-  if (filename.includes("..") || filename.includes("/")) {
+  // Само имена, генерирани от системата (без пътища)
+  if (!/^[\w.-]+$/.test(filename) || filename.includes("..")) {
     return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
   }
 
@@ -27,16 +28,16 @@ export async function GET(
   try {
     const buffer = await readFile(filePath);
     const ext = filename.split(".").pop()?.toLowerCase() || "jpg";
-    const mimeTypes: Record<string, string> = {
-      jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
-      gif: "image/gif", webp: "image/webp", svg: "image/svg+xml",
-    };
-    const contentType = mimeTypes[ext] || "application/octet-stream";
+    // SVG вече не се сервира като изображение (може да съдържа скрипт); неразпознатото
+    // се сваля като файл, а не се показва
+    const contentType = IMAGE_MIME[ext === "jpeg" ? "jpg" : ext] || "application/octet-stream";
 
     return new Response(buffer, {
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=86400",
+        "Cache-Control": "private, max-age=86400",
+        ...(contentType === "application/octet-stream" ? { "Content-Disposition": "attachment" } : {}),
+        ...SAFE_FILE_HEADERS,
       },
     });
   } catch {

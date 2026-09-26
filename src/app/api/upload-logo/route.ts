@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { companySettings } from "@/db/schema";
 import { writeFileSync, mkdirSync } from "fs";
 import path from "path";
+import { detectImage } from "@/lib/uploads";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +24,11 @@ export async function POST(req: Request) {
   const uploadDir = path.join(process.cwd(), "data", "uploads");
   mkdirSync(uploadDir, { recursive: true });
 
-  const ext = file.name.split(".").pop() || "png";
-  const filename = `logo.${ext}`;
+  const kind = detectImage(buffer);
+  if (!kind || !["png", "jpg", "webp"].includes(kind.ext)) {
+    return NextResponse.json({ error: "Логото трябва да е PNG, JPG или WEBP" }, { status: 400 });
+  }
+  const filename = `logo.${kind.ext}`;
   const filePath = path.join(uploadDir, filename);
   writeFileSync(filePath, buffer);
 
