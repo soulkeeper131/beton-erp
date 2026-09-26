@@ -36,14 +36,19 @@ describe("API routes auth guard", () => {
   // Публични по замисъл или със собствена проверка на API ключ
   const PUBLIC = ["auth/[...nextauth]/route.ts", "health/route.ts", "tools/call/route.ts"];
 
-  it("всеки route проверява сесия/API ключ в handler-а", () => {
+  it("всеки handler проверява сесия/API ключ", () => {
     const apiDir = path.resolve("src/app/api");
     const missing: string[] = [];
     for (const r of findRouteFiles(apiDir)) {
       const rel = path.relative(apiDir, r).split(path.sep).join("/");
       if (PUBLIC.includes(rel)) continue;
       const content = readFileSync(r, "utf8");
-      if (!/requireAuth\(|getAuth\(|requireAdmin\(|auth\(\)/.test(content)) missing.push(rel);
+      // Проверката трябва да е във всеки handler, не само някъде във файла
+      const handlers = content.split(/(?=export async function (?:GET|POST|PUT|PATCH|DELETE)\b)/).slice(1);
+      for (const h of handlers) {
+        const name = h.match(/export async function (\w+)/)![1];
+        if (!/requireAuth\(|getAuth\(|requireAdmin\(|auth\(\)/.test(h.slice(0, 1500))) missing.push(`${rel} ${name}`);
+      }
     }
     expect(missing, `без auth проверка: ${missing.join(", ")}`).toEqual([]);
   });
