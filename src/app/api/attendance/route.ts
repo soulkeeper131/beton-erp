@@ -3,19 +3,10 @@ import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { workerAttendance, workers, sites } from "@/db/schema";
 import { eq, desc, like, and } from "drizzle-orm";
-import { z } from "zod";
+import { attendanceSchema } from "@/lib/payroll";
+import { firstZodError } from "@/lib/acts";
 
 export const dynamic = "force-dynamic";
-
-const attendanceSchema = z.object({
-  workerId: z.coerce.number().int().positive("Изберете работник"),
-  date: z.string().min(1, "Датата е задължителна"),
-  siteId: z.coerce.number().int().optional().nullable(),
-  hours: z.coerce.number().min(0).default(8),
-  overtime: z.coerce.number().min(0).default(0),
-  advance: z.coerce.number().min(0).default(0),
-  notes: z.string().optional().nullable(),
-});
 
 export async function GET(req: Request) {
   const { session, isApiKey } = await getAuth(req);
@@ -60,7 +51,22 @@ export async function POST(req: Request) {
 
   const body = await req.json();
   const parsed = attendanceSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: firstZodError(parsed.error) }, { status: 400 });
+
+  if (!db.select({ id: workers.id }).from(workers).where(eq(workers.id, parsed.data.workerId)).get()) {
+    return NextResponse.json({ error: "Работникът не съществува" }, { status: 400 });
+  }
+  if (parsed.data.siteId && !db.select({ id: sites.id }).from(sites).where(eq(sites.id, parsed.data.siteId)).get()) {
+    return NextResponse.json({ error: "Обектът не съществува" }, { status: 400 });
+  }
+
+  // Един запис на работник за ден — иначе заплатата се удвоява
+  const dup = db.select({ id: workerAttendance.id }).from(workerAttendance)
+    .where(and(eq(workerAttendance.workerId, parsed.data.workerId), eq(workerAttendance.date, parsed.data.date)))
+    .get();
+  if (dup) {
+    return NextResponse.json({ error: "Работникът вече има явка за тази дата — редактирайте съществуващата" }, { status: 409 });
+  }
 
   const [created] = db
     .insert(workerAttendance)

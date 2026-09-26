@@ -366,7 +366,7 @@ export default function PouredDetailPage() {
                       <Select value={w.workerId} onValueChange={(v) => updateEditWorker(idx, "workerId", v)}>
                         <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Избери" /></SelectTrigger>
                         <SelectContent>
-                          {workers.map((x: any) => (
+                          {workers.filter((x: any) => x.status !== "inactive" || String(x.id) === w.workerId).map((x: any) => (
                             <SelectItem key={x.id} value={String(x.id)}>{x.name} — {x.dailyRate} €/ден</SelectItem>
                           ))}
                         </SelectContent>

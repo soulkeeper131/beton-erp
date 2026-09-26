@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
-import { workerAttendance } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { workerAttendance, workers } from "@/db/schema";
+import { and, eq, ne } from "drizzle-orm";
+import { attendanceSchema } from "@/lib/payroll";
+import { firstZodError } from "@/lib/acts";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +15,23 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const id = parseInt(params.id);
   if (isNaN(id)) return NextResponse.json({ error: "Невалиден ID" }, { status: 400 });
 
-  const body = await req.json();
+  const current = db.select().from(workerAttendance).where(eq(workerAttendance.id, id)).get();
+  if (!current) return NextResponse.json({ error: "Не е намерено" }, { status: 404 });
+
+  const parsed = attendanceSchema.partial().safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: firstZodError(parsed.error) }, { status: 400 });
   const update: Record<string, any> = {};
-  for (const key of ["workerId", "date", "siteId", "hours", "overtime", "advance", "notes"]) {
-    if (body[key] !== undefined) update[key] = body[key];
+  for (const [k, v] of Object.entries(parsed.data)) if (v !== undefined) update[k] = v;
+
+  if (update.workerId && !db.select({ id: workers.id }).from(workers).where(eq(workers.id, update.workerId)).get()) {
+    return NextResponse.json({ error: "Работникът не съществува" }, { status: 400 });
   }
+  const workerId = update.workerId ?? current.workerId;
+  const date = update.date ?? current.date;
+  const dup = db.select({ id: workerAttendance.id }).from(workerAttendance)
+    .where(and(eq(workerAttendance.workerId, workerId), eq(workerAttendance.date, date), ne(workerAttendance.id, id)))
+    .get();
+  if (dup) return NextResponse.json({ error: "Работникът вече има явка за тази дата" }, { status: 409 });
 
   const [updated] = db.update(workerAttendance).set(update).where(eq(workerAttendance.id, id)).returning().all();
   if (!updated) return NextResponse.json({ error: "Не е намерено" }, { status: 404 });

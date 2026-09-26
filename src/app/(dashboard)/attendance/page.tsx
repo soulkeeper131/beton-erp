@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useIsAdmin } from "@/lib/use-is-admin";
 import { formatCurrency } from "@/lib/utils";
+import { calcPay } from "@/lib/payroll";
 
 function todayStr() {
   return new Date().toISOString().split("T")[0];
@@ -79,8 +80,9 @@ export default function AttendancePage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm("Сигурен ли си?")) return;
-    await fetch(`/api/attendance/${id}`, { method: "DELETE" });
+    if (!confirm("Да изтрия ли явката?")) return;
+    const res = await fetch(`/api/attendance/${id}`, { method: "DELETE" });
+    if (!res.ok) return alert((await res.json().catch(() => null))?.error || "Грешка при изтриване");
     load();
   }
 
@@ -111,7 +113,7 @@ export default function AttendancePage() {
                 <Select value={workerId} onValueChange={setWorkerId}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="Избери" /></SelectTrigger>
                   <SelectContent>
-                    {workers.map((w) => (
+                    {workers.filter((w) => w.status !== "inactive").map((w) => (
                       <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -170,24 +172,25 @@ export default function AttendancePage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Работник</TableHead>
-                    <TableHead className="text-right">Часа</TableHead>
+                    <TableHead className="text-right">Дни / часа</TableHead>
+                    <TableHead className="text-right">Основна</TableHead>
                     <TableHead className="text-right">Извънредни</TableHead>
                     <TableHead className="text-right">Аванс</TableHead>
-                    <TableHead className="text-right">Очаквана заплата</TableHead>
+                    <TableHead className="text-right">За плащане</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {summaryList.map((s: any, i: number) => {
-                    const base = s.hours * s.rate;
-                    const ot = s.overtime * (s.otRate || s.rate * 1.5);
-                    const total = base + ot - s.advance;
+                    // Дневната ставка е за 8 ч; извънредните — €/ч (или часовата × 1.5)
+                    const pay = calcPay({ hours: s.hours, overtime: s.overtime, advance: s.advance, dailyRate: s.rate, overtimeRate: s.otRate || null });
                     return (
                       <TableRow key={i}>
                         <TableCell className="font-medium">{s.name}</TableCell>
-                        <TableCell className="text-right">{s.hours}</TableCell>
-                        <TableCell className="text-right">{s.overtime}</TableCell>
-                        <TableCell className="text-right">{s.advance ? `${s.advance} €` : "—"}</TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency(total)}</TableCell>
+                        <TableCell className="text-right">{Math.round(pay.days * 10) / 10} / {s.hours}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(pay.base)}</TableCell>
+                        <TableCell className="text-right">{s.overtime ? `${s.overtime} ч · ${formatCurrency(pay.overtimePay)}` : "—"}</TableCell>
+                        <TableCell className="text-right">{s.advance ? `-${formatCurrency(s.advance)}` : "—"}</TableCell>
+                        <TableCell className="text-right font-semibold">{formatCurrency(pay.net)}</TableCell>
                       </TableRow>
                     );
                   })}
