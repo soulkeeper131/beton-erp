@@ -31,3 +31,20 @@ describe("API routes force-dynamic (SQLITE_BUSY guard)", () => {
     expect(routes.length).toBeGreaterThanOrEqual(50);
   });
 });
+
+describe("API routes auth guard", () => {
+  // Публични по замисъл или със собствена проверка на API ключ
+  const PUBLIC = ["auth/[...nextauth]/route.ts", "health/route.ts", "tools/call/route.ts"];
+
+  it("всеки route проверява сесия/API ключ в handler-а", () => {
+    const apiDir = path.resolve("src/app/api");
+    const missing: string[] = [];
+    for (const r of findRouteFiles(apiDir)) {
+      const rel = path.relative(apiDir, r).split(path.sep).join("/");
+      if (PUBLIC.includes(rel)) continue;
+      const content = readFileSync(r, "utf8");
+      if (!/requireAuth\(|getAuth\(|requireAdmin\(|auth\(\)/.test(content)) missing.push(rel);
+    }
+    expect(missing, `без auth проверка: ${missing.join(", ")}`).toEqual([]);
+  });
+});

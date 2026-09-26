@@ -62,26 +62,27 @@ export async function middleware(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
-    if (token === process.env.API_KEY) {
+    if (process.env.API_KEY && token === process.env.API_KEY) {
       return NextResponse.next();
     }
   }
 
-  // Check for auth session cookie
-  const authCookie =
-    request.cookies.get("authjs.session-token")?.value ||
-    request.cookies.get("__Secure-authjs.session-token")?.value;
+  // Сесията се валидира (подпис + срок), не само наличието на cookie —
+  // иначе произволно "authjs.session-token=x" минаваше през middleware-а
+  const secureCookie = !!request.cookies.get("__Secure-authjs.session-token");
+  const token = await getToken({ req: request, secret: process.env.AUTH_SECRET, secureCookie }).catch(() => null);
 
-  if (!authCookie) {
+  if (!token) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
   // Ограничения по роля — бригадирът няма достъп до финансови модули
-  const secureCookie = !!request.cookies.get("__Secure-authjs.session-token");
-  const token = await getToken({ req: request, secret: process.env.AUTH_SECRET, secureCookie }).catch(() => null);
-  if (token?.role === "brigadir") {
+  if (token.role === "brigadir") {
     if (pathname.startsWith("/api/")) {
       if (isBrigadirApiBlocked(pathname)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });

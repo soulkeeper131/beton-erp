@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { workers } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   const result = await db.select().from(workers).orderBy(workers.name);
   return NextResponse.json(result);
 }
 
 export async function POST(request: NextRequest) {
+  const denied = await requireAuth(request);
+  if (denied) return denied;
+
   const body = await request.json();
   const { name, phone, dailyRate, overtimeRate, hireDate, notes } = body;
 

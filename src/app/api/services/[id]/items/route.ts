@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { serviceItems, concreteTypes, materials, machines } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   const serviceId = parseInt(params.id);
   const result = await db.select({
     id: serviceItems.id, serviceId: serviceItems.serviceId,
@@ -28,6 +32,9 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
 }
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+  const denied = await requireAuth(request);
+  if (denied) return denied;
+
   const serviceId = parseInt(params.id);
   const body = await request.json();
   const { concreteTypeId, materialId, machineId, actionName, description, quantity, unit, pricePerUnit, sortOrder } = body;
@@ -47,6 +54,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+  const denied = await requireAuth(request);
+  if (denied) return denied;
+
   const serviceId = parseInt(params.id);
   const body = await request.json();
   const { itemId, ...fields } = body;
@@ -65,6 +75,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  const denied = await requireAuth(request);
+  if (denied) return denied;
+
   const { searchParams } = new URL(request.url);
   const itemId = searchParams.get("itemId");
   if (!itemId) return NextResponse.json({ error: "itemId is required" }, { status: 400 });

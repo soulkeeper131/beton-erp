@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 
 const apiKey = process.env.API_KEY || "";
@@ -25,4 +26,12 @@ export async function requireAdmin(req?: Request) {
   if (!session || !session.user) return null;
   if ((session.user as any).role !== "admin") return "forbidden" as const;
   return session;
+}
+
+// Guard за API route: 401 без валидна сесия или API ключ. Употреба:
+//   const denied = await requireAuth(req); if (denied) return denied;
+export async function requireAuth(req: Request): Promise<NextResponse | null> {
+  const { session, isApiKey } = await getAuth(req);
+  if (!session?.user && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  return null;
 }

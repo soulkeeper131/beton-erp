@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { companySettings } from "@/db/schema";
 import { readFileSync, existsSync } from "fs";
@@ -6,7 +7,10 @@ import path from "path";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   const settings = db.select().from(companySettings).limit(1).get();
   const logoPath = settings?.logoPath;
 

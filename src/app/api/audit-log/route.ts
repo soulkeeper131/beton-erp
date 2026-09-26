@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
 import Database from "better-sqlite3";
 import path from "path";
 
@@ -10,6 +11,9 @@ const getDb = () => {
 };
 
 export async function GET(req: NextRequest) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") || "1");
   const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 200);

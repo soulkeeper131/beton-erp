@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { count, sum, and, gte, lte, eq, ne, or, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   const today = new Date().toISOString().split("T")[0];
   const monthStart = today.substring(0, 7) + "-01";
   const nextWeek = new Date();

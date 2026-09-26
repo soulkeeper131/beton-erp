@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { machines } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -6,12 +7,18 @@ import { auditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   const rows = db.select().from(machines).all();
   return NextResponse.json(rows);
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   const body = await req.json();
   const result = db.insert(machines).values({
     name: body.name,

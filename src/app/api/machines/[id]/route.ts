@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { machines, machineMaintenance } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -7,6 +8,9 @@ import { auditLog } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   const machine = db.select().from(machines).where(eq(machines.id, parseInt(params.id))).get();
   if (!machine) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -18,6 +22,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   const body = await req.json();
   const id = parseInt(params.id);
 
@@ -39,6 +46,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   const id = parseInt(params.id);
   // Първо свързаните ремонти, после машината (иначе FK constraint)
   db.delete(machineMaintenance).where(eq(machineMaintenance.machineId, id)).run();

@@ -2,11 +2,15 @@
 // Returns tool definitions in OpenAI function calling format for external AI clients
 
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
 import { getToolsForLLM, agentTools } from "@/lib/agent/tools";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   const tools = getToolsForLLM();
   
   // Also include human-readable descriptions for each tool
