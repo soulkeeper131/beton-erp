@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-helpers";
+import { getAuth, requireAuth } from "@/lib/auth-helpers";
+import { roundMoney } from "@/lib/calc";
+import { invoiceSign } from "@/lib/reports";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { count, sum, and, gte, lte, eq, ne, or, sql } from "drizzle-orm";
@@ -19,13 +21,22 @@ export async function GET(req: Request) {
   thirtyDays.setDate(thirtyDays.getDate() + 30);
   const thirtyDaysStr = thirtyDays.toISOString().split("T")[0];
 
-  // KPI: monthly revenue (sent invoices only)
-  const revResult = (await db
-    .select({ total: sum(schema.invoices.total) })
+  // Бригадирът не вижда финансови показатели
+  const { session } = await getAuth(req);
+  const showFinance = (session?.user as any)?.role !== "brigadir";
+
+  // KPI: приход за месеца — само издадени ИЗХОДЯЩИ фактури (без проформи;
+  // кредитните известия се изваждат). Преди се броеше и входящото (разход).
+  const monthInvoices = db
+    .select({ type: schema.invoices.type, total: schema.invoices.total })
     .from(schema.invoices)
-    .where(and(eq(schema.invoices.status, "sent"), gte(schema.invoices.date, monthStart)))
-    .get()) as { total: number | null };
-  const monthlyRevenue = revResult?.total || 0;
+    .where(and(
+      eq(schema.invoices.status, "sent"),
+      eq(schema.invoices.direction, "outgoing"),
+      gte(schema.invoices.date, monthStart),
+    ))
+    .all();
+  const monthlyRevenue = roundMoney(monthInvoices.reduce((s, i) => s + invoiceSign(i.type) * Math.abs(i.total || 0), 0));
 
   // KPI: open offers
   const offersResult = (await db
@@ -35,11 +46,16 @@ export async function GET(req: Request) {
     .get()) as { cnt: number };
   const openOffers = offersResult?.cnt || 0;
 
-  // KPI: unpaid invoices
+  // KPI: неплатени от клиенти (изходящи фактури, без проформи и кредитни известия)
   const unpaidResult = (await db
     .select({ cnt: count() })
     .from(schema.invoices)
-    .where(and(eq(schema.invoices.status, "sent"), ne(schema.invoices.paymentStatus, "paid")))
+    .where(and(
+      eq(schema.invoices.status, "sent"),
+      eq(schema.invoices.direction, "outgoing"),
+      eq(schema.invoices.type, "invoice"),
+      ne(schema.invoices.paymentStatus, "paid"),
+    ))
     .get()) as { cnt: number };
   const unpaidInvoices = unpaidResult?.cnt || 0;
 
@@ -121,9 +137,9 @@ export async function GET(req: Request) {
     .all();
 
   return NextResponse.json({
-    monthlyRevenue,
-    openOffers,
-    unpaidInvoices,
+    monthlyRevenue: showFinance ? monthlyRevenue : null,
+    openOffers: showFinance ? openOffers : null,
+    unpaidInvoices: showFinance ? unpaidInvoices : null,
     activeSites,
     workersToday,
     totalPouringsM3,
