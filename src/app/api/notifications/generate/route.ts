@@ -56,28 +56,40 @@ export async function POST(req: Request) {
     { key: "insurance", label: "Гражданска отговорност", field: "insuranceExpiry" as const },
     { key: "tech", label: "Технически преглед", field: "techInspectionExpiry" as const },
   ];
+  // Изтекъл документ има собствен тип (иначе непрочетеното „изтича“ блокираше „изтекла“),
+  // а при подновяване остарелите непрочетени известия се затварят.
+  async function resolve(type: string, entityId: number) {
+    await db.update(schema.notifications)
+      .set({ isRead: true })
+      .where(and(
+        eq(schema.notifications.type, type),
+        eq(schema.notifications.entityType, "machine"),
+        eq(schema.notifications.entityId, entityId),
+        eq(schema.notifications.isRead, false),
+      ))
+      .run();
+  }
+
+  const checks = [
+    ...docTypes.map((dt) => ({ key: dt.key, label: dt.label, pick: (m: typeof machines[number]) => m[dt.field], verb: ["изтекла", "изтича"] })),
+    { key: "service", label: "Обслужване", pick: (m: typeof machines[number]) => m.nextMaintenanceDate, verb: ["просрочено", "наближава"] },
+  ];
   for (const m of machines) {
-    for (const dt of docTypes) {
-      const expiry = m[dt.field];
-      if (!expiry) continue;
-      if (expiry < today) {
-        await ensure(
-          `machine_${dt.key}`,
-          "machine",
-          m.id,
-          `${dt.label} изтекла — ${m.name}`,
-          `${dt.label} на „${m.name}" е изтекла на ${expiry}.`,
-          "critical",
-        );
-      } else if (expiry <= thirtyDaysStr) {
-        await ensure(
-          `machine_${dt.key}`,
-          "machine",
-          m.id,
-          `${dt.label} изтича — ${m.name}`,
-          `${dt.label} на „${m.name}" изтича на ${expiry}.`,
-          "warning",
-        );
+    for (const c of checks) {
+      const date = c.pick(m);
+      const warnType = `machine_${c.key}`;
+      const expType = `machine_${c.key}_expired`;
+      if (date && date < today) {
+        await resolve(warnType, m.id);
+        await ensure(expType, "machine", m.id, `${c.label} ${c.verb[0]} — ${m.name}`,
+          `${c.label} на „${m.name}" — ${c.verb[0]} от ${date}.`, "critical");
+      } else if (date && date <= thirtyDaysStr) {
+        await resolve(expType, m.id);
+        await ensure(warnType, "machine", m.id, `${c.label} ${c.verb[1]} — ${m.name}`,
+          `${c.label} на „${m.name}" — ${c.verb[1]}: ${date}.`, "warning");
+      } else {
+        await resolve(warnType, m.id);
+        await resolve(expType, m.id);
       }
     }
   }

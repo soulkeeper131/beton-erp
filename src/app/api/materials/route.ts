@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 const num = (msg: string) => z.coerce.number({ invalid_type_error: msg }).min(0, msg);
 
 const createSchema = z.object({
-  name: z.string().trim().min(1, "Името е задължително"),
-  unit: z.string().trim().min(1, "Мерната единица е задължителна"),
+  name: z.string({ required_error: "Името е задължително" }).trim().min(1, "Името е задължително"),
+  unit: z.string({ required_error: "Мерната единица е задължителна" }).trim().min(1, "Мерната единица е задължителна"),
   quantity: z.union([num("Невалидно количество"), z.literal("")]).optional(),
   minThreshold: z.union([num("Невалиден праг"), z.literal("")]).optional(),
   pricePerUnit: z.union([num("Невалидна цена"), z.literal("")]).optional().nullable(),

@@ -26,11 +26,11 @@ const optionalId = z.union([id, z.null()]).optional();
 export const actCreateSchema = z.object({
   siteId: id,
   offerId: optionalId,
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Невалидна дата"),
+  date: z.string({ required_error: "Датата е задължителна" }).regex(/^\d{4}-\d{2}-\d{2}$/, "Невалидна дата"),
   machineId: optionalId,
   weather: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
-  items: z.array(actItemSchema).min(1, "Поне един ред е задължителен"),
+  items: z.array(actItemSchema, { required_error: "Поне един ред е задължителен" }).min(1, "Поне един ред е задължителен"),
 });
 
 export const actPatchSchema = actCreateSchema

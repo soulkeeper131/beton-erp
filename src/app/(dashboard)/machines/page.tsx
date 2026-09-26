@@ -34,8 +34,9 @@ export default function MachinesPage() {
   }, []);
 
   async function handleDelete(id: number) {
-    if (!confirm("Сигурен ли си?")) return;
-    await fetch(`/api/machines/${id}`, { method: "DELETE" });
+    if (!confirm("Да изтрия ли машината и историята на ремонтите ѝ?")) return;
+    const res = await fetch(`/api/machines/${id}`, { method: "DELETE" });
+    if (!res.ok) return alert((await res.json().catch(() => null))?.error || "Грешка при изтриване");
     setData(data.filter(m => m.id !== id));
   }
 
