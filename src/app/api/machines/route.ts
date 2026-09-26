@@ -1,33 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { machines } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { auditLog } from "@/lib/audit";
+import { firstZodError } from "@/lib/acts";
+import { machineSchema } from "@/lib/machines";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   const rows = db.select().from(machines).all();
   return NextResponse.json(rows);
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
+  const body = await req.json().catch(() => null);
+  const parsed = machineSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: firstZodError(parsed.error) }, { status: 400 });
+
   const result = db.insert(machines).values({
-    name: body.name,
-    type: body.type,
-    category: body.category || "other",
-    plateNumber: body.plateNumber,
-    fuelType: body.fuelType,
-    year: body.year,
-    vin: body.vin,
-    mileage: body.mileage || 0,
-    vignetteExpiry: body.vignetteExpiry,
-    insuranceExpiry: body.insuranceExpiry,
-    techInspectionExpiry: body.techInspectionExpiry,
+    ...parsed.data,
+    mileage: parsed.data.mileage ?? 0,
     status: "available",
-    location: body.location,
-    notes: body.notes,
   }).returning().get();
 
   auditLog({ action: "CREATE", entityType: "machines", entityId: result.id, changes: body });

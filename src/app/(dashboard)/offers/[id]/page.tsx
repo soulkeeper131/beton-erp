@@ -120,7 +120,12 @@ export default function OfferDetailPage() {
   const handleDelete = async () => {
     if (!confirm("Сигурни ли сте, че искате да изтриете тази оферта?")) return;
     setDeleting(true);
-    await fetch(`/api/offers/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/offers/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      alert((await res.json().catch(() => null))?.error || "Грешка при изтриване");
+      setDeleting(false);
+      return;
+    }
     router.push("/offers");
   };
 

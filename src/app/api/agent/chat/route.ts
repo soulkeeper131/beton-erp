@@ -1,12 +1,13 @@
 // /src/app/api/agent/chat/route.ts
 
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getAuth } from "@/lib/auth-helpers";
+import { canUseAgent, toolAllowedForRole } from "@/lib/agent/permissions";
 import { getToolsForLLM, getTool } from "@/lib/agent/tools";
 import { SYSTEM_PROMPT } from "@/lib/agent/system-prompt";
 import { db } from "@/db";
 import { chatMessages, chatSessions } from "@/db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { and, eq, desc, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -60,18 +61,25 @@ async function callDeepSeekStream(messages: any[], tools: any[], apiKey: string)
 export async function POST(req: Request) {
   ensureTables();
 
-  const session = await auth();
+  // Ролята и активността се четат от базата (getAuth), не от JWT
+  const { session } = await getAuth(req);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const role = (session.user as any).role as string | undefined;
+  if (!canUseAgent(role)) {
+    return NextResponse.json({ error: "Нямате достъп до асистента" }, { status: 403 });
   }
 
   const userId = parseInt(session.user.id);
   const body = await req.json();
-  const { message, sessionId, confirm, pendingAction } = body;
+  const { message, sessionId, confirm } = body;
 
-  // Handle confirmation flow (non-streaming)
-  if (confirm === true && pendingAction) {
-    return handleConfirmation(userId, sessionId, pendingAction);
+  // Потвърждение: изпълнява се само действието, което агентът е предложил в тази
+  // сесия — не каквото клиентът изпрати (преди pendingAction идваше от заявката и
+  // всеки вписан потребител можеше да изпълни произволен инструмент, напр. update_user).
+  if (confirm === true) {
+    return handleConfirmation(userId, role, Number(sessionId));
   }
 
   if (!message || typeof message !== "string") {
@@ -80,10 +88,15 @@ export async function POST(req: Request) {
 
   try {
     const apiKey = await getDeepSeekKey();
-    const tools = getToolsForLLM();
+    const tools = getToolsForLLM().filter((t) => toolAllowedForRole(t.function.name, role));
 
-    // Load or create session
+    // Load or create session (само собствена сесия)
     let chatSessionId = sessionId;
+    if (chatSessionId) {
+      const own = db.select({ id: chatSessions.id }).from(chatSessions)
+        .where(and(eq(chatSessions.id, Number(chatSessionId)), eq(chatSessions.userId, userId))).get();
+      if (!own) return NextResponse.json({ error: "Сесията не е намерена" }, { status: 404 });
+    }
     if (!chatSessionId) {
       const ns = db.insert(chatSessions).values({ userId, title: message.slice(0, 100) })
         .returning({ id: chatSessions.id }).get();
@@ -137,7 +150,7 @@ export async function POST(req: Request) {
         llmMessages.push({ role: "assistant", content: assistantMsg.content || "", tool_calls: assistantMsg.tool_calls });
 
         for (const tc of assistantMsg.tool_calls) {
-          const tool = getTool(tc.function.name);
+          const tool = toolAllowedForRole(tc.function.name, role) ? getTool(tc.function.name) : undefined;
           if (!tool) {
             llmMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify({ error: `Непознат инструмент: ${tc.function.name}` }) });
             continue;
@@ -258,15 +271,31 @@ async function streamFinalResponse(sessionId: number, initialText: string, messa
   });
 }
 
-// Handle tool confirmation
-async function handleConfirmation(userId: number, sessionId: number, pendingAction: { tool: string; args: any }) {
+// Изпълнява предложеното от агента действие, чакащо потвърждение в тази сесия
+async function handleConfirmation(userId: number, role: string | undefined, sessionId: number) {
   try {
-    const apiKey = await getDeepSeekKey();
-    const tool = getTool(pendingAction.tool);
-    if (!tool) return NextResponse.json({ error: "Инструментът не е намерен" }, { status: 400 });
+    const own = db.select({ id: chatSessions.id }).from(chatSessions)
+      .where(and(eq(chatSessions.id, sessionId), eq(chatSessions.userId, userId))).get();
+    if (!own) return NextResponse.json({ error: "Сесията не е намерена" }, { status: 404 });
 
-    const result = await tool.handler(pendingAction.args, userId);
+    // Последното съобщение на асистента трябва да е чакащото действие
+    const last = db.select().from(chatMessages)
+      .where(and(eq(chatMessages.sessionId, sessionId), eq(chatMessages.role, "assistant")))
+      .orderBy(desc(chatMessages.id)).limit(1).get();
+    let pending: { name: string; args: any } | null = null;
+    try { pending = last?.metadata ? JSON.parse(last.metadata).pendingTool ?? null : null; } catch {}
+    if (!last || !pending) return NextResponse.json({ error: "Няма действие за потвърждение" }, { status: 400 });
+
+    const tool = toolAllowedForRole(pending.name, role) ? getTool(pending.name) : undefined;
+    if (!tool) return NextResponse.json({ error: "Нямате права за това действие" }, { status: 403 });
+
+    // Еднократно: маркираме като изпълнено преди изпълнението (без повторение)
+    db.update(chatMessages).set({ metadata: JSON.stringify({ executedTool: pending.name }) })
+      .where(eq(chatMessages.id, last.id)).run();
+
+    const result = await tool.handler(pending.args, userId);
     const resultStr = JSON.stringify(result, null, 2);
+    db.insert(chatMessages).values({ sessionId, role: "assistant", content: `✅ Изпълнено: ${pending.name}`, toolName: pending.name }).run();
 
     return NextResponse.json({
       sessionId,
@@ -280,7 +309,7 @@ async function handleConfirmation(userId: number, sessionId: number, pendingActi
 
 // GET — list sessions
 export async function GET(req: Request) {
-  const session = await auth();
+  const { session } = await getAuth(req);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const userId = parseInt(session.user.id);
   const sessions = db.select({ id: chatSessions.id, title: chatSessions.title, createdAt: chatSessions.createdAt, updatedAt: chatSessions.updatedAt })

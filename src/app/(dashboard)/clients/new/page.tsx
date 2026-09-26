@@ -69,7 +69,12 @@ export default function NewClientPage() {
       body: JSON.stringify(form),
     });
     if (res.ok) router.push("/clients");
-    else { alert("Грешка при създаване"); setSaving(false); }
+    else {
+      const err = await res.json().catch(() => null);
+      setSaving(false);
+      if (err?.existingId && confirm(`${err.error}\n\nДа отворя ли съществуващия клиент?`)) router.push(`/clients/${err.existingId}`);
+      else if (!err?.existingId) alert(err?.error || "Грешка при създаване");
+    }
   }
 
   return (

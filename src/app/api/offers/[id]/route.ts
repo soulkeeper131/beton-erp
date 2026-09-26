@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { firstZodError } from "@/lib/acts";
+import { offerItemSchema, replaceOfferItems } from "@/lib/offers";
 import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
-import { offers, offerItems, clients, concreteTypes, services } from "@/db/schema";
+import { offers, offerItems, clients, concreteTypes, services, pourings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -12,10 +14,10 @@ const updateSchema = z.object({
   siteId: z.coerce.number().int().optional().nullable(),
   date: z.string().optional(),
   validUntil: z.string().optional().nullable(),
-  total: z.number().optional(),
   status: z.enum(["draft", "sent", "accepted", "rejected"]).optional(),
   notes: z.string().optional().nullable(),
   pdfPath: z.string().optional().nullable(),
+  items: z.array(offerItemSchema).optional(),
 });
 
 export async function GET(
@@ -89,7 +91,7 @@ export async function PATCH(
   const body = await req.json();
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: firstZodError(parsed.error) }, { status: 400 });
   }
 
   const offerId = parseInt(params.id);
@@ -107,17 +109,16 @@ export async function PATCH(
   if (parsed.data.siteId !== undefined) updateData.siteId = parsed.data.siteId;
   if (parsed.data.date !== undefined) updateData.date = parsed.data.date;
   if (parsed.data.validUntil !== undefined) updateData.validUntil = parsed.data.validUntil;
-  if (parsed.data.total !== undefined) updateData.total = parsed.data.total;
   if (parsed.data.status !== undefined) updateData.status = parsed.data.status;
   if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes;
   if (parsed.data.pdfPath !== undefined) updateData.pdfPath = parsed.data.pdfPath;
 
-  const [updated] = db
-    .update(offers)
-    .set(updateData)
-    .where(eq(offers.id, offerId))
-    .returning()
-    .all();
+  // Сумата не се задава ръчно — изчислява се от редовете (заменят се атомарно)
+  const updated = db.transaction((tx) => {
+    if (Object.keys(updateData).length) tx.update(offers).set(updateData).where(eq(offers.id, offerId)).run();
+    if (parsed.data.items) replaceOfferItems(tx, offerId, parsed.data.items);
+    return tx.select().from(offers).where(eq(offers.id, offerId)).get();
+  });
 
   return NextResponse.json(updated);
 }
@@ -139,9 +140,16 @@ export async function DELETE(
 
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Cascade delete items first
-  db.delete(offerItems).where(eq(offerItems.offerId, offerId)).run();
-  db.delete(offers).where(eq(offers.id, offerId)).run();
+  // Оферта с актове не се трие — актовете сочат към нея (и губехме редовете ѝ при FK грешка)
+  const linked = db.select({ id: pourings.id }).from(pourings).where(eq(pourings.offerId, offerId)).limit(1).get();
+  if (linked) {
+    return NextResponse.json({ error: "Офертата има актове и не може да се изтрие. Отбележете я като отказана." }, { status: 409 });
+  }
+
+  db.transaction((tx) => {
+    tx.delete(offerItems).where(eq(offerItems.offerId, offerId)).run();
+    tx.delete(offers).where(eq(offers.id, offerId)).run();
+  });
 
   return NextResponse.json({ success: true });
 }

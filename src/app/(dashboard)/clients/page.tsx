@@ -53,10 +53,14 @@ export default function ClientsPage() {
   const openEdit = (client: Client) => { setEditing(client); form.reset({ name: client.name, companyName: client.companyName || "", eik: client.eik || "", vatNumber: client.vatNumber || "", address: client.address || "", phone: client.phone || "", email: client.email || "", notes: client.notes || "" }); setDialogOpen(true); };
 
   const onSubmit = async (values: FormValues) => {
-    if (editing) {
-      await fetch(`/api/clients/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
-    } else {
-      await fetch("/api/clients", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
+    const res = editing
+      ? await fetch(`/api/clients/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) })
+      : await fetch("/api/clients", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      if (err?.existingId && confirm(`${err.error}\n\nДа отворя ли съществуващия клиент?`)) router.push(`/clients/${err.existingId}`);
+      else if (!err?.existingId) alert(err?.error || "Грешка при запис");
+      return;
     }
     setDialogOpen(false);
     fetchClients(search);

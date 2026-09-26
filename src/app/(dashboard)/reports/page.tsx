@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
+import { toCsv } from "@/lib/reports";
 
 type ReportsData = {
+  period: { from: string | null; to: string | null };
   profitBySite: {
     siteId: number;
     siteName: string;
@@ -42,6 +46,8 @@ type ReportsData = {
     pricePerUnit: number;
     stockValue: number;
     deliveriesCount: number;
+    delivered: number;
+    consumed: number;
     lastDelivery: string | null;
     low: boolean;
   }[];
@@ -62,22 +68,136 @@ function Number({ v }: { v: number }) {
   return <span className={cls}>{formatCurrency(v)}</span>;
 }
 
+type Preset = "all" | "month" | "prevMonth" | "year" | "custom";
+
+const PRESETS: { value: Preset; label: string }[] = [
+  { value: "all", label: "Всичко" },
+  { value: "month", label: "Този месец" },
+  { value: "prevMonth", label: "Миналия месец" },
+  { value: "year", label: "Тази година" },
+  { value: "custom", label: "Период…" },
+];
+
+function isoDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function presetRange(preset: Preset): { from: string; to: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  switch (preset) {
+    case "month":
+      return { from: isoDate(new Date(y, m, 1)), to: isoDate(new Date(y, m + 1, 0)) };
+    case "prevMonth":
+      return { from: isoDate(new Date(y, m - 1, 1)), to: isoDate(new Date(y, m, 0)) };
+    case "year":
+      return { from: `${y}-01-01`, to: `${y}-12-31` };
+    default:
+      return { from: "", to: "" };
+  }
+}
+
+function downloadCsv(filename: string, headers: string[], rows: (string | number | null)[][]) {
+  const blob = new Blob([toCsv(headers, rows)], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export default function ReportsPage() {
   const [data, setData] = useState<ReportsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState("profit");
+  const [preset, setPreset] = useState<Preset>("all");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
 
   useEffect(() => {
-    fetch("/api/reports")
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
+    const qs = new URLSearchParams();
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
+    setLoading(true);
+    setError("");
+    fetch(`/api/reports?${qs}`)
+      .then(async (r) => (r.ok ? r.json() : Promise.reject((await r.json().catch(() => null))?.error)))
       .then(setData)
-      .catch(() => setError("Грешка при зареждане"))
+      .catch((e) => {
+        setData(null);
+        setError(typeof e === "string" ? e : "Грешка при зареждане");
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [from, to]);
 
-  if (loading) return <div className="text-center py-10 text-muted-foreground">Зареждане...</div>;
-  if (error) return <p className="text-destructive text-center py-10">{error}</p>;
-  if (!data) return null;
+  function choosePreset(p: Preset) {
+    setPreset(p);
+    if (p !== "custom") {
+      const r = presetRange(p);
+      setFrom(r.from);
+      setTo(r.to);
+    }
+  }
+
+  const periodLabel = from || to ? `${from || "…"} – ${to || "…"}` : "всички";
+
+  function exportTab() {
+    if (!data) return;
+    const suffix = from || to ? `_${from || "nachalo"}_${to || "dnes"}` : "";
+    switch (tab) {
+      case "profit":
+        return downloadCsv(`pechalba-po-obekt${suffix}.csv`,
+          ["Обект", "Клиент", "Приход", "Труд", "Материали", "Печалба"],
+          data.profitBySite.map((s) => [s.siteName, s.clientName, s.revenue, s.laborCost, s.materialCost, s.profit]));
+      case "clients":
+        return downloadCsv(`oborot-po-klient${suffix}.csv`,
+          ["Клиент / доставчик", "Изходящи фактури", "Входящи фактури"],
+          data.revenueByClient.map((c) => [c.clientName, c.invoiced, c.incoming]));
+      case "machines":
+        return downloadCsv(`razhodi-po-mashina${suffix}.csv`,
+          ["Машина", "Ремонти", "Общ разход", "Последен"],
+          data.machineCosts.map((m) => [m.machineName, m.maintenanceCount, m.totalCost, m.lastMaintenance]));
+      case "materials":
+        return downloadCsv(`materiali${suffix}.csv`,
+          ["Материал", "Мярка", "Наличност", "Мин.", "Цена/ед.", "Стойност", "Доставено", "Изразходвано", "Бр. доставки"],
+          data.materialsReport.map((m) => [m.name, m.unit, m.quantity, m.minThreshold, m.pricePerUnit, m.stockValue, m.delivered, m.consumed, m.deliveriesCount]));
+      case "offered":
+        return downloadCsv(`ofertirano-vs-aktuvano${suffix}.csv`,
+          ["Оферта", "Клиент", "Статус", "Оферирано m³", "Актувано m³", "Оферирано €", "Актувано €"],
+          data.offeredVsActual.map((o) => [o.number, o.clientName, o.status, o.offeredM3, o.actualM3, o.offeredTotal, o.actualTotal]));
+    }
+  }
+
+  const filters = (
+    <div className="flex flex-wrap items-end gap-2">
+      {PRESETS.map((p) => (
+        <Button key={p.value} size="sm" variant={preset === p.value ? "default" : "outline"} onClick={() => choosePreset(p.value)}>
+          {p.label}
+        </Button>
+      ))}
+      {preset === "custom" && (
+        <>
+          <Input type="date" className="w-40 h-9" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="От дата" />
+          <Input type="date" className="w-40 h-9" value={to} onChange={(e) => setTo(e.target.value)} aria-label="До дата" />
+        </>
+      )}
+    </div>
+  );
+
+  if (!data && loading) return <div className="text-center py-10 text-muted-foreground">Зареждане...</div>;
+  if (!data)
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">📊 Справки</h1>
+        {filters}
+        <p className="text-destructive text-center py-10">{loading ? "" : error || "Грешка при зареждане"}</p>
+      </div>
+    );
 
   const totalProfit = data.profitBySite.reduce((a, s) => a + s.profit, 0);
   const totalRevenue = data.profitBySite.reduce((a, s) => a + s.revenue, 0);
@@ -85,8 +205,18 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">📊 Справки</h1>
+        <Button size="sm" variant="outline" onClick={exportTab}>⬇️ Експорт (Excel/CSV)</Button>
+      </div>
+
+      <div className="space-y-1">
+        {filters}
+        <p className="text-xs text-muted-foreground">
+          Период: {periodLabel}
+          {loading && " · зареждане…"}
+          {error && <span className="text-destructive"> · {error}</span>}
+        </p>
       </div>
 
       {/* KPI strip */}
@@ -96,7 +226,7 @@ export default function ReportsPage() {
         <KpiCard title="Разходи машини" value={formatCurrency(totalMachineCost)} icon="🔧" />
       </div>
 
-      <Tabs defaultValue="profit">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="profit">🏗️ Печалба по обект</TabsTrigger>
           <TabsTrigger value="clients">👥 Оборот по клиент</TabsTrigger>
@@ -108,7 +238,8 @@ export default function ReportsPage() {
         {/* Печалба по обект */}
         <TabsContent value="profit">
           <Card>
-            <CardHeader><CardTitle className="text-base">Печалба по обект (приход − труд − материали)</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">Печалба по обект (приход − труд − материали)</CardTitle>
+              <p className="text-xs text-muted-foreground">По дата на акта. Не включва разходи за машини, транспорт и закупен бетон; материалите са по текущата им цена.</p></CardHeader>
             <CardContent className="p-0">
               {data.profitBySite.length === 0 ? (
                 <Empty text="Няма обекти" />
@@ -147,7 +278,8 @@ export default function ReportsPage() {
         {/* Оборот по клиент */}
         <TabsContent value="clients">
           <Card>
-            <CardHeader><CardTitle className="text-base">Оборот по клиент (фактури)</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">Оборот по клиент / доставчик (фактури)</CardTitle>
+              <p className="text-xs text-muted-foreground">Без чернови и проформи; кредитните известия се изваждат.</p></CardHeader>
             <CardContent className="p-0">
               {data.revenueByClient.length === 0 ? (
                 <Empty text="Няма клиенти" />
@@ -156,9 +288,9 @@ export default function ReportsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Клиент</TableHead>
-                        <TableHead className="text-right">Фактурирано (изходящо)</TableHead>
-                        <TableHead className="text-right">Платено (входящо)</TableHead>
+                        <TableHead>Клиент / доставчик</TableHead>
+                        <TableHead className="text-right">Изходящи фактури (приход)</TableHead>
+                        <TableHead className="text-right">Входящи фактури (разход)</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -215,7 +347,8 @@ export default function ReportsPage() {
         {/* Материали */}
         <TabsContent value="materials">
           <Card>
-            <CardHeader><CardTitle className="text-base">Справка за материали</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">Справка за материали</CardTitle>
+              <p className="text-xs text-muted-foreground">Наличност и стойност — към днес. Доставено и изразходвано — за избрания период.</p></CardHeader>
             <CardContent className="p-0">
               {data.materialsReport.length === 0 ? (
                 <Empty text="Няма материали" />
@@ -229,7 +362,8 @@ export default function ReportsPage() {
                         <TableHead className="text-right">Мин.</TableHead>
                         <TableHead className="text-right">Цена/ед.</TableHead>
                         <TableHead className="text-right">Стойност</TableHead>
-                        <TableHead className="text-right">Движения</TableHead>
+                        <TableHead className="text-right">Доставено</TableHead>
+                        <TableHead className="text-right">Изразходвано</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -243,7 +377,8 @@ export default function ReportsPage() {
                           <TableCell className="text-right">{m.minThreshold || "—"}</TableCell>
                           <TableCell className="text-right">{m.pricePerUnit ? formatCurrency(m.pricePerUnit) : "—"}</TableCell>
                           <TableCell className="text-right">{m.stockValue ? formatCurrency(m.stockValue) : "—"}</TableCell>
-                          <TableCell className="text-right">{m.deliveriesCount}</TableCell>
+                          <TableCell className="text-right" title={`${m.deliveriesCount} доставки`}>{m.delivered ? `${m.delivered} ${m.unit}` : "—"}</TableCell>
+                          <TableCell className="text-right">{m.consumed ? `${m.consumed} ${m.unit}` : "—"}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -257,7 +392,8 @@ export default function ReportsPage() {
         {/* Офертирано vs Актувано */}
         <TabsContent value="offered">
           <Card>
-            <CardHeader><CardTitle className="text-base">Офертирано vs Актувано</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">Офертирано vs Актувано</CardTitle>
+              <p className="text-xs text-muted-foreground">Оферти по дата на офертата (без чернови); актуваното включва всички актове към офертата.</p></CardHeader>
             <CardContent className="p-0">
               {data.offeredVsActual.length === 0 ? (
                 <Empty text="Няма оферти" />

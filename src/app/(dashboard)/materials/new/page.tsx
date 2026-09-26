@@ -16,8 +16,8 @@ export default function NewMaterialPage() {
     if (!form.name || !form.unit) return;
     setSaving(true);
     const res = await fetch("/api/materials", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    if (res.ok) router.push("/materials");
-    else { alert("Грешка"); setSaving(false); }
+    if (res.ok) router.push(`/materials/${(await res.json()).id}`);
+    else { alert((await res.json().catch(() => null))?.error || "Грешка"); setSaving(false); }
   }
 
   return (
@@ -27,7 +27,7 @@ export default function NewMaterialPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div><Label>Име *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
           <div><Label>Мерна единица *</Label><Input value={form.unit} onChange={e => setForm({...form, unit: e.target.value})} placeholder="кг, тон, м³, бр." /></div>
-          <div><Label>Количество</Label><Input type="number" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} /></div>
+          <div><Label>Начална наличност</Label><Input type="number" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} /></div>
           <div><Label>Мин. праг</Label><Input type="number" value={form.minThreshold} onChange={e => setForm({...form, minThreshold: e.target.value})} /></div>
           <div><Label>Цена за единица (€)</Label><Input type="number" value={form.pricePerUnit} onChange={e => setForm({...form, pricePerUnit: e.target.value})} /></div>
           <div><Label>Бележки</Label><Input value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} /></div>

@@ -1,16 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { templates } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   const result = await db.select().from(templates).orderBy(templates.name);
   return NextResponse.json(result);
 }
 
 export async function POST(request: NextRequest) {
+  const denied = await requireAuth(request);
+  if (denied) return denied;
+
   const body = await request.json();
   const { name, type, content } = body;
   if (!name || !type || !content) return NextResponse.json({ error: "Всички полета са задължителни" }, { status: 400 });

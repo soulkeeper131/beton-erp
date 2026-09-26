@@ -168,6 +168,8 @@ export default function SiteDetailPage() {
       // Reload full data
       const fullRes = await fetch(`/api/sites/${params.id}`);
       if (fullRes.ok) setSite(await fullRes.json());
+    } else {
+      alert((await res.json().catch(() => null))?.error || "Грешка при запис");
     }
   };
 

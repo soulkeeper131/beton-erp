@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { services, serviceItems, concreteTypes, materials, machines } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   // Concrete types
   const concrete = await db.select().from(concreteTypes).where(eq(concreteTypes.active, true)).all();
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { companySettings } from "@/db/schema";
 
@@ -7,6 +8,9 @@ export const dynamic = "force-dynamic";
 const BASE = "https://api.companybook.bg/api";
 
 export async function GET(req: Request) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   let apiKey = process.env.COMPANYBOOK_API_KEY;
   if (!apiKey) {
     const settings = db.select({ key: companySettings.companybookApiKey }).from(companySettings).get();

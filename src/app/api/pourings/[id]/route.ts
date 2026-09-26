@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import {
   pourings, pouringItems, sites, offers, concreteTypes, machines,
   actWorkers, actMaterials, actPhotos, workers, materials,
 } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
+import { actPatchSchema, firstZodError, materialStockDelta } from "@/lib/acts";
+import { applyStockDelta, checkActRefs } from "@/lib/acts-db";
+import { roundMoney } from "@/lib/calc";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +16,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const denied = await requireAuth(request);
+  if (denied) return denied;
+
   const id = parseInt(params.id);
   if (isNaN(id)) return NextResponse.json({ error: "Невалиден ID" }, { status: 400 });
 
@@ -93,72 +100,75 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const denied = await requireAuth(request);
+  if (denied) return denied;
+
   const id = parseInt(params.id);
   if (isNaN(id)) return NextResponse.json({ error: "Невалиден ID" }, { status: 400 });
 
-  const body = await request.json();
+  const current = db.select({ siteId: pourings.siteId, offerId: pourings.offerId }).from(pourings).where(eq(pourings.id, id)).get();
+  if (!current) return NextResponse.json({ error: "Не е намерено" }, { status: 404 });
+
+  const parsed = actPatchSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: firstZodError(parsed.error) }, { status: 400 });
+  const body = parsed.data;
+
+  if (body.siteId !== undefined || body.offerId !== undefined) {
+    const refError = checkActRefs(body.siteId ?? current.siteId, body.offerId !== undefined ? body.offerId ?? null : current.offerId);
+    if (refError) return NextResponse.json({ error: refError }, { status: 400 });
+  }
 
   const update: Record<string, any> = {};
-  const mainFields = ["siteId", "offerId", "date", "machineId", "weather", "notes", "status"];
-  for (const key of mainFields) {
+  for (const key of ["siteId", "offerId", "date", "machineId", "weather", "notes", "status"] as const) {
     if (body[key] !== undefined) update[key] = body[key];
   }
 
-  if (body.items && Array.isArray(body.items)) {
-    await db.delete(pouringItems).where(eq(pouringItems.pouringId, id));
-
-    let totalQty = 0;
-    for (let i = 0; i < body.items.length; i++) {
-      const item = body.items[i];
-      const qty = parseFloat(item.quantityM3) || 0;
-      const price = parseFloat(item.pricePerM3) || 0;
-      totalQty += qty;
-      await db.insert(pouringItems).values({
-        pouringId: id,
-        concreteTypeId: item.concreteTypeId ? parseInt(item.concreteTypeId) : null,
-        quantityM3: qty,
-        pricePerM3: price,
-        total: qty * price,
-        sortOrder: i,
+  // Всичко в една транзакция — при грешка актът остава непроменен
+  db.transaction((tx) => {
+    if (body.items) {
+      tx.delete(pouringItems).where(eq(pouringItems.pouringId, id)).run();
+      body.items.forEach((item, i) => {
+        tx.insert(pouringItems).values({
+          pouringId: id,
+          concreteTypeId: item.concreteTypeId,
+          quantityM3: item.quantityM3,
+          pricePerM3: item.pricePerM3,
+          total: roundMoney(item.quantityM3 * item.pricePerM3),
+          sortOrder: i,
+        }).run();
       });
+      update.quantityM3 = body.items.reduce((s, i) => s + i.quantityM3, 0);
+      update.concreteTypeId = body.items[0]?.concreteTypeId ?? null;
     }
 
-    update.quantityM3 = totalQty;
-    update.concreteTypeId = body.items[0]?.concreteTypeId
-      ? parseInt(body.items[0].concreteTypeId)
-      : null;
-  }
-
-  if (body.workers && Array.isArray(body.workers)) {
-    await db.delete(actWorkers).where(eq(actWorkers.pouringId, id));
-    for (const w of body.workers) {
-      const hours = parseFloat(w.hours) || 0;
-      const rate = parseFloat(w.rate) || 0;
-      await db.insert(actWorkers).values({
-        pouringId: id,
-        workerId: parseInt(w.workerId),
-        hours,
-        rate,
-        total: hours * rate,
-      });
+    if (body.workers) {
+      tx.delete(actWorkers).where(eq(actWorkers.pouringId, id)).run();
+      for (const w of body.workers) {
+        tx.insert(actWorkers).values({
+          pouringId: id,
+          workerId: w.workerId,
+          hours: w.hours,
+          rate: w.rate,
+          total: roundMoney(w.hours * w.rate),
+        }).run();
+      }
     }
-  }
 
-  if (body.materials && Array.isArray(body.materials)) {
-    await db.delete(actMaterials).where(eq(actMaterials.pouringId, id));
-    for (const m of body.materials) {
-      await db.insert(actMaterials).values({
-        pouringId: id,
-        materialId: parseInt(m.materialId),
-        quantity: parseFloat(m.quantity) || 0,
-      });
+    if (body.materials) {
+      // Складът следва акта: изписва се разликата спрямо предишното състояние
+      const before = tx.select({ materialId: actMaterials.materialId, quantity: actMaterials.quantity })
+        .from(actMaterials).where(eq(actMaterials.pouringId, id)).all();
+      tx.delete(actMaterials).where(eq(actMaterials.pouringId, id)).run();
+      for (const m of body.materials) {
+        tx.insert(actMaterials).values({ pouringId: id, materialId: m.materialId, quantity: m.quantity }).run();
+      }
+      applyStockDelta(tx, materialStockDelta(before, body.materials));
     }
-  }
 
-  if (Object.keys(update).length > 0) {
-    const result = await db.update(pourings).set(update).where(eq(pourings.id, id)).returning();
-    if (!result.length) return NextResponse.json({ error: "Не е намерено" }, { status: 404 });
-  }
+    if (Object.keys(update).length > 0) {
+      tx.update(pourings).set(update).where(eq(pourings.id, id)).run();
+    }
+  });
 
   return GET(request, { params });
 }
@@ -167,13 +177,23 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const denied = await requireAuth(request);
+  if (denied) return denied;
+
   const id = parseInt(params.id);
   if (isNaN(id)) return NextResponse.json({ error: "Невалиден ID" }, { status: 400 });
 
-  await db.delete(pouringItems).where(eq(pouringItems.pouringId, id));
-  await db.delete(actWorkers).where(eq(actWorkers.pouringId, id));
-  await db.delete(actMaterials).where(eq(actMaterials.pouringId, id));
-  await db.delete(actPhotos).where(eq(actPhotos.pouringId, id));
-  await db.delete(pourings).where(eq(pourings.id, id));
+  db.transaction((tx) => {
+    // Изразходените материали се връщат в склада
+    const used = tx.select({ materialId: actMaterials.materialId, quantity: actMaterials.quantity })
+      .from(actMaterials).where(eq(actMaterials.pouringId, id)).all();
+    applyStockDelta(tx, materialStockDelta(used, []));
+
+    tx.delete(pouringItems).where(eq(pouringItems.pouringId, id)).run();
+    tx.delete(actWorkers).where(eq(actWorkers.pouringId, id)).run();
+    tx.delete(actMaterials).where(eq(actMaterials.pouringId, id)).run();
+    tx.delete(actPhotos).where(eq(actPhotos.pouringId, id)).run();
+    tx.delete(pourings).where(eq(pourings.id, id)).run();
+  });
   return NextResponse.json({ message: "Изтрито" });
 }

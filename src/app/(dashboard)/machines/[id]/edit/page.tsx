@@ -28,7 +28,7 @@ export default function EditMachinePage() {
   const [repairs, setRepairs] = useState<any[]>([]);
   const [newRepair, setNewRepair] = useState({
     date: new Date().toISOString().split("T")[0],
-    type: "repair", description: "", cost: 0, provider: "", mileageAtRepair: 0, notes: ""
+    type: "repair", description: "", cost: 0, provider: "", mileageAtRepair: 0, nextDate: "", notes: ""
   });
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export default function EditMachinePage() {
       body: JSON.stringify(form),
     });
     if (res.ok) router.push("/machines");
-    else { alert("Грешка"); setSaving(false); }
+    else { alert((await res.json().catch(() => null))?.error || "Грешка"); setSaving(false); }
   }
 
   async function addRepair() {
@@ -62,10 +62,16 @@ export default function EditMachinePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newRepair),
     });
-    if (res.ok) {
+    if (!res.ok) {
+      alert((await res.json().catch(() => null))?.error || "Грешка");
+      return;
+    }
+    {
       const r = await res.json();
-      setRepairs([r, ...repairs]);
-      setNewRepair({ date: new Date().toISOString().split("T")[0], type: "repair", description: "", cost: 0, provider: "", mileageAtRepair: 0, notes: "" });
+      setRepairs([r, ...repairs].sort((a, b) => (b.date || "").localeCompare(a.date || "")));
+      // датата на последно обслужване и километражът се обновяват от сървъра
+      fetch(`/api/machines/${id}`).then(x => x.json()).then(d => setForm((f: any) => ({ ...f, lastMaintenanceDate: d.lastMaintenanceDate, nextMaintenanceDate: d.nextMaintenanceDate, mileage: d.mileage })));
+      setNewRepair({ date: new Date().toISOString().split("T")[0], type: "repair", description: "", cost: 0, provider: "", mileageAtRepair: 0, nextDate: "", notes: "" });
     }
   }
 
@@ -144,6 +150,8 @@ export default function EditMachinePage() {
               <div><Label>Винетка до{exp(form.vignetteExpiry)}</Label><Input type="date" value={form.vignetteExpiry || ""} onChange={e => update("vignetteExpiry", e.target.value)} /></div>
               <div><Label>ГО до{exp(form.insuranceExpiry)}</Label><Input type="date" value={form.insuranceExpiry || ""} onChange={e => update("insuranceExpiry", e.target.value)} /></div>
               <div><Label>Тех. преглед до{exp(form.techInspectionExpiry)}</Label><Input type="date" value={form.techInspectionExpiry || ""} onChange={e => update("techInspectionExpiry", e.target.value)} /></div>
+              <div><Label>Следващо обслужване{exp(form.nextMaintenanceDate)}</Label><Input type="date" value={form.nextMaintenanceDate || ""} onChange={e => update("nextMaintenanceDate", e.target.value)} /></div>
+              <div><Label>Последно обслужване</Label><Input type="date" value={form.lastMaintenanceDate || ""} disabled /></div>
             </div>
           </CardContent>
         </Card>
@@ -180,6 +188,9 @@ export default function EditMachinePage() {
             <div className="grid grid-cols-2 gap-2">
               <div><Label className="text-xs">Описание *</Label><Input className="h-8 text-sm" value={newRepair.description} onChange={e => setNewRepair({...newRepair, description: e.target.value})} placeholder="напр. Смяна на масло" /></div>
               <div><Label className="text-xs">Извършител</Label><Input className="h-8 text-sm" value={newRepair.provider} onChange={e => setNewRepair({...newRepair, provider: e.target.value})} placeholder="Сервиз Х" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label className="text-xs">Следващо обслужване (по избор)</Label><Input type="date" className="h-8 text-sm" value={newRepair.nextDate} onChange={e => setNewRepair({...newRepair, nextDate: e.target.value})} /></div>
             </div>
             <div className="flex justify-between items-center">
               <Input className="h-8 text-sm w-1/2" value={newRepair.notes} onChange={e => setNewRepair({...newRepair, notes: e.target.value})} placeholder="Бележки" />

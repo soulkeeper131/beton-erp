@@ -183,7 +183,7 @@ export default function NewOfferPage() {
   const onSubmit = async (values: FormValues) => {
     setSaving(true);
     try {
-      // Create the offer
+      // Офертата и редовете се записват с една заявка (атомарно)
       const offerRes = await fetch("/api/offers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -193,34 +193,25 @@ export default function NewOfferPage() {
           date: values.date,
           validUntil: values.validUntil || null,
           notes: values.notes || null,
-        }),
-      });
-
-      if (!offerRes.ok) {
-        const err = await offerRes.json();
-        alert("Грешка при създаване: " + JSON.stringify(err));
-        setSaving(false);
-        return;
-      }
-
-      const offer = await offerRes.json();
-
-      // Create items
-      for (const item of values.items) {
-        await fetch(`/api/offers/${offer.id}/items`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+          items: values.items.map((item) => ({
             concreteTypeId: item.itemType === "concrete" ? item.concreteTypeId : null,
             serviceId: item.itemType === "service" ? item.serviceId : null,
             quantityM3: item.quantityM3,
             pricePerM3: item.pricePerM3,
             transportCost: item.transportCost || 0,
             pumpCost: item.pumpCost || 0,
-          }),
-        });
+          })),
+        }),
+      });
+
+      if (!offerRes.ok) {
+        const err = await offerRes.json().catch(() => null);
+        alert(typeof err?.error === "string" ? err.error : "Грешка при създаване на оферта");
+        setSaving(false);
+        return;
       }
 
+      const offer = await offerRes.json();
       router.push(`/offers/${offer.id}`);
     } catch (e) {
       alert("Грешка при създаване на оферта");

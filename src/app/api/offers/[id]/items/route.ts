@@ -2,22 +2,12 @@ import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { offers, offerItems } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import { firstZodError } from "@/lib/acts";
+import { offerItemSchema, offerItemTotal, recalcOfferTotal } from "@/lib/offers";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
-
-const itemSchema = z.object({
-  concreteTypeId: z.coerce.number().int().positive().optional().nullable(),
-  serviceId: z.coerce.number().int().positive().optional().nullable(),
-  quantityM3: z.coerce.number().positive("Количеството трябва да е положително"),
-  pricePerM3: z.coerce.number().min(0, "Цената не може да е отрицателна"),
-  transportCost: z.coerce.number().min(0).optional().default(0),
-  pumpCost: z.coerce.number().min(0).optional().default(0),
-}).refine(data => data.concreteTypeId || data.serviceId, {
-  message: "Изберете тип бетон или услуга",
-  path: ["concreteTypeId"],
-});
 
 const updateItemSchema = z.object({
   concreteTypeId: z.coerce.number().int().positive().optional().nullable(),
@@ -28,20 +18,6 @@ const updateItemSchema = z.object({
   pumpCost: z.coerce.number().min(0).optional(),
 });
 
-function recalcOfferTotal(offerId: number) {
-  const result = db
-    .select({ total: sql<number>`COALESCE(SUM(total), 0)` })
-    .from(offerItems)
-    .where(eq(offerItems.offerId, offerId))
-    .get();
-
-  const newTotal = result?.total ?? 0;
-  db.update(offers)
-    .set({ total: newTotal })
-    .where(eq(offers.id, offerId))
-    .run();
-}
-
 export async function POST(
   req: Request,
   { params }: { params: { id: string } }
@@ -51,32 +27,33 @@ export async function POST(
 
   const offerId = parseInt(params.id);
   const body = await req.json();
-  const parsed = itemSchema.safeParse(body);
+  const parsed = offerItemSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: firstZodError(parsed.error) }, { status: 400 });
   }
 
-  const total =
-    parsed.data.quantityM3 * parsed.data.pricePerM3 +
-    parsed.data.transportCost +
-    parsed.data.pumpCost;
+  if (!db.select({ id: offers.id }).from(offers).where(eq(offers.id, offerId)).get()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
-  const [created] = db
-    .insert(offerItems)
-    .values({
-      offerId,
-      concreteTypeId: parsed.data.concreteTypeId || null,
-      serviceId: parsed.data.serviceId || null,
-      quantityM3: parsed.data.quantityM3,
-      pricePerM3: parsed.data.pricePerM3,
-      transportCost: parsed.data.transportCost,
-      pumpCost: parsed.data.pumpCost,
-      total,
-    })
-    .returning()
-    .all();
-
-  recalcOfferTotal(offerId);
+  const created = db.transaction((tx) => {
+    const [row] = tx
+      .insert(offerItems)
+      .values({
+        offerId,
+        concreteTypeId: parsed.data.concreteTypeId || null,
+        serviceId: parsed.data.serviceId || null,
+        quantityM3: parsed.data.quantityM3,
+        pricePerM3: parsed.data.pricePerM3,
+        transportCost: parsed.data.transportCost,
+        pumpCost: parsed.data.pumpCost,
+        total: offerItemTotal(parsed.data),
+      })
+      .returning()
+      .all();
+    recalcOfferTotal(tx, offerId);
+    return row;
+  });
 
   return NextResponse.json(created, { status: 201 });
 }
@@ -99,7 +76,7 @@ export async function PATCH(
   const body = await req.json();
   const parsed = updateItemSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: firstZodError(parsed.error) }, { status: 400 });
   }
 
   const item = db
@@ -108,13 +85,14 @@ export async function PATCH(
     .where(eq(offerItems.id, parseInt(itemId)))
     .get();
 
-  if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // Редът трябва да е от тази оферта
+  if (!item || item.offerId !== offerId) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const quantityM3 = parsed.data.quantityM3 ?? item.quantityM3;
   const pricePerM3 = parsed.data.pricePerM3 ?? item.pricePerM3;
   const transportCost = parsed.data.transportCost ?? item.transportCost ?? 0;
   const pumpCost = parsed.data.pumpCost ?? item.pumpCost ?? 0;
-  const total = quantityM3 * pricePerM3 + transportCost + pumpCost;
+  const total = offerItemTotal({ quantityM3, pricePerM3, transportCost, pumpCost });
 
   const updateData: Record<string, any> = {};
   if (parsed.data.concreteTypeId !== undefined) updateData.concreteTypeId = parsed.data.concreteTypeId;
@@ -125,14 +103,11 @@ export async function PATCH(
   if (parsed.data.pumpCost !== undefined) updateData.pumpCost = parsed.data.pumpCost;
   updateData.total = total;
 
-  const [updated] = db
-    .update(offerItems)
-    .set(updateData)
-    .where(eq(offerItems.id, parseInt(itemId)))
-    .returning()
-    .all();
-
-  recalcOfferTotal(offerId);
+  const updated = db.transaction((tx) => {
+    const [row] = tx.update(offerItems).set(updateData).where(eq(offerItems.id, item.id)).returning().all();
+    recalcOfferTotal(tx, offerId);
+    return row;
+  });
 
   return NextResponse.json(updated);
 }
@@ -158,11 +133,12 @@ export async function DELETE(
     .where(eq(offerItems.id, parseInt(itemId)))
     .get();
 
-  if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!item || item.offerId !== offerId) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  db.delete(offerItems).where(eq(offerItems.id, parseInt(itemId))).run();
-
-  recalcOfferTotal(offerId);
+  db.transaction((tx) => {
+    tx.delete(offerItems).where(eq(offerItems.id, item.id)).run();
+    recalcOfferTotal(tx, offerId);
+  });
 
   return NextResponse.json({ success: true });
 }

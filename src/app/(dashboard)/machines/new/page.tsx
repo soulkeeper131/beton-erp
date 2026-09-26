@@ -35,7 +35,7 @@ export default function NewMachinePage() {
       body: JSON.stringify(form),
     });
     if (res.ok) router.push("/machines");
-    else { alert("Грешка"); setSaving(false); }
+    else { alert((await res.json().catch(() => null))?.error || "Грешка"); setSaving(false); }
   }
 
   return (

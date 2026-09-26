@@ -63,7 +63,7 @@ export default function SettingsPage() {
       // Remask the key
       setForm(f => ({ ...f, aiApiKey: f.aiApiKey && f.aiApiKey !== "••••••••" ? "••••••••" : f.aiApiKey }));
       alert("✅ Запазено");
-    } else alert("❌ Грешка");
+    } else alert("❌ " + ((await res.json().catch(() => null))?.error || "Грешка"));
   }
 
   async function testSmtp() {

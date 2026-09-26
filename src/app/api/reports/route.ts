@@ -1,16 +1,35 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
-import { eq, desc, isNotNull } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { getAuth } from "@/lib/auth-helpers";
+import { invoiceSign, inPeriod, parsePeriod } from "@/lib/reports";
 
 export const dynamic = "force-dynamic";
 
+// GET /api/reports?from=YYYY-MM-DD&to=YYYY-MM-DD (периодът е по избор, двете граници включително)
 export async function GET(req: Request) {
   const auth = await getAuth(req);
   if (!auth.session && !auth.isApiKey) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if ((auth.session?.user as any)?.role === "brigadir") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const period = parsePeriod(searchParams.get("from"), searchParams.get("to"));
+  if (!period) {
+    return NextResponse.json({ error: "Невалиден период (очаква се YYYY-MM-DD)" }, { status: 400 });
+  }
+  const within = (date: string | null | undefined) => inPeriod(date, period);
+
+  const clients = await db
+    .select({ id: schema.clients.id, name: schema.clients.name, companyName: schema.clients.companyName })
+    .from(schema.clients)
+    .orderBy(schema.clients.name)
+    .all();
+  const clientNames = new Map(clients.map((c) => [c.id, c.companyName || c.name]));
 
   // ---------- Печалба по обект ----------
   const sites = await db
@@ -18,21 +37,25 @@ export async function GET(req: Request) {
       id: schema.sites.id,
       name: schema.sites.name,
       clientId: schema.sites.clientId,
-      clientName: schema.clients.name,
       status: schema.sites.status,
     })
     .from(schema.sites)
-    .leftJoin(schema.clients, eq(schema.sites.clientId, schema.clients.id))
     .orderBy(schema.sites.name)
     .all();
 
-  const pourings = await db
-    .select({ id: schema.pourings.id, siteId: schema.pourings.siteId })
+  const allPourings = await db
+    .select({
+      id: schema.pourings.id,
+      siteId: schema.pourings.siteId,
+      offerId: schema.pourings.offerId,
+      date: schema.pourings.date,
+      quantityM3: schema.pourings.quantityM3,
+    })
     .from(schema.pourings)
     .all();
 
-  const pouringIds = new Set(pourings.map((p) => p.id));
-  const pouringSite = new Map(pourings.map((p) => [p.id, p.siteId]));
+  // Актовете в периода — за печалба и разход на материали
+  const pouringSite = new Map(allPourings.filter((p) => within(p.date)).map((p) => [p.id, p.siteId]));
 
   // Приход: сума на редовете в актовете
   const pouringItems = await db
@@ -46,10 +69,11 @@ export async function GET(req: Request) {
     .from(schema.actWorkers)
     .all();
 
-  // Разход материали (с цена)
+  // Разход материали (по текущата цена — историческа цена не се пази)
   const actMaterials = await db
     .select({
       pouringId: schema.actMaterials.pouringId,
+      materialId: schema.actMaterials.materialId,
       quantity: schema.actMaterials.quantity,
       pricePerUnit: schema.materials.pricePerUnit,
     })
@@ -84,7 +108,7 @@ export async function GET(req: Request) {
     return {
       siteId: s.id,
       siteName: s.name,
-      clientName: s.clientName || "—",
+      clientName: clientNames.get(s.clientId) || "—",
       status: s.status,
       revenue,
       laborCost,
@@ -94,18 +118,16 @@ export async function GET(req: Request) {
     };
   });
 
-  // ---------- Оборот по клиент ----------
-  const clients = await db
-    .select({ id: schema.clients.id, name: schema.clients.name, companyName: schema.clients.companyName })
-    .from(schema.clients)
-    .orderBy(schema.clients.name)
-    .all();
-
+  // ---------- Оборот по клиент / доставчик ----------
+  // При входящите фактури clientId е доставчикът. Проформите не са данъчни документи
+  // и не се броят; кредитните известия намаляват сумата.
   const invoices = await db
     .select({
       clientId: schema.invoices.clientId,
       direction: schema.invoices.direction,
+      type: schema.invoices.type,
       status: schema.invoices.status,
+      date: schema.invoices.date,
       total: schema.invoices.total,
     })
     .from(schema.invoices)
@@ -115,13 +137,11 @@ export async function GET(req: Request) {
   for (const c of clients) byClient.set(c.id, { invoiced: 0, incoming: 0 });
 
   for (const inv of invoices) {
-    const key = inv.direction === "outgoing" ? inv.clientId : inv.clientId;
-    if (!byClient.has(key)) continue;
-    if (inv.direction === "outgoing" && inv.status !== "draft") {
-      byClient.get(key)!.invoiced += inv.total || 0;
-    } else if (inv.direction === "incoming" && inv.status !== "draft") {
-      byClient.get(key)!.incoming += inv.total || 0;
-    }
+    const agg = byClient.get(inv.clientId);
+    if (!agg || inv.status === "draft" || !within(inv.date)) continue;
+    const amount = invoiceSign(inv.type) * Math.abs(inv.total || 0);
+    if (inv.direction === "outgoing") agg.invoiced += amount;
+    else if (inv.direction === "incoming") agg.incoming += amount;
   }
 
   const revenueByClient = clients.map((c) => {
@@ -155,7 +175,7 @@ export async function GET(req: Request) {
 
   for (const r of maintenance) {
     const agg = byMachine.get(r.machineId);
-    if (!agg) continue;
+    if (!agg || !within(r.date)) continue;
     agg.count += 1;
     agg.totalCost += r.cost || 0;
     if (!agg.lastDate || (r.date && r.date > agg.lastDate)) agg.lastDate = r.date;
@@ -174,6 +194,7 @@ export async function GET(req: Request) {
   });
 
   // ---------- Справка за материали ----------
+  // Наличността и стойността са към днешна дата; доставките и изразходваното — за периода.
   const materials = await db
     .select({
       id: schema.materials.id,
@@ -188,17 +209,33 @@ export async function GET(req: Request) {
     .all();
 
   const deliveries = await db
-    .select({ materialId: schema.materialDeliveries.materialId, date: schema.materialDeliveries.date })
+    .select({
+      materialId: schema.materialDeliveries.materialId,
+      date: schema.materialDeliveries.date,
+      quantity: schema.materialDeliveries.quantity,
+    })
     .from(schema.materialDeliveries)
     .all();
 
-  const byMaterial = new Map<number, { count: number; lastDate: string | null }>();
-  for (const m of materials) byMaterial.set(m.id, { count: 0, lastDate: null });
+  const byMaterial = new Map<number, { count: number; delivered: number; consumed: number; lastDate: string | null }>();
+  for (const m of materials) byMaterial.set(m.id, { count: 0, delivered: 0, consumed: 0, lastDate: null });
   for (const d of deliveries) {
     const agg = byMaterial.get(d.materialId);
-    if (!agg) continue;
+    if (!agg || !within(d.date)) continue;
+    const q = d.quantity || 0;
+    // Отрицателно движение = ръчен разход от склада
+    if (q < 0) {
+      agg.consumed += -q;
+      continue;
+    }
     agg.count += 1;
+    agg.delivered += q;
     if (!agg.lastDate || (d.date && d.date > agg.lastDate)) agg.lastDate = d.date;
+  }
+  for (const m of actMaterials) {
+    const agg = byMaterial.get(m.materialId);
+    if (!agg || !pouringSite.has(m.pouringId)) continue;
+    agg.consumed += m.quantity || 0;
   }
 
   const materialsReport = materials.map((m) => {
@@ -214,37 +251,39 @@ export async function GET(req: Request) {
       pricePerUnit: price,
       stockValue: round(qty * price),
       deliveriesCount: agg.count,
+      delivered: round(agg.delivered),
+      consumed: round(agg.consumed),
       lastDelivery: agg.lastDate,
       low: (m.minThreshold || 0) > 0 && qty <= (m.minThreshold || 0),
     };
   });
 
   // ---------- Офертирано vs Актувано ----------
-  const offers = await db
-    .select({
-      id: schema.offers.id,
-      number: schema.offers.number,
-      clientId: schema.offers.clientId,
-      total: schema.offers.total,
-      status: schema.offers.status,
-    })
-    .from(schema.offers)
-    .orderBy(desc(schema.offers.id))
-    .limit(100)
-    .all();
+  // Офертите се филтрират по дата на офертата; актуваното включва всички актове към нея.
+  const offers = (
+    await db
+      .select({
+        id: schema.offers.id,
+        number: schema.offers.number,
+        clientId: schema.offers.clientId,
+        date: schema.offers.date,
+        total: schema.offers.total,
+        status: schema.offers.status,
+      })
+      .from(schema.offers)
+      .orderBy(desc(schema.offers.id))
+      .all()
+  ).filter((o) => o.status !== "draft" && within(o.date));
 
   const offerItemsAll = await db
     .select({ offerId: schema.offerItems.offerId, quantityM3: schema.offerItems.quantityM3, total: schema.offerItems.total })
     .from(schema.offerItems)
     .all();
 
-  const offersWithPourings = await db
-    .select({ id: schema.pourings.id, offerId: schema.pourings.offerId, quantityM3: schema.pourings.quantityM3 })
-    .from(schema.pourings)
-    .where(isNotNull(schema.pourings.offerId))
-    .all();
-
-  const clientNames = new Map(clients.map((c) => [c.id, c.companyName || c.name]));
+  const pouringTotals = new Map<number, number>();
+  for (const i of pouringItems) {
+    pouringTotals.set(i.pouringId, (pouringTotals.get(i.pouringId) || 0) + (i.total || 0));
+  }
 
   const byOffer = new Map<number, { offeredM3: number; offeredTotal: number; actualM3: number; actualTotal: number }>();
   for (const o of offers) byOffer.set(o.id, { offeredM3: 0, offeredTotal: 0, actualM3: 0, actualTotal: 0 });
@@ -254,27 +293,12 @@ export async function GET(req: Request) {
     agg.offeredM3 += i.quantityM3 || 0;
     agg.offeredTotal += i.total || 0;
   }
-  for (const p of offersWithPourings) {
+  for (const p of allPourings) {
     if (p.offerId == null) continue;
     const agg = byOffer.get(p.offerId);
     if (!agg) continue;
     agg.actualM3 += p.quantityM3 || 0;
-  }
-  // актувано в пари — от pouring_items на актовете към офертата
-  const actualTotalsByOffer = new Map<number, number>();
-  for (const p of offersWithPourings) {
-    if (p.offerId == null) continue;
-    actualTotalsByOffer.set(p.offerId, 0);
-  }
-  // събираме сумите на актовете по оферта
-  const pouringItemsByPouring = new Map<number, number>();
-  for (const i of pouringItems) {
-    pouringItemsByPouring.set(i.pouringId, (pouringItemsByPouring.get(i.pouringId) || 0) + (i.total || 0));
-  }
-  for (const p of offersWithPourings) {
-    if (p.offerId == null) continue;
-    const actTotal = pouringItemsByPouring.get(p.id) || 0;
-    actualTotalsByOffer.set(p.offerId, (actualTotalsByOffer.get(p.offerId) || 0) + actTotal);
+    agg.actualTotal += pouringTotals.get(p.id) || 0;
   }
 
   const offeredVsActual = offers.map((o) => {
@@ -287,11 +311,12 @@ export async function GET(req: Request) {
       offeredM3: round(agg.offeredM3),
       offeredTotal: round(agg.offeredTotal || o.total),
       actualM3: round(agg.actualM3),
-      actualTotal: round(actualTotalsByOffer.get(o.id) || 0),
+      actualTotal: round(agg.actualTotal),
     };
   });
 
   return NextResponse.json({
+    period,
     profitBySite,
     revenueByClient,
     machineCosts,

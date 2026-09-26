@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { sites, offers, pourings, pouringItems, siteCalendar, clients } from "@/db/schema";
 import { eq, sql, and } from "drizzle-orm";
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await requireAuth(req);
+  if (denied) return denied;
+
   const allSites = await db
     .select({
       id: sites.id,

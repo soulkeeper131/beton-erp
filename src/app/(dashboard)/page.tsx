@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/utils";
 
 type DashboardData = {
-  monthlyRevenue: number;
-  openOffers: number;
-  unpaidInvoices: number;
+  // null за роли без достъп до финанси (бригадир)
+  monthlyRevenue: number | null;
+  openOffers: number | null;
+  unpaidInvoices: number | null;
   activeSites: number;
   workersToday: number;
   totalPouringsM3: number;
@@ -67,13 +69,11 @@ export default function DashboardHome() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        <KpiCard
-          title="Оборот (месец)"
-          value={`€${data.monthlyRevenue.toLocaleString("bg-BG")}`}
-          icon="💰"
-        />
-        <KpiCard title="Отворени оферти" value={data.openOffers} icon="📋" />
-        <KpiCard title="Неизплатени" value={data.unpaidInvoices} icon="⚠️" />
+        {data.monthlyRevenue != null && (
+          <KpiCard title="Оборот (месец)" value={formatCurrency(data.monthlyRevenue)} icon="💰" />
+        )}
+        {data.openOffers != null && <KpiCard title="Отворени оферти" value={data.openOffers} icon="📋" />}
+        {data.unpaidInvoices != null && <KpiCard title="Неплатени от клиенти" value={data.unpaidInvoices} icon="⚠️" />}
         <KpiCard title="Активни обекти" value={data.activeSites} icon="🏗️" />
         <KpiCard title="Работници днес" value={data.workersToday} icon="👷" />
         <KpiCard

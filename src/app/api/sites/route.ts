@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { firstZodError } from "@/lib/acts";
 import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { sites, clients } from "@/db/schema";
@@ -8,10 +9,10 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 
 const siteSchema = z.object({
-  clientId: z.number().int().positive("Клиентът е задължителен"),
-  name: z.string().min(1, "Името е задължително"),
+  clientId: z.coerce.number({ invalid_type_error: "Изберете клиент" }).int().positive("Изберете клиент"),
+  name: z.string({ required_error: "Името е задължително" }).trim().min(1, "Името е задължително"),
   city: z.string().optional().default(""),
-  address: z.string().min(1, "Адресът е задължителен"),
+  address: z.string({ required_error: "Адресът е задължителен" }).trim().min(1, "Адресът е задължителен"),
   status: z.enum(["active", "completed", "cancelled"]).default("active"),
   startDate: z.string().optional().nullable(),
   endDate: z.string().optional().nullable(),
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const parsed = siteSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: firstZodError(parsed.error) }, { status: 400 });
   }
 
   const [created] = await db

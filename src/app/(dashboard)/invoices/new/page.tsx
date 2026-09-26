@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/utils";
+import { calcInvoiceTotals } from "@/lib/calc";
 import { Plus, Trash2, ArrowLeft, Search, CheckCircle } from "lucide-react";
 
 const isValidEik = (v: string) => /^\d{9}$/.test(v) || /^\d{13}$/.test(v);
@@ -25,8 +26,9 @@ export default function NewInvoicePage() {
     type: "invoice", currency: "EUR",
     discountPercent: 0, discountAmount: 0,
     paymentMethod: "bank", paymentStatus: "unpaid",
-    taxExemptionReason: "", notes: "",
+    taxExemptionReason: "", notes: "", relatedInvoiceId: "",
   });
+  const [issuedInvoices, setIssuedInvoices] = useState<any[]>([]);
   const [items, setItems] = useState([{ description: "", unit: "бр.", quantity: 1, price: 0, vatRate: 20 }]);
   const [eikSearch, setEikSearch] = useState("");
   const [eikLoading, setEikLoading] = useState(false);
@@ -37,6 +39,7 @@ export default function NewInvoicePage() {
   useEffect(() => {
     fetch("/api/clients").then(r => r.json()).then(setClients);
     fetch("/api/company-settings").then(r => r.json()).then(setCompany);
+    fetch("/api/invoices?status=sent").then(r => r.json()).then(d => Array.isArray(d) && setIssuedInvoices(d)).catch(() => {});
     fetchNextNumber("outgoing");
   }, []);
 
@@ -61,10 +64,9 @@ export default function NewInvoicePage() {
     }
   };
 
-  const subtotal = items.reduce((s, i) => s + i.quantity * i.price, 0);
-  const vatAmount = items.reduce((s, i) => s + (i.quantity * i.price * i.vatRate) / 100, 0);
-  const afterDiscount = subtotal - (subtotal * form.discountPercent / 100) - form.discountAmount;
-  const total = afterDiscount + vatAmount;
+  // Същото изчисление като в сървъра — ДДС върху основата след отстъпка
+  const { subtotal, vatAmount, total } = calcInvoiceTotals(items, form.discountPercent, form.discountAmount);
+  const isNote = form.type === "credit_note" || form.type === "debit_note";
 
   const addItem = () => setItems([...items, { description: "", unit: "бр.", quantity: 1, price: 0, vatRate: 20 }]);
 
@@ -115,10 +117,14 @@ export default function NewInvoicePage() {
     const res = await fetch("/api/invoices", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, items }),
+      body: JSON.stringify({ ...form, relatedInvoiceId: isNote ? form.relatedInvoiceId || null : null, items }),
     });
     if (res.ok) router.push("/invoices");
-    else { alert("Грешка"); setSaving(false); }
+    else {
+      const data = await res.json().catch(() => null);
+      alert(typeof data?.error === "string" ? data.error : "Грешка при запазване — проверете полетата");
+      setSaving(false);
+    }
   }
 
   const isOutgoing = form.direction === "outgoing";
@@ -153,6 +159,21 @@ export default function NewInvoicePage() {
               <div className="space-y-2"><Label>Номер *</Label><Input value={form.number} onChange={e => setForm({...form, number: e.target.value})} /></div>
               <div className="space-y-2"><Label>Валута</Label><Input value={form.currency} disabled /></div>
             </div>
+            {isNote && (
+              <div className="space-y-2">
+                <Label>Към фактура *</Label>
+                <Select value={form.relatedInvoiceId} onValueChange={v => setForm({...form, relatedInvoiceId: v})}>
+                  <SelectTrigger><SelectValue placeholder="Изберете фактурата, която се коригира" /></SelectTrigger>
+                  <SelectContent>
+                    {issuedInvoices.filter(i => i.direction === form.direction && i.type === "invoice").map(i => (
+                      <SelectItem key={i.id} value={String(i.id)}>
+                        {i.number} · {i.date} · {i.clientCompany || i.clientName} · {formatCurrency(i.total)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2"><Label>Дата *</Label><Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></div>
               <div className="space-y-2"><Label>Падеж *</Label><Input type="date" value={form.dueDate} onChange={e => setForm({...form, dueDate: e.target.value})} /></div>

@@ -3,20 +3,10 @@ import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { clients } from "@/db/schema";
 import { eq, like, or, asc } from "drizzle-orm";
-import { z } from "zod";
+import { clientSchema, findClientByEik } from "@/lib/clients";
+import { firstZodError } from "@/lib/acts";
 
 export const dynamic = "force-dynamic";
-
-const clientSchema = z.object({
-  name: z.string().min(1, "Името е задължително"),
-  companyName: z.string().optional().default(""),
-  eik: z.string().optional().default(""),
-  vatNumber: z.string().optional().default(""),
-  address: z.string().optional().default(""),
-  phone: z.string().optional().default(""),
-  email: z.string().optional().default(""),
-  notes: z.string().optional().default(""),
-});
 
 export async function GET(req: Request) {
   const { session, isApiKey } = await getAuth(req);
@@ -59,23 +49,19 @@ export async function POST(req: Request) {
   const body = await req.json();
   const parsed = clientSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: firstZodError(parsed.error) }, { status: 400 });
+  }
+  if (parsed.data.eik) {
+    const dup = findClientByEik(parsed.data.eik);
+    if (dup) {
+      return NextResponse.json(
+        { error: `Вече има клиент с ЕИК ${parsed.data.eik}: ${dup.companyName || dup.name}`, existingId: dup.id },
+        { status: 409 },
+      );
+    }
   }
 
-  const [created] = await db
-    .insert(clients)
-    .values({
-      name: parsed.data.name,
-      companyName: parsed.data.companyName || null,
-      eik: parsed.data.eik || null,
-      vatNumber: parsed.data.vatNumber || null,
-      address: parsed.data.address || null,
-      phone: parsed.data.phone || null,
-      email: parsed.data.email || null,
-      notes: parsed.data.notes || null,
-    })
-    .returning()
-    .all();
+  const [created] = await db.insert(clients).values(parsed.data).returning().all();
 
   return NextResponse.json(created, { status: 201 });
 }

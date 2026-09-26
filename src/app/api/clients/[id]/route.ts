@@ -3,20 +3,10 @@ import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { clients } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { z } from "zod";
+import { clientSchema, clientUsage, findClientByEik } from "@/lib/clients";
+import { firstZodError } from "@/lib/acts";
 
 export const dynamic = "force-dynamic";
-
-const updateSchema = z.object({
-  name: z.string().min(1).optional(),
-  companyName: z.string().optional().nullable(),
-  eik: z.string().optional().nullable(),
-  vatNumber: z.string().optional().nullable(),
-  address: z.string().optional().nullable(),
-  phone: z.string().optional().nullable(),
-  email: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-});
 
 export async function GET(
   req: Request,
@@ -43,9 +33,15 @@ export async function PATCH(
   if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const parsed = updateSchema.safeParse(body);
+  const parsed = clientSchema.partial().safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: firstZodError(parsed.error) }, { status: 400 });
+  }
+  if (parsed.data.eik) {
+    const dup = findClientByEik(parsed.data.eik, parseInt(params.id));
+    if (dup) {
+      return NextResponse.json({ error: `Вече има клиент с ЕИК ${parsed.data.eik}: ${dup.companyName || dup.name}`, existingId: dup.id }, { status: 409 });
+    }
   }
 
   const existing = await db
@@ -58,7 +54,7 @@ export async function PATCH(
 
   const [updated] = await db
     .update(clients)
-    .set(parsed.data)
+    .set({ ...parsed.data, updatedAt: new Date().toISOString() })
     .where(eq(clients.id, parseInt(params.id)))
     .returning()
     .all();
@@ -81,6 +77,11 @@ export async function DELETE(
 
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await db.delete(clients).where(eq(clients.id, parseInt(params.id)));
+  // Клиент с обекти/оферти/фактури не се трие (FK грешка → 500 досега)
+  const usage = clientUsage(existing.id);
+  if (usage.length) {
+    return NextResponse.json({ error: `Клиентът има ${usage.join(", ")} и не може да се изтрие` }, { status: 409 });
+  }
+  await db.delete(clients).where(eq(clients.id, existing.id));
   return NextResponse.json({ success: true });
 }

@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      AUTH_SECRET: ci-dummy-secret
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # --legacy-peer-deps: next-auth@5 beta иска nodemailer@6, проектът ползва 9 (както в Dockerfile)
+      - name: Install
+        run: npm ci --legacy-peer-deps
+
+      # SQLite базата се създава в ./data при импорт на @/db
+      - name: Prepare data dir
+        run: mkdir -p data
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build

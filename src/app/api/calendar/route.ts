@@ -54,6 +54,8 @@ export async function POST(request: NextRequest) {
   const { siteId, plannedDate, concreteTypeId, estimatedM3, machineId, notes } = body;
   if (!siteId || !plannedDate)
     return NextResponse.json({ error: "Обект и дата са задължителни" }, { status: 400 });
+  if (!db.select({ id: sites.id }).from(sites).where(eq(sites.id, Number(siteId))).get())
+    return NextResponse.json({ error: "Обектът не съществува" }, { status: 400 });
 
   const [result] = await db
     .insert(siteCalendar)
@@ -79,10 +81,18 @@ export async function PATCH(request: NextRequest) {
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
-  const body = await request.json();
+  const body = await request.json().catch(() => ({}));
+  // Само позволени полета (преди — произволни)
+  const update: Record<string, any> = {};
+  for (const k of ["siteId", "plannedDate", "concreteTypeId", "estimatedM3", "machineId", "teamLeadId", "status", "notes"]) {
+    if (body?.[k] !== undefined) update[k] = body[k];
+  }
+  if (update.status && !["planned", "confirmed", "done", "postponed"].includes(update.status)) {
+    return NextResponse.json({ error: "Невалиден статус" }, { status: 400 });
+  }
   const result = await db
     .update(siteCalendar)
-    .set(body)
+    .set(update)
     .where(eq(siteCalendar.id, parseInt(id)))
     .returning()
     .get();

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
+import { isBrigadirApiBlocked, isBrigadirPageAllowed } from "@/lib/roles";
 
 // Simple in-memory rate limiter for Edge middleware
 const rateMap = new Map<string, { count: number; reset: number }>();
@@ -25,7 +27,7 @@ if (rateMap.size > 1000) {
 }
 
 // Simple middleware — cookie-based auth + API key support + rate limiting
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
 
@@ -60,20 +62,34 @@ export function middleware(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
-    if (token === process.env.API_KEY) {
+    if (process.env.API_KEY && token === process.env.API_KEY) {
       return NextResponse.next();
     }
   }
 
-  // Check for auth session cookie
-  const authCookie =
-    request.cookies.get("authjs.session-token")?.value ||
-    request.cookies.get("__Secure-authjs.session-token")?.value;
+  // Сесията се валидира (подпис + срок), не само наличието на cookie —
+  // иначе произволно "authjs.session-token=x" минаваше през middleware-а
+  const secureCookie = !!request.cookies.get("__Secure-authjs.session-token");
+  const token = await getToken({ req: request, secret: process.env.AUTH_SECRET, secureCookie }).catch(() => null);
 
-  if (!authCookie) {
+  if (!token) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Ограничения по роля — бригадирът няма достъп до финансови модули
+  if (token.role === "brigadir") {
+    if (pathname.startsWith("/api/")) {
+      if (isBrigadirApiBlocked(pathname)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    } else if (!isBrigadirPageAllowed(pathname)) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
   }
 
   const response = NextResponse.next();
