@@ -3,6 +3,9 @@ import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { pourings, pouringItems, sites, offers, concreteTypes, machines } from "@/db/schema";
 import { eq, desc, asc, inArray } from "drizzle-orm";
+import { actCreateSchema, firstZodError } from "@/lib/acts";
+import { checkActRefs } from "@/lib/acts-db";
+import { roundMoney } from "@/lib/calc";
 
 export const dynamic = "force-dynamic";
 
@@ -77,41 +80,38 @@ export async function POST(request: NextRequest) {
   const { session, isApiKey } = await getAuth(request);
   if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await request.json();
-  const { siteId, offerId, date, machineId, weather, notes, items } = body;
+  const parsed = actCreateSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: firstZodError(parsed.error) }, { status: 400 });
+  const data = parsed.data;
 
-  if (!siteId || !date || !items || items.length === 0) {
-    return NextResponse.json({ error: "Обект, дата и поне един ред са задължителни" }, { status: 400 });
-  }
+  const refError = checkActRefs(data.siteId, data.offerId ?? null);
+  if (refError) return NextResponse.json({ error: refError }, { status: 400 });
 
-  const totalQty = items.reduce((s: number, i: any) => s + (parseFloat(i.quantityM3) || 0), 0);
+  const totalQty = data.items.reduce((s, i) => s + i.quantityM3, 0);
 
   const pouring = db.transaction((tx) => {
     const p = tx.insert(pourings).values({
-      siteId: parseInt(siteId),
-      offerId: offerId ? parseInt(offerId) : null,
-      date,
-      concreteTypeId: items[0].concreteTypeId ? parseInt(items[0].concreteTypeId) : null,
+      siteId: data.siteId,
+      offerId: data.offerId ?? null,
+      date: data.date,
+      concreteTypeId: data.items[0].concreteTypeId,
       quantityM3: totalQty,
-      machineId: machineId ? parseInt(machineId) : null,
-      weather: weather || null,
-      notes: notes || null,
+      machineId: data.machineId ?? null,
+      weather: data.weather || null,
+      notes: data.notes || null,
       status: "completed",
     }).returning().get();
 
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const qty = parseFloat(item.quantityM3) || 0;
-      const price = parseFloat(item.pricePerM3) || 0;
+    data.items.forEach((item, i) => {
       tx.insert(pouringItems).values({
         pouringId: p.id,
-        concreteTypeId: item.concreteTypeId ? parseInt(item.concreteTypeId) : null,
-        quantityM3: qty,
-        pricePerM3: price,
-        total: qty * price,
+        concreteTypeId: item.concreteTypeId,
+        quantityM3: item.quantityM3,
+        pricePerM3: item.pricePerM3,
+        total: roundMoney(item.quantityM3 * item.pricePerM3),
         sortOrder: i,
       }).run();
-    }
+    });
 
     return p;
   });

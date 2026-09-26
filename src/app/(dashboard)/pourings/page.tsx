@@ -29,7 +29,7 @@ export default function PouringsPage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm("Сигурен ли си?")) return;
+    if (!confirm("Да изтрия ли акта? Изразходените материали ще се върнат в склада.")) return;
     await fetch(`/api/pourings/${id}`, { method: "DELETE" });
     loadFiltered(filterSite);
   }

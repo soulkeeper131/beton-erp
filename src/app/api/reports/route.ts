@@ -222,8 +222,14 @@ export async function GET(req: Request) {
   for (const d of deliveries) {
     const agg = byMaterial.get(d.materialId);
     if (!agg || !within(d.date)) continue;
+    const q = d.quantity || 0;
+    // Отрицателно движение = ръчен разход от склада
+    if (q < 0) {
+      agg.consumed += -q;
+      continue;
+    }
     agg.count += 1;
-    agg.delivered += d.quantity || 0;
+    agg.delivered += q;
     if (!agg.lastDate || (d.date && d.date > agg.lastDate)) agg.lastDate = d.date;
   }
   for (const m of actMaterials) {

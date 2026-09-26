@@ -15,6 +15,7 @@ import {
 import { PhotoGallery } from "@/components/photo-gallery";
 import { useIsAdmin } from "@/lib/use-is-admin";
 import { formatCurrency } from "@/lib/utils";
+import { hourlyFromDaily } from "@/lib/acts";
 
 export default function PouredDetailPage() {
   const router = useRouter();
@@ -28,6 +29,7 @@ export default function PouredDetailPage() {
   const [materialsList, setMaterialsList] = useState<any[]>([]);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [form, setForm] = useState<any>({});
   const [editItems, setEditItems] = useState<any[]>([]);
   const [editWorkers, setEditWorkers] = useState<any[]>([]);
@@ -80,7 +82,9 @@ export default function PouredDetailPage() {
     copy[idx][field] = value;
     if (field === "concreteTypeId" && value) {
       const ct = concreteTypes.find(c => String(c.id) === value);
-      if (ct) copy[idx].pricePerM3 = String(ct.pricePerM3);
+      const contract = offerData?.items?.find((oi: any) => String(oi.concreteTypeId) === value)?.pricePerM3;
+      if (contract != null) copy[idx].pricePerM3 = String(contract);
+      else if (ct) copy[idx].pricePerM3 = String(ct.pricePerM3);
     }
     setEditItems(copy);
   };
@@ -92,7 +96,8 @@ export default function PouredDetailPage() {
     copy[idx][field] = value;
     if (field === "workerId" && value) {
       const w = workers.find(x => String(x.id) === value);
-      if (w && (!copy[idx].rate || copy[idx].rate === "0")) copy[idx].rate = String(w.dailyRate || "");
+      // Ставката е на час — по подразбиране дневната ÷ 8
+      if (w && (!copy[idx].rate || copy[idx].rate === "0")) copy[idx].rate = String(hourlyFromDaily(w.dailyRate) || "");
     }
     setEditWorkers(copy);
   };
@@ -134,6 +139,12 @@ export default function PouredDetailPage() {
       const updated = await res.json();
       setPoured(updated);
       setEditing(false);
+      setSaveError("");
+      // наличностите са се променили
+      fetch("/api/materials").then(r => r.json()).then(setMaterialsList);
+    } else {
+      const data = await res.json().catch(() => null);
+      setSaveError(data?.error || "Грешка при запис");
     }
     setSaving(false);
   }
@@ -356,7 +367,7 @@ export default function PouredDetailPage() {
                         <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Избери" /></SelectTrigger>
                         <SelectContent>
                           {workers.map((x: any) => (
-                            <SelectItem key={x.id} value={String(x.id)}>{x.name}</SelectItem>
+                            <SelectItem key={x.id} value={String(x.id)}>{x.name} — {x.dailyRate} €/ден</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -370,6 +381,9 @@ export default function PouredDetailPage() {
                       <Label className="text-xs">Ставка (€/ч)</Label>
                       <Input type="number" step="0.01" min="0" className="h-8 text-sm" value={w.rate}
                         onChange={e => updateEditWorker(idx, "rate", e.target.value)} />
+                    </div>
+                    <div className="col-span-full text-xs text-muted-foreground text-right">
+                      Сума: {formatCurrency((parseFloat(w.hours) || 0) * (parseFloat(w.rate) || 0))}
                     </div>
                   </div>
                 </div>
@@ -435,7 +449,7 @@ export default function PouredDetailPage() {
                         <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Избери" /></SelectTrigger>
                         <SelectContent>
                           {materialsList.map((x: any) => (
-                            <SelectItem key={x.id} value={String(x.id)}>{x.name}</SelectItem>
+                            <SelectItem key={x.id} value={String(x.id)}>{x.name} — налични {x.quantity} {x.unit}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -477,9 +491,13 @@ export default function PouredDetailPage() {
       </Card>
 
       {editing && (
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? "Записване..." : "💾 Запис"}
-        </Button>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Материалите се изписват от склада при запис (промяна или изтриване на акта ги връща).</p>
+          {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "Записване..." : "💾 Запис"}
+          </Button>
+        </div>
       )}
 
       {/* Offer vs Actual comparison */}

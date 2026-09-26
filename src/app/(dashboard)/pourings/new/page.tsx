@@ -21,6 +21,9 @@ export default function NewPouringPage() {
   const [machines, setMachines] = useState<any[]>([]);
   const [offers, setOffers] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  // Договорени цени от избраната оферта: concreteTypeId → цена/m³
+  const [offerItems, setOfferItems] = useState<any[]>([]);
 
   const [form, setForm] = useState({
     siteId: preselectedSiteId,
@@ -45,6 +48,22 @@ export default function NewPouringPage() {
     ? offers.filter(o => o.siteId === parseInt(form.siteId) && (o.status === "sent" || o.status === "accepted"))
     : [];
 
+  const offerPrice = (concreteTypeId: string) =>
+    offerItems.find(oi => String(oi.concreteTypeId) === concreteTypeId)?.pricePerM3;
+
+  // При избор на оферта редовете се попълват от нея (тип бетон + договорена цена)
+  async function selectOffer(offerId: string) {
+    setForm(f => ({ ...f, offerId }));
+    if (!offerId) { setOfferItems([]); return; }
+    const offer = await fetch(`/api/offers/${offerId}`).then(r => r.json()).catch(() => null);
+    const concrete = (offer?.items || []).filter((oi: any) => oi.concreteTypeId);
+    setOfferItems(concrete);
+    const emptyRows = items.every(i => !i.concreteTypeId && !i.quantityM3);
+    if (concrete.length && emptyRows) {
+      setItems(concrete.map((oi: any) => ({ concreteTypeId: String(oi.concreteTypeId), quantityM3: "", pricePerM3: String(oi.pricePerM3) })));
+    }
+  }
+
   const addItem = () => setItems([...items, { concreteTypeId: "", quantityM3: "", pricePerM3: "" }]);
   const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
 
@@ -55,7 +74,9 @@ export default function NewPouringPage() {
     // Auto-fill price when concrete type changes
     if (field === "concreteTypeId" && value) {
       const ct = concreteTypes.find(c => String(c.id) === value);
-      if (ct) copy[idx].pricePerM3 = String(ct.pricePerM3);
+      const contract = offerPrice(value);
+      if (contract != null) copy[idx].pricePerM3 = String(contract);
+      else if (ct) copy[idx].pricePerM3 = String(ct.pricePerM3);
     }
 
     setItems(copy);
@@ -70,7 +91,10 @@ export default function NewPouringPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.siteId || items.length === 0 || items.some(i => !i.concreteTypeId || !i.quantityM3)) return;
+    if (!form.siteId) { setError("Изберете обект"); return; }
+    const bad = items.findIndex(i => !i.concreteTypeId || !(parseFloat(i.quantityM3) > 0));
+    if (bad >= 0) { setError(`Ред ${bad + 1}: изберете тип бетон и въведете количество`); return; }
+    setError("");
     setSaving(true);
 
     const res = await fetch("/api/pourings", {
@@ -92,9 +116,12 @@ export default function NewPouringPage() {
     });
 
     if (res.ok) {
-      router.push("/pourings");
+      // Към акта — там се добавят работници, материали и снимки
+      const created = await res.json();
+      router.push(`/pourings/${created.id}`);
     } else {
-      alert("Грешка при запис");
+      const data = await res.json().catch(() => null);
+      setError(data?.error || "Грешка при запис");
       setSaving(false);
     }
   }
@@ -110,7 +137,7 @@ export default function NewPouringPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Обект *</Label>
-                <Select value={form.siteId} onValueChange={(v) => setForm({ ...form, siteId: v, offerId: "" })}>
+                <Select value={form.siteId} onValueChange={(v) => { setForm({ ...form, siteId: v, offerId: "" }); setOfferItems([]); }}>
                   <SelectTrigger><SelectValue placeholder="Избери обект" /></SelectTrigger>
                   <SelectContent>
                     {sites.map((s: any) => (
@@ -125,7 +152,7 @@ export default function NewPouringPage() {
               </div>
               <div>
                 <Label>Оферта</Label>
-                <Select value={form.offerId} onValueChange={(v) => setForm({ ...form, offerId: v })} disabled={!form.siteId}>
+                <Select value={form.offerId} onValueChange={selectOffer} disabled={!form.siteId}>
                   <SelectTrigger><SelectValue placeholder={form.siteId ? "Избери оферта (опционално)" : "Първо избери обект"} /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">Без оферта</SelectItem>
@@ -187,7 +214,7 @@ export default function NewPouringPage() {
                     <SelectContent>
                       {concreteTypes.map((ct: any) => (
                         <SelectItem key={ct.id} value={String(ct.id)}>
-                          {ct.name} — {ct.pricePerM3} €/m³
+                          {ct.name} — {offerPrice(String(ct.id)) ?? ct.pricePerM3} €/m³{offerPrice(String(ct.id)) != null ? " (по оферта)" : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -222,6 +249,7 @@ export default function NewPouringPage() {
         </CardContent>
       </Card>
 
+      {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex gap-3">
         <Button type="submit" disabled={saving} onClick={handleSubmit}>
           {saving ? "Записване..." : "💾 Запис"}
