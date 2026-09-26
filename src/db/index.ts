@@ -416,25 +416,16 @@ if (settingsCount.cnt === 0) {
 
 console.log("✅ Database tables ensured");
 
-// Auto-seed on first run
-const userCount = sqlite.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number };
-if (userCount.cnt === 0) {
-  console.log("🌱 Seeding database...");
-  
+// Auto-seed on first run — атомарно: потребителите и типовете бетон се записват в една
+// IMMEDIATE транзакция с повторна проверка. Иначе паралелен процес (друг worker, тестове)
+// виждаше вече записаните потребители, пропускаше seed-а и четеше 0 типа бетон.
+const needsSeed = () => (sqlite.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number }).cnt === 0;
+if (needsSeed()) {
   const seedUsers = [
     { email: "admin@beton.bg", name: "Администратор", role: "admin", password: "admin123" },
     { email: "employee@beton.bg", name: "Служител", role: "employee", password: "employee123" },
-  ];
-  
-  const insertUser = sqlite.prepare(
-    'INSERT OR IGNORE INTO users (email, password_hash, name, role, must_change_password) VALUES (?, ?, ?, ?, 1)'
-  );
-  
-  for (const u of seedUsers) {
-    const h = bcrypt.hashSync(u.password, 10);
-    insertUser.run(u.email, h, u.name, u.role);
-  }
-  
+  ].map((u) => ({ ...u, hash: bcrypt.hashSync(u.password, 10) })); // бавно — извън транзакцията
+
   const types = [
     ["B10", "B10", 140, "Лека основа"],
     ["B15", "B15", 155, "Основи, настилки"],
@@ -444,16 +435,21 @@ if (userCount.cnt === 0) {
     ["Транспортбетон", "TRANSP", 160, "Готов за изливане"],
     ["Замазка", "SCREED", 130, "Подова замазка"],
   ];
-  
+
+  const insertUser = sqlite.prepare(
+    'INSERT OR IGNORE INTO users (email, password_hash, name, role, must_change_password) VALUES (?, ?, ?, ?, 1)'
+  );
   const insertType = sqlite.prepare(
     'INSERT OR IGNORE INTO concrete_types (name, class_name, price_per_m3, description) VALUES (?, ?, ?, ?)'
   );
-  
-  for (const t of types) {
-    insertType.run(t[0], t[1], t[2], t[3]);
-  }
-  
-  console.log("✅ Seed complete: 2 users, 7 concrete types");
+
+  const seed = sqlite.transaction(() => {
+    if (!needsSeed()) return false; // друг процес вече е попълнил базата
+    for (const u of seedUsers) insertUser.run(u.email, u.hash, u.name, u.role);
+    for (const t of types) insertType.run(t[0], t[1], t[2], t[3]);
+    return true;
+  });
+  if (seed.immediate()) console.log("✅ Seed complete: 2 users, 7 concrete types");
 }
 
 export const db = drizzle(sqlite, { schema });
