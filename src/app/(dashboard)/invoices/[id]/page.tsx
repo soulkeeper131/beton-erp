@@ -88,6 +88,9 @@ export default function InvoiceDetailPage() {
         <div>
           <h1 className="text-2xl font-bold">{typeLabels[invoice.type] || invoice.type} №{invoice.number}</h1>
           <p className="text-muted-foreground">{directionLabels[invoice.direction]} • {invoice.currency}</p>
+          {invoice.related && (
+            <p className="text-sm">към фактура <a className="underline" href={`/invoices/${invoice.related.id}`}>№{invoice.related.number}</a> от {invoice.related.date}</p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" asChild>

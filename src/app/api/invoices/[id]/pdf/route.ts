@@ -36,6 +36,7 @@ export async function GET(
       paymentMethod: invoices.paymentMethod,
       paymentStatus: invoices.paymentStatus,
       taxExemptionReason: invoices.taxExemptionReason,
+      relatedInvoiceId: invoices.relatedInvoiceId,
       notes: invoices.notes,
       clientName: clients.name,
       clientCompany: clients.companyName,
@@ -53,8 +54,13 @@ export async function GET(
   const company = db.select().from(companySettings).get() || {};
   const items = db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId)).all();
 
+  // Кредитно/дебитно известие: фактурата, към която е (чл. 115 ЗДДС)
+  const related = invoice.relatedInvoiceId
+    ? db.select({ number: invoices.number, date: invoices.date }).from(invoices).where(eq(invoices.id, invoice.relatedInvoiceId)).get()
+    : null;
+
   const stream = await renderToStream(
-    InvoicePDF({ invoice, items, company })
+    InvoicePDF({ invoice, items, company, related })
   );
 
   const safeNumber = invoice.number?.replace(/[^a-zA-Z0-9_-]/g, "_") || "invoice";

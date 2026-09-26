@@ -318,7 +318,7 @@ export default function NewInvoicePage() {
                 </Select>
               </div>
             </div>
-            <div className="space-y-2"><Label>Основание за нулева ставка</Label><Input value={form.taxExemptionReason} onChange={e => setForm({...form, taxExemptionReason: e.target.value})} /></div>
+            <div className="space-y-2"><Label>Основание за нулева ставка{items.some(i => i.vatRate === 0) ? " *" : ""}</Label><Input value={form.taxExemptionReason} onChange={e => setForm({...form, taxExemptionReason: e.target.value})} /></div>
             <div className="space-y-2"><Label>Бележки</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} /></div>
 
             <div className="border-t pt-3 space-y-1 text-right">
