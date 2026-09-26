@@ -3,7 +3,7 @@ import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { eq, lte, and, sql } from "drizzle-orm";
 import { getAuth } from "@/lib/auth-helpers";
-import { calcInvoiceTotals, nextRecurringDate } from "@/lib/calc";
+import { calcInvoiceTotals, nextRecurringDate, roundMoney } from "@/lib/calc";
 import { getNextInvoiceNumber } from "@/lib/invoice-number";
 
 export const dynamic = "force-dynamic";
@@ -72,19 +72,19 @@ export async function POST(req: Request) {
           quantity: item.quantity,
           price: item.price,
           vatRate: item.vatRate ?? 20,
-          total: item.quantity * item.price,
+          total: roundMoney(item.quantity * item.price),
         }).run();
       }
 
+      // nextDate (+1 месец/седмица) в същата транзакция. Преди липсваше .run() —
+      // датата не се местеше и всяко генериране правеше нова фактура за същия период.
+      tx.update(schema.recurringInvoices)
+        .set({ nextDate: nextRecurringDate(rec.nextDate, rec.frequency as "monthly" | "weekly"), lastGenerated: today })
+        .where(eq(schema.recurringInvoices.id, rec.id))
+        .run();
+
       return created;
     });
-
-    // Обновяваме nextDate (+1 месец или +1 седмица)
-    const next = nextRecurringDate(rec.nextDate, rec.frequency as "monthly" | "weekly");
-
-    db.update(schema.recurringInvoices)
-      .set({ nextDate: next, lastGenerated: today })
-      .where(eq(schema.recurringInvoices.id, rec.id));
 
     generated.push({ id: rec.id, name: rec.name, invoiceNumber: inv.number });
   }

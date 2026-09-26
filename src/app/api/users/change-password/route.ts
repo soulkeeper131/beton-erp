@@ -36,9 +36,11 @@ export async function POST(req: Request) {
   }
 
   const newHash = await bcrypt.hash(parsed.data.newPassword, 10);
+  // .run() е задължителен — без него заявката не се изпълнява и паролата не се сменя
   db.update(users)
     .set({ passwordHash: newHash, mustChangePassword: false })
-    .where(eq(users.id, userId));
+    .where(eq(users.id, userId))
+    .run();
 
   return NextResponse.json({ ok: true });
 }
