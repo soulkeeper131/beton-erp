@@ -4,7 +4,6 @@ import { db } from "@/db";
 import { invoices, invoiceItems, clients } from "@/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { getAuth } from "@/lib/auth-helpers";
-import { notifyInvoiceCreated } from "@/lib/notifications";
 import { calcInvoiceTotals, roundMoney } from "@/lib/calc";
 import { isInvoiceNumberTaken } from "@/lib/invoice-number";
 
@@ -150,20 +149,7 @@ export async function POST(req: Request) {
     return inv;
   });
 
-  // Send email notification (fire-and-forget — won't block response)
-  try {
-    const client = db.select({ email: clients.email, name: clients.name, companyName: clients.companyName })
-      .from(clients).where(eq(clients.id, parsed.data.clientId)).get();
-    if (client?.email) {
-      notifyInvoiceCreated({
-        number: created.number,
-        date: created.date,
-        clientEmail: client.email,
-        clientName: client.companyName || client.name || "Клиент",
-        total: created.total,
-      }).catch(() => {});
-    }
-  } catch {}
-
+  // Клиентът не се известява автоматично — фактурата е чернова; изпраща се ръчно
+  // от страницата ѝ („Изпрати“, с PDF), след като е издадена.
   return NextResponse.json(created, { status: 201 });
 }

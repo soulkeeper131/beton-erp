@@ -3,6 +3,7 @@
 import { db } from "@/db";
 import { calcInvoiceTotals, roundMoney } from "@/lib/calc";
 import { getNextInvoiceNumber } from "@/lib/invoice-number";
+import { getNextOfferNumber, offerItemSchema, offerTotal, replaceOfferItems } from "@/lib/offers";
 import { clients, offers, offerItems, pourings, pouringItems, sites, concreteTypes, services, materials, machines, siteCalendar, invoices, invoiceItems, workers, users, companySettings } from "@/db/schema";
 import { eq, like, or, and, desc, asc } from "drizzle-orm";
 import { sql } from "drizzle-orm";
@@ -120,16 +121,14 @@ async function getCalendar(params: { siteId?: number; dateFrom?: string }) {
 
 async function createOffer(params: any) {
   const { clientId, siteId, date, validUntil, items, notes } = params;
-  const lastOffer = db.select({ number: offers.number }).from(offers).orderBy(desc(offers.id)).limit(1).get();
-  const lastNum = lastOffer ? parseInt(lastOffer.number.split("-")[1] || "0") : 0;
-  const number = `OF-${String(lastNum + 1).padStart(4, "0")}`;
-  const total = (items || []).reduce((s: number, i: any) =>
-    s + (i.quantityM3 || 0) * (i.pricePerM3 || 0) + (i.transportCost || 0) + (i.pumpCost || 0), 0);
-  const result = db.insert(offers).values({ clientId, siteId: siteId || null, number, date, validUntil: validUntil || null, total, status: "draft", notes: notes || null }).returning({ id: offers.id }).get();
-  for (const item of items || []) {
-    const itemTotal = (item.quantityM3 || 0) * (item.pricePerM3 || 0) + (item.transportCost || 0) + (item.pumpCost || 0);
-    db.insert(offerItems).values({ offerId: result.id, concreteTypeId: item.concreteTypeId || null, serviceId: item.serviceId || null, quantityM3: item.quantityM3, pricePerM3: item.pricePerM3, transportCost: item.transportCost || 0, pumpCost: item.pumpCost || 0, total: itemTotal }).run();
-  }
+  const parsedItems = offerItemSchema.array().parse(items || []);
+  const number = getNextOfferNumber();
+  const total = offerTotal(parsedItems);
+  const result = db.transaction((tx) => {
+    const created = tx.insert(offers).values({ clientId, siteId: siteId || null, number, date, validUntil: validUntil || null, total: 0, status: "draft", notes: notes || null }).returning({ id: offers.id }).get();
+    replaceOfferItems(tx, created.id, parsedItems);
+    return created;
+  });
   return { id: result.id, number, total, items: items.length };
 }
 

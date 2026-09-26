@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
-import { offers, offerItems, clients, sites } from "@/db/schema";
-import { eq, desc, like } from "drizzle-orm";
+import { offers, clients } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
-import { notifyOfferCreated } from "@/lib/notifications";
+import { firstZodError } from "@/lib/acts";
+import { getNextOfferNumber, offerItemSchema, replaceOfferItems } from "@/lib/offers";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ const offerSchema = z.object({
   date: z.string().min(1, "Датата е задължителна"),
   validUntil: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  items: z.array(offerItemSchema).optional(),
 });
 
 export async function GET(req: Request) {
@@ -62,62 +64,30 @@ export async function POST(req: Request) {
   const body = await req.json();
   const parsed = offerSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: firstZodError(parsed.error) }, { status: 400 });
   }
 
-  // Auto-generate offer number (MAX + 1, за да няма колазии след изтриване)
-  const currentYear = new Date().getFullYear();
-  const prefix = `ОФ-${currentYear}-`;
+  const created = db.transaction((tx) => {
+    const [offer] = tx
+      .insert(offers)
+      .values({
+        clientId: parsed.data.clientId,
+        siteId: parsed.data.siteId ?? null,
+        number: getNextOfferNumber(),
+        date: parsed.data.date,
+        validUntil: parsed.data.validUntil ?? null,
+        notes: parsed.data.notes ?? null,
+        total: 0,
+        status: "draft",
+      })
+      .returning()
+      .all();
+    // Офертата и редовете ѝ се записват заедно — без полупразни оферти при грешка
+    if (parsed.data.items?.length) replaceOfferItems(tx, offer.id, parsed.data.items);
+    return tx.select().from(offers).where(eq(offers.id, offer.id)).get()!;
+  });
 
-  const last = db
-    .select({ number: offers.number })
-    .from(offers)
-    .where(like(offers.number, `${prefix}%`))
-    .orderBy(desc(offers.number))
-    .limit(1)
-    .get();
-
-  let seq = 0;
-  if (last?.number) {
-    const m = last.number.match(/(\d+)$/);
-    if (m) seq = parseInt(m[1], 10);
-  }
-  const number = `${prefix}${String(seq + 1).padStart(4, "0")}`;
-
-  const [created] = db
-    .insert(offers)
-    .values({
-      clientId: parsed.data.clientId,
-      siteId: parsed.data.siteId ?? null,
-      number,
-      date: parsed.data.date,
-      validUntil: parsed.data.validUntil ?? null,
-      notes: parsed.data.notes ?? null,
-      total: 0,
-      status: "draft",
-    })
-    .returning()
-    .all();
-
-  // Send email notification (fire-and-forget)
-  try {
-    const client = db.select({ email: clients.email, name: clients.name, companyName: clients.companyName })
-      .from(clients).where(eq(clients.id, parsed.data.clientId)).get();
-    if (client?.email) {
-      let siteName: string | undefined;
-      if (parsed.data.siteId) {
-        const site = db.select({ name: sites.name }).from(sites).where(eq(sites.id, parsed.data.siteId)).get();
-        siteName = site?.name;
-      }
-      notifyOfferCreated({
-        number: created.number,
-        clientEmail: client.email,
-        clientName: client.companyName || client.name || "Клиент",
-        siteName,
-        total: created.total,
-      }).catch(() => {});
-    }
-  } catch {}
-
+  // Клиентът не се известява автоматично за чернова — офертата се изпраща ръчно
+  // от страницата ѝ („Изпрати“, с PDF), когато е готова.
   return NextResponse.json(created, { status: 201 });
 }

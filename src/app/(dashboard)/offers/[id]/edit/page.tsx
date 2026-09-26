@@ -152,8 +152,8 @@ export default function EditOfferPage() {
   const onSubmit = async (values: FormValues) => {
     setSaving(true);
     try {
-      // Update offer header
-      const hdrRes = await fetch(`/api/offers/${id}`, {
+      // Заглавие и редове с една заявка — редовете се заменят атомарно
+      const res = await fetch(`/api/offers/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -162,30 +162,21 @@ export default function EditOfferPage() {
           date: values.date,
           validUntil: values.validUntil || null,
           notes: values.notes || null,
-        }),
-      });
-      if (!hdrRes.ok) throw new Error("Header update failed");
-
-      // Delete all existing items
-      const existing = await fetch(`/api/offers/${id}`).then(r => r.json());
-      for (const item of (existing.items || [])) {
-        await fetch(`/api/offers/${id}/items?itemId=${item.id}`, { method: "DELETE" });
-      }
-
-      // Create new items
-      for (const item of values.items) {
-        await fetch(`/api/offers/${id}/items`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+          items: values.items.map((item) => ({
             concreteTypeId: item.itemType === "concrete" ? item.concreteTypeId : null,
             serviceId: item.itemType === "service" ? item.serviceId : null,
             quantityM3: item.quantityM3,
             pricePerM3: item.pricePerM3,
             transportCost: item.transportCost || 0,
             pumpCost: item.pumpCost || 0,
-          }),
-        });
+          })),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        alert(typeof err?.error === "string" ? err.error : "Грешка при запазване на офертата");
+        setSaving(false);
+        return;
       }
 
       router.push(`/offers/${id}`);

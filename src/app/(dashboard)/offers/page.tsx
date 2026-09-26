@@ -18,8 +18,12 @@ export default function OffersPage() {
   }, []);
 
   async function handleDelete(id: number) {
-    if (!confirm("Сигурен ли си?")) return;
-    await fetch(`/api/offers/${id}`, { method: "DELETE" });
+    if (!confirm("Да изтрия ли офертата?")) return;
+    const res = await fetch(`/api/offers/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      alert((await res.json().catch(() => null))?.error || "Грешка при изтриване");
+      return;
+    }
     setData(data.filter(o => o.id !== id));
   }
 
