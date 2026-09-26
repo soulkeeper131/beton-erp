@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
-import { actPhotos } from "@/db/schema";
+import { actPhotos, pourings, sites } from "@/db/schema";
+import { detectImage, MAX_UPLOAD_BYTES } from "@/lib/uploads";
 import { eq } from "drizzle-orm";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
@@ -65,11 +66,24 @@ export async function POST(request: NextRequest) {
   if (!file) return NextResponse.json({ error: "Файлът е задължителен" }, { status: 400 });
   if (!pouringId && !siteId) return NextResponse.json({ error: "pouringId или siteId е задължителен" }, { status: 400 });
 
+  if (file.size > MAX_UPLOAD_BYTES) return NextResponse.json({ error: "Файлът е над 15 MB" }, { status: 400 });
+  const buffer = Buffer.from(await file.arrayBuffer());
+  // Типът се определя по съдържанието, не по името от клиента (без SVG/HTML)
+  const kind = detectImage(buffer);
+  if (!kind) return NextResponse.json({ error: "Позволени са само снимки (JPG, PNG, WEBP, GIF, HEIC)" }, { status: 400 });
+
+  const pid = pouringId ? parseInt(pouringId) : null;
+  const sid = siteId ? parseInt(siteId) : null;
+  if (pid && !db.select({ id: pourings.id }).from(pourings).where(eq(pourings.id, pid)).get()) {
+    return NextResponse.json({ error: "Актът не съществува" }, { status: 400 });
+  }
+  if (sid && !db.select({ id: sites.id }).from(sites).where(eq(sites.id, sid)).get()) {
+    return NextResponse.json({ error: "Обектът не съществува" }, { status: 400 });
+  }
+
   // Save file
   await mkdir(UPLOAD_DIR, { recursive: true });
-  const ext = file.name.split(".").pop() || "jpg";
-  const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${kind.ext}`;
   await writeFile(join(UPLOAD_DIR, filename), buffer);
 
   // Extract GPS from EXIF
@@ -79,8 +93,8 @@ export async function POST(request: NextRequest) {
   const [photo] = await db
     .insert(actPhotos)
     .values({
-      pouringId: pouringId ? parseInt(pouringId) : null,
-      siteId: siteId ? parseInt(siteId) : null,
+      pouringId: pid,
+      siteId: sid,
       filename,
       caption: caption || null,
       latitude: latitude ?? undefined,

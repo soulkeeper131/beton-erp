@@ -123,3 +123,37 @@ export async function fetchUnreadInvoices(config: {
     imap.connect();
   });
 }
+
+/** Маркира писмата като прочетени (след успешна обработка). */
+export async function markSeen(
+  config: { host: string; port: number; user: string; password: string; tls: boolean; folder: string },
+  uids: number[],
+): Promise<void> {
+  if (!uids.length) return;
+  return new Promise((resolve, reject) => {
+    const imap = new Imap({
+      user: config.user,
+      password: config.password,
+      host: config.host,
+      port: config.port,
+      tls: config.tls,
+      tlsOptions: { rejectUnauthorized: false },
+    });
+    const timeout = setTimeout(() => {
+      imap.destroy();
+      reject(new Error("IMAP timeout"));
+    }, 30000);
+    imap.once("ready", () => {
+      imap.openBox(config.folder || "INBOX", false, (err: any) => {
+        if (err) { imap.end(); return reject(err); }
+        imap.addFlags(uids, "\\Seen", (e: any) => {
+          imap.end();
+          e ? reject(e) : resolve();
+        });
+      });
+    });
+    imap.once("error", reject);
+    imap.once("end", () => clearTimeout(timeout));
+    imap.connect();
+  });
+}

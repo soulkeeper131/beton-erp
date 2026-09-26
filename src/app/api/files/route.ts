@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth-helpers";
 import { readFileSync, existsSync } from "fs";
 import path from "path";
+import { isInside } from "@/lib/uploads";
 
 export const dynamic = "force-dynamic";
 
@@ -14,11 +15,11 @@ export async function GET(req: Request) {
 
   if (!filePath) return NextResponse.json({ error: "Missing path" }, { status: 400 });
 
-  // Security: only allow files within the project's data directory
-  const dataDir = path.join(process.cwd(), "data");
-  const resolved = path.resolve(filePath);
-
-  if (!resolved.startsWith(dataDir)) {
+  // Само PDF-и на входящи фактури. Преди се пускаше всичко под data/ — вкл. самата
+  // база sqlite.db (пароли, ключове) и backup-ите — на всеки вписан потребител.
+  const allowedDir = path.join(process.cwd(), "data", "incoming-invoices");
+  const resolved = path.resolve(process.cwd(), filePath.replace(/^\/+(?=data\/)/, ""));
+  if (!isInside(allowedDir, resolved) || !resolved.toLowerCase().endsWith(".pdf")) {
     return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
 
@@ -31,6 +32,7 @@ export async function GET(req: Request) {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": "inline",
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }

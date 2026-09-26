@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
-import { getNextInvoiceNumber } from "@/lib/invoice-number";
 import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
-import { companySettings, invoices, invoiceItems, clients } from "@/db/schema";
-import { fetchUnreadInvoices } from "@/lib/imap";
+import { companySettings } from "@/db/schema";
+import { fetchUnreadInvoices, markSeen } from "@/lib/imap";
 import { parseInvoicePdf } from "@/lib/invoice-parser";
-import { eq, sql } from "drizzle-orm";
-import { writeFileSync, mkdirSync } from "fs";
-import path from "path";
+import { importIncomingEmail } from "@/lib/incoming-invoice";
 
 export const dynamic = "force-dynamic";
 
@@ -19,110 +16,57 @@ export async function POST(req: Request) {
   if (!settings?.imapHost) {
     return NextResponse.json({ error: "IMAP не е конфигуриран" }, { status: 400 });
   }
+  const imapConfig = {
+    host: settings.imapHost,
+    port: settings.imapPort,
+    user: settings.imapUser,
+    password: settings.imapPass,
+    tls: settings.imapTls,
+    folder: settings.incomingEmailFolder,
+  };
 
+  let emails;
   try {
-    const emails = await fetchUnreadInvoices({
-      host: settings.imapHost,
-      port: settings.imapPort,
-      user: settings.imapUser,
-      password: settings.imapPass,
-      tls: settings.imapTls,
-      folder: settings.incomingEmailFolder,
-    });
-
-    const created: any[] = [];
-
-    for (const email of emails) {
-      // Find first PDF attachment
-      const pdfAtt = email.attachments.find(
-        (a) => a.contentType.includes("pdf") || a.filename.endsWith(".pdf")
-      );
-      if (!pdfAtt) continue;
-
-      // Parse PDF
-      const parsed = await parseInvoicePdf(pdfAtt.content);
-
-      // Save PDF locally
-      const pdfDir = path.join(process.cwd(), "data", "incoming-invoices");
-      mkdirSync(pdfDir, { recursive: true });
-      const safeName = pdfAtt.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const pdfPath = path.join(pdfDir, `${Date.now()}-${safeName}`);
-      writeFileSync(pdfPath, pdfAtt.content);
-
-      // Look up or create supplier client
-      let supplierId: number | null = null;
-      if (parsed.supplierEik) {
-        const existing = db
-          .select()
-          .from(clients)
-          .where(eq(clients.eik, parsed.supplierEik))
-          .get();
-        if (existing) {
-          supplierId = existing.id;
-        } else if (parsed.supplierName) {
-          const createdClient = db
-            .insert(clients)
-            .values({
-              name: parsed.supplierName,
-              companyName: parsed.supplierName,
-              eik: parsed.supplierEik,
-              vatNumber: parsed.supplierVat || "",
-            })
-            .returning()
-            .get();
-          supplierId = createdClient.id;
-        }
-      }
-
-      // Generate next incoming number
-      const autoNumber = getNextInvoiceNumber("incoming");
-
-      // Use parsed date or email date
-      const invoiceDate = parsed.date || email.date.toISOString().split("T")[0];
-
-      // Create draft incoming invoice
-      const invoice = db
-        .insert(invoices)
-        .values({
-          clientId: supplierId ?? 0,
-          number: autoNumber,
-          date: invoiceDate,
-          dueDate: parsed.dueDate || "",
-          taxEventDate: invoiceDate,
-          direction: "incoming",
-          type: "invoice",
-          currency: "EUR",
-          subtotal: parsed.total || 0,
-          total: parsed.total || 0,
-          vatAmount: parsed.vatAmount || 0,
-          paymentStatus: "unpaid",
-          status: "draft",
-          pdfPath: pdfPath,
-          notes: JSON.stringify({
-            source: "email",
-            subject: email.subject,
-            from: email.from,
-            originalNumber: parsed.invoiceNumber || "",
-            confidence: parsed.confidence,
-          }),
-        })
-        .returning()
-        .get();
-
-      created.push({
-        id: invoice.id,
-        number: autoNumber,
-        confidence: parsed.confidence,
-        supplier: parsed.supplierName || email.from,
-      });
-    }
-
-    return NextResponse.json({
-      processed: emails.length,
-      created: created.length,
-      drafts: created,
-    });
+    emails = await fetchUnreadInvoices(imapConfig);
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return NextResponse.json({ error: `IMAP: ${e.message}` }, { status: 502 });
   }
+
+  const drafts: any[] = [];
+  const errors: { subject: string; error: string }[] = [];
+  const done: number[] = []; // UID-и за маркиране като прочетени
+
+  for (const email of emails) {
+    const pdfAtt = email.attachments.find(
+      (a) => a.contentType.includes("pdf") || a.filename.toLowerCase().endsWith(".pdf")
+    );
+    if (!pdfAtt) continue; // не е фактура — оставяме писмото непрочетено
+
+    // Всяко писмо поотделно — грешка в едно не спира останалите
+    try {
+      const parsed = await parseInvoicePdf(pdfAtt.content, { eik: settings.eik, vatNumber: settings.vatNumber });
+      const result = importIncomingEmail(email, parsed, pdfAtt);
+      if (result.status === "created") drafts.push(result);
+      done.push(email.uid);
+    } catch (e: any) {
+      errors.push({ subject: email.subject, error: e.message });
+    }
+  }
+
+  // Маркираме като прочетени само успешно обработените (преди писмата оставаха
+  // непрочетени и всяко „Провери имейла“ създаваше същите чернови отново)
+  if (done.length) {
+    try {
+      await markSeen(imapConfig, done);
+    } catch {
+      // не е фатално — дублите се хващат и по UID на писмото
+    }
+  }
+
+  return NextResponse.json({
+    processed: emails.length,
+    created: drafts.length,
+    drafts,
+    errors,
+  });
 }
