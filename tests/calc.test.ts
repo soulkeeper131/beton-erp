@@ -74,15 +74,19 @@ describe("nextRecurringDate", () => {
 });
 
 describe("nextInvoiceNumber", () => {
-  it("започва от 000001 при липса на номера", () => {
-    expect(nextInvoiceNumber("outgoing", [])).toBe("ИЗХ-000001");
+  it("изходящите започват от Inv-1000000001, входящите от ВХ-000001", () => {
+    expect(nextInvoiceNumber("outgoing", [])).toBe("Inv-1000000001");
     expect(nextInvoiceNumber("incoming", [])).toBe("ВХ-000001");
   });
-  it("ползва MAX, не count (без колазии при изтриване)", () => {
-    expect(nextInvoiceNumber("outgoing", ["ИЗХ-000003", "ИЗХ-000001", "ИЗХ-000005"])).toBe("ИЗХ-000006");
+  it("старите ИЗХ- номера не влияят на новата серия", () => {
+    expect(nextInvoiceNumber("outgoing", ["ИЗХ-000057", "ИЗХ-000003"])).toBe("Inv-1000000001");
   });
-  it("игнорира невалидни номера", () => {
-    expect(nextInvoiceNumber("outgoing", ["няма номер", "ИЗХ-000002"])).toBe("ИЗХ-000003");
+  it("ползва MAX, не count (без колизии при изтриване)", () => {
+    expect(nextInvoiceNumber("outgoing", ["Inv-1000000003", "Inv-1000000001", "ИЗХ-000999"])).toBe("Inv-1000000004");
+    expect(nextInvoiceNumber("incoming", ["ВХ-000003", "ВХ-000001"])).toBe("ВХ-000004");
+  });
+  it("номерът е точно 10 цифри след префикса", () => {
+    expect(nextInvoiceNumber("outgoing", ["Inv-1000000009"])).toMatch(/^Inv-\d{10}$/);
   });
 });
 

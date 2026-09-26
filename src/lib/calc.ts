@@ -66,21 +66,33 @@ export function nextRecurringDate(
   return frequency === "weekly" ? addDays(current, 7) : addMonths(current, 1);
 }
 
+// Изходящи: серия Inv-NNNNNNNNNN (10 цифри по ЗДДС), започва от 1000000001.
+// Старите номера (ИЗХ-…) не участват — новата серия върви сама.
+export const OUTGOING_PREFIX = "Inv-";
+export const OUTGOING_START = 1000000001;
+
 /**
- * Следващ номер на фактура от съществуващи номера (MAX подход, без колазии).
- * Префикс: ИЗХ- за outgoing, ВХ- за incoming.
+ * Следващ номер на фактура от съществуващите (MAX + 1, без колизии след изтриване).
+ * Изходящи: Inv-1000000001, Inv-1000000002…; входящи (вътрешен регистър): ВХ-000001…
  */
 export function nextInvoiceNumber(
   direction: "outgoing" | "incoming",
   existingNumbers: string[],
 ): string {
-  const prefix = direction === "outgoing" ? "ИЗХ-" : "ВХ-";
+  if (direction === "outgoing") {
+    let max = OUTGOING_START - 1;
+    for (const n of existingNumbers) {
+      const m = n?.match(/^Inv-(\d{10})$/);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    }
+    return `${OUTGOING_PREFIX}${max + 1}`;
+  }
   let maxNum = 0;
   for (const n of existingNumbers) {
     const m = n?.match(/(\d+)$/);
     if (m) maxNum = Math.max(maxNum, parseInt(m[1]));
   }
-  return `${prefix}${String(maxNum + 1).padStart(6, "0")}`;
+  return `ВХ-${String(maxNum + 1).padStart(6, "0")}`;
 }
 
 /** Форматира сума в евро (bg-BG локал). */
