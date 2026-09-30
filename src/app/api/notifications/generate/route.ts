@@ -3,6 +3,7 @@ import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { eq, gte, lte, and, ne } from "drizzle-orm";
 import { getAuth } from "@/lib/auth-helpers";
+import { today as todayStr, addDays } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +15,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const today = new Date().toISOString().split("T")[0];
-  const thirtyDays = new Date();
-  thirtyDays.setDate(thirtyDays.getDate() + 30);
-  const thirtyDaysStr = thirtyDays.toISOString().split("T")[0];
+  const today = todayStr();
+  const thirtyDaysStr = addDays(today, 30);
 
   const created: { type: string; title: string }[] = [];
 

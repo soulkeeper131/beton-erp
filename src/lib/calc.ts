@@ -52,22 +52,9 @@ export function roundMoney(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-export function addDays(date: string, days: number): string {
-  const d = new Date(date + "T00:00:00");
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split("T")[0];
-}
-
-export function addMonths(date: string, months: number): string {
-  const d = new Date(date + "T00:00:00");
-  const day = d.getDate();
-  d.setDate(1); // първи от текущия месец
-  d.setMonth(d.getMonth() + months);
-  // clamp към последния ден на целевия месец (напр. 31 ян → 28/29 фев)
-  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-  d.setDate(Math.min(day, lastDay));
-  return d.toISOString().split("T")[0];
-}
+// Изнесени в dates.ts; тук остават за съвместимост
+export { addDays, addMonths } from "@/lib/dates";
+import { addDays, addMonths } from "@/lib/dates";
 
 export function nextRecurringDate(
   current: string,

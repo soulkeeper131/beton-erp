@@ -29,7 +29,9 @@ export default function LoginPage() {
         redirect: false,
       });
 
-      if (result?.error) {
+      if (result?.error === "RateLimit") {
+        setError("Твърде много опити за вход — изчакайте минута");
+      } else if (result?.error) {
         setError("Грешен имейл или парола");
       } else if (result?.ok) {
         router.push("/");

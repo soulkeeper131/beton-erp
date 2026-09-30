@@ -7,6 +7,7 @@ import { getNextInvoiceNumber } from "@/lib/invoice-number";
 import { roundMoney } from "@/lib/calc";
 import type { ParsedInvoice } from "@/lib/invoice-parser";
 import type { FetchedEmail } from "@/lib/imap";
+import { sofiaDate } from "@/lib/dates";
 
 export type ImportResult =
   | { status: "created"; id: number; number: string; confidence: string; supplier: string }
@@ -76,7 +77,7 @@ export function importIncomingEmail(
   const pdfPath = path.join(pdfDir, `${Date.now()}-${pdf.filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`);
   writeFileSync(pdfPath, pdf.content);
 
-  const date = parsed.date || email.date.toISOString().split("T")[0];
+  const date = parsed.date || sofiaDate(email.date);
   const total = roundMoney(parsed.total || 0);
   const vat = roundMoney(parsed.vatAmount || 0);
   const number = getNextInvoiceNumber("incoming");

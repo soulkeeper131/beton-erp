@@ -47,6 +47,7 @@ export default function NewClientPage() {
       const res = await fetch(`/api/companybook?eik=${searchEik}`);
       const data = await res.json();
       if (data.error) { alert(data.error); setSearching(false); return; }
+      if (data.active === false) alert(`Внимание: фирмата е със статус „${data.status}“ в Търговския регистър.`);
       setForm(prev => ({
         ...prev,
         companyName: prev.companyName || data.name || "",

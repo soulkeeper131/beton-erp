@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Loader2, Plus, Trash2 } from "lucide-react";
+import { today } from "@/lib/dates";
+import { daysUntil } from "@/lib/dates";
 
 const typeLabels: Record<string, string> = {
   mixer: "🚛 Бетоновоз", pump: "🏗️ Помпа", truck: "🚚 Камион",
@@ -27,7 +29,7 @@ export default function EditMachinePage() {
   const [form, setForm] = useState<any>({});
   const [repairs, setRepairs] = useState<any[]>([]);
   const [newRepair, setNewRepair] = useState({
-    date: new Date().toISOString().split("T")[0],
+    date: today(),
     type: "repair", description: "", cost: 0, provider: "", mileageAtRepair: 0, nextDate: "", notes: ""
   });
 
@@ -71,7 +73,7 @@ export default function EditMachinePage() {
       setRepairs([r, ...repairs].sort((a, b) => (b.date || "").localeCompare(a.date || "")));
       // датата на последно обслужване и километражът се обновяват от сървъра
       fetch(`/api/machines/${id}`).then(x => x.json()).then(d => setForm((f: any) => ({ ...f, lastMaintenanceDate: d.lastMaintenanceDate, nextMaintenanceDate: d.nextMaintenanceDate, mileage: d.mileage })));
-      setNewRepair({ date: new Date().toISOString().split("T")[0], type: "repair", description: "", cost: 0, provider: "", mileageAtRepair: 0, nextDate: "", notes: "" });
+      setNewRepair({ date: today(), type: "repair", description: "", cost: 0, provider: "", mileageAtRepair: 0, nextDate: "", notes: "" });
     }
   }
 
@@ -83,9 +85,7 @@ export default function EditMachinePage() {
 
   const exp = (date: string | null) => {
     if (!date) return "";
-    const d = new Date(date);
-    const now = new Date();
-    const days = Math.ceil((d.getTime() - now.getTime()) / 86400000);
+    const days = daysUntil(date);
     return ` (${days < 0 ? "🔴 изтекла" : days < 30 ? `🟠 ${days}д` : `🟢 ${days}д`})`;
   };
 

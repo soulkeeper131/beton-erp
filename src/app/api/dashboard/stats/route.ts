@@ -5,6 +5,7 @@ import { invoiceSign } from "@/lib/reports";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { count, sum, and, gte, lte, eq, ne, or, sql } from "drizzle-orm";
+import { today as todayStr, addDays } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -12,14 +13,10 @@ export async function GET(req: Request) {
   const denied = await requireAuth(req);
   if (denied) return denied;
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayStr();
   const monthStart = today.substring(0, 7) + "-01";
-  const nextWeek = new Date();
-  nextWeek.setDate(nextWeek.getDate() + 7);
-  const nextWeekStr = nextWeek.toISOString().split("T")[0];
-  const thirtyDays = new Date();
-  thirtyDays.setDate(thirtyDays.getDate() + 30);
-  const thirtyDaysStr = thirtyDays.toISOString().split("T")[0];
+  const nextWeekStr = addDays(today, 7);
+  const thirtyDaysStr = addDays(today, 30);
 
   // Бригадирът не вижда финансови показатели
   const { session } = await getAuth(req);

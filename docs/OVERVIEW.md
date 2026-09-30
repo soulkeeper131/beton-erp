@@ -161,7 +161,7 @@ SQLite файл: `data/sqlite.db` (WAL режим, `foreign_keys = ON`). Таб�
 | `templates` | ✅ активна | `/api/templates` |
 | `act_photos` | ✅ активна | снимки + GPS |
 | `audit_log` | ✅ активна | одит |
-| `api_keys` | ⚠️ частична | таблица има, ключът реално е в env `API_KEY` |
+| `api_keys` | ✅ активна | ключове за `/api/tools/call` (Настройки → API ключове; пази се SHA-256) |
 | `company_settings` | ✅ активна | singleton (1 ред) |
 | `chat_sessions`, `chat_messages` | ✅ активна | история на AI чата |
 | `act_workers` | ⚠️ мъртва | **само PDF чете** — няма UI/API за добавяне на работници към акт |

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { readdirSync, unlinkSync, statSync, mkdirSync } from "fs";
 import path from "path";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { isOffsiteConfigured, uploadBackupToS3 } from "@/lib/offsite";
+import { isOffsiteConfigured, syncFilesToS3, uploadBackupToS3 } from "@/lib/offsite";
+import Database from "better-sqlite3";
 import { rawDb } from "@/db";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +55,15 @@ export async function POST(req: Request) {
     // Онлайн backup през better-sqlite3 (консистентен snapshot, WAL-safe)
     await rawDb.backup(backupPath);
 
+    // Проверка, че копието е четимо — повреден backup не се води за успешен
+    const check = new Database(backupPath, { readonly: true });
+    try {
+      const integrity = check.pragma("integrity_check", { simple: true });
+      if (integrity !== "ok") throw new Error(`integrity_check: ${integrity}`);
+    } finally {
+      check.close();
+    }
+
     // Rotate: keep only the last MAX_BACKUPS
     const files = readdirSync(BACKUP_DIR)
       .filter(f => f.startsWith("beton-") && f.endsWith(".db"))
@@ -71,9 +81,12 @@ export async function POST(req: Request) {
     // Offsite upload (ако е конфигуриран) — не блокира локалния backup при грешка
     let offsite: { url: string; size: number } | null = null;
     let offsiteError: string | null = null;
+    let offsiteFiles: { uploaded: number; skipped: number } | null = null;
     if (isOffsiteConfigured()) {
       try {
         offsite = await uploadBackupToS3(backupPath, `beton-erp/${backupName}`);
+        // Снимките и PDF-ите на входящите фактури не са в базата — качват се отделно
+        offsiteFiles = await syncFilesToS3(path.join(process.cwd(), "data"));
       } catch (err: any) {
         offsiteError = err.message;
       }
@@ -84,7 +97,7 @@ export async function POST(req: Request) {
       backup: { name: backupName, size: stat.size, date: stat.mtime.toISOString() },
       totalBackups: Math.min(files.length, MAX_BACKUPS),
       offsite: offsite
-        ? { uploaded: true, url: offsite.url, size: offsite.size }
+        ? { uploaded: true, url: offsite.url, size: offsite.size, files: offsiteFiles }
         : { uploaded: false, configured: isOffsiteConfigured(), error: offsiteError },
     });
   } catch (err: any) {

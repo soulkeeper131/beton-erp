@@ -32,5 +32,11 @@ jobs:
       - name: Tests
         run: npm test
 
+      # Датите не бива да зависят от часовата зона на сървъра
+      - name: Tests (TZ=Europe/Sofia)
+        run: npm test
+        env:
+          TZ: Europe/Sofia
+
       - name: Build
         run: npm run build

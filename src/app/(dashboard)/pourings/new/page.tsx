@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { today } from "@/lib/dates";
 
 export default function NewPouringPage() {
   const router = useRouter();
@@ -28,7 +29,7 @@ export default function NewPouringPage() {
   const [form, setForm] = useState({
     siteId: preselectedSiteId,
     offerId: "",
-    date: new Date().toISOString().split("T")[0],
+    date: today(),
     machineId: "",
     weather: "",
     notes: "",

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
 import { useIsAdmin } from "@/lib/use-is-admin";
+import { daysUntil } from "@/lib/dates";
 
 const typeLabels: Record<string, string> = {
   mixer: "🚛 Бетоновоз", pump: "🏗️ Помпа", truck: "🚚 Камион",
@@ -16,8 +17,7 @@ const statusLabels: Record<string, string> = {
 function expiryBadge(date: string | null, label: string) {
   if (!date) return <span className="text-xs text-muted-foreground">—</span>;
   const d = new Date(date);
-  const now = new Date();
-  const days = Math.ceil((d.getTime() - now.getTime()) / 86400000);
+  const days = daysUntil(date);
   if (days < 0) return <span className="text-xs text-red-600 font-medium">🔴 {label} изтекла</span>;
   if (days < 30) return <span className="text-xs text-orange-600 font-medium">🟠 {label}: {days}д</span>;
   return <span className="text-xs text-green-600">{label}: {d.toLocaleDateString("bg-BG")}</span>;

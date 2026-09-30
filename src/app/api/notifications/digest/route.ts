@@ -2,20 +2,22 @@ import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { companySettings, machines, materials, invoices, clients } from "@/db/schema";
-import { eq, gte, lte, and, ne } from "drizzle-orm";
+import { eq, gte, lte, lt, and, ne } from "drizzle-orm";
 import nodemailer from "nodemailer";
+import { today as todayStr, addDays } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
+
+// Имената са въведени от потребители — екранират се, за да не се вмъква HTML в имейла
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 // Изпраща имейл digest с критични сигнали (изтичащи документи, ниски наличности, просрочени фактури).
 export async function POST(req: Request) {
   const { session, isApiKey } = await getAuth(req);
   if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const today = new Date().toISOString().split("T")[0];
-  const thirtyDays = new Date();
-  thirtyDays.setDate(thirtyDays.getDate() + 30);
-  const thirtyDaysStr = thirtyDays.toISOString().split("T")[0];
+  const today = todayStr();
+  const thirtyDaysStr = addDays(today, 30);
 
   const settings = db.select().from(companySettings).get();
 
@@ -26,15 +28,16 @@ export async function POST(req: Request) {
     { label: "Винетка", field: "vignetteExpiry" as const },
     { label: "ГО", field: "insuranceExpiry" as const },
     { label: "Тех. преглед", field: "techInspectionExpiry" as const },
+    { label: "Обслужване", field: "nextMaintenanceDate" as const },
   ];
   for (const m of allMachines) {
     for (const dt of docTypes) {
       const expiry = m[dt.field];
       if (!expiry) continue;
       if (expiry < today) {
-        expiring.push(`🔴 ${dt.label} на „${m.name}" — изтекла на ${expiry}`);
+        expiring.push(`🔴 ${dt.label} на „${esc(m.name)}" — изтекла/просрочено от ${expiry}`);
       } else if (expiry <= thirtyDaysStr) {
-        expiring.push(`🟡 ${dt.label} на „${m.name}" — изтича на ${expiry}`);
+        expiring.push(`🟡 ${dt.label} на „${esc(m.name)}" — до ${expiry}`);
       }
     }
   }
@@ -44,7 +47,7 @@ export async function POST(req: Request) {
     .from(materials)
     .where(and(gte(materials.minThreshold, 0.01), lte(materials.quantity, materials.minThreshold)))
     .all();
-  const lowStockLines = lowStock.map((s) => `📦 „${s.name}" — ${s.quantity} ${s.unit} (мин. ${s.minThreshold})`);
+  const lowStockLines = lowStock.map((s) => `📦 „${esc(s.name)}" — ${s.quantity} ${esc(s.unit)} (мин. ${s.minThreshold})`);
 
   const overdue = db
     .select({
@@ -58,14 +61,15 @@ export async function POST(req: Request) {
     .where(
       and(
         eq(invoices.direction, "outgoing"),
+        eq(invoices.type, "invoice"), // без проформи и известия
         eq(invoices.status, "sent"),
         ne(invoices.paymentStatus, "paid"),
         ne(invoices.dueDate, ""),
-        lte(invoices.dueDate, today),
+        lt(invoices.dueDate, today), // падеж днес още не е просрочие
       )
     )
     .all();
-  const overdueLines = overdue.map((i) => `💶 Фактура ${i.number} (${i.clientName || "?"}) — падеж ${i.dueDate}, ${i.total.toFixed(2)} €`);
+  const overdueLines = overdue.map((i) => `💶 Фактура ${esc(i.number)} (${esc(i.clientName || "?")}) — падеж ${i.dueDate}, ${i.total.toFixed(2)} €`);
 
   const total = expiring.length + lowStockLines.length + overdueLines.length;
 

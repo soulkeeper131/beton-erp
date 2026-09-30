@@ -145,3 +145,30 @@ describe("закръгляне до стотинка", () => {
     expect(r.total).toBe(100);
   });
 });
+
+import { addDays as dAddDays, addMonths as dAddMonths, monthEnd, sofiaDate, daysUntil, today } from "@/lib/dates";
+
+describe("dates (часова зона)", () => {
+  it("днес е по София, не по UTC", () => {
+    // 30.09 22:30 UTC = 01.10 01:30 в София
+    expect(sofiaDate(new Date("2026-09-30T22:30:00Z"))).toBe("2026-10-01");
+    // зимно време: 31.12 22:30 UTC = 01.01 00:30
+    expect(sofiaDate(new Date("2026-12-31T22:30:00Z"))).toBe("2027-01-01");
+    expect(sofiaDate(new Date("2026-12-31T21:30:00Z"))).toBe("2026-12-31");
+  });
+
+  it("аритметика с дати не зависи от зоната на процеса", () => {
+    expect(dAddDays("2026-03-28", 1)).toBe("2026-03-29"); // преминаване към лятно време
+    expect(dAddDays("2026-10-24", 2)).toBe("2026-10-26"); // към зимно
+    expect(dAddMonths("2024-01-31", 1)).toBe("2024-02-29");
+    expect(dAddMonths("2026-12-15", 1)).toBe("2027-01-15");
+    expect(monthEnd(2026, 2)).toBe("2026-02-28");
+    expect(monthEnd(2026, 12)).toBe("2026-12-31");
+  });
+
+  it("daysUntil", () => {
+    expect(daysUntil(today())).toBe(0);
+    expect(daysUntil(dAddDays(today(), 5))).toBe(5);
+    expect(daysUntil(dAddDays(today(), -1))).toBe(-1);
+  });
+});

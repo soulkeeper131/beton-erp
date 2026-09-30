@@ -10,15 +10,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useIsAdmin } from "@/lib/use-is-admin";
 import { formatCurrency } from "@/lib/utils";
+import { today, addMonths } from "@/lib/dates";
 
 function todayStr() {
-  return new Date().toISOString().split("T")[0];
+  return today();
 }
 
 function nextMonthStr() {
-  const d = new Date();
-  d.setMonth(d.getMonth() + 1);
-  return d.toISOString().split("T")[0];
+  return addMonths(today(), 1);
 }
 
 type Item = { description: string; unit: string; quantity: number; price: number; vatRate: number };

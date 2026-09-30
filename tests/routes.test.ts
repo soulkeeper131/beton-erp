@@ -34,7 +34,7 @@ describe("API routes force-dynamic (SQLITE_BUSY guard)", () => {
 
 describe("API routes auth guard", () => {
   // Публични по замисъл или със собствена проверка на API ключ
-  const PUBLIC = ["auth/[...nextauth]/route.ts", "health/route.ts", "tools/call/route.ts"];
+  const PUBLIC = ["auth/[...nextauth]/route.ts", "health/route.ts"];
 
   it("всеки handler проверява сесия/API ключ", () => {
     const apiDir = path.resolve("src/app/api");
@@ -47,7 +47,7 @@ describe("API routes auth guard", () => {
       const handlers = content.split(/(?=export async function (?:GET|POST|PUT|PATCH|DELETE)\b)/).slice(1);
       for (const h of handlers) {
         const name = h.match(/export async function (\w+)/)![1];
-        if (!/requireAuth\(|getAuth\(|requireAdmin\(|auth\(\)/.test(h.slice(0, 1500))) missing.push(`${rel} ${name}`);
+        if (!/requireAuth\(|getAuth\(|requireAdmin\(|adminGate\(|resolveApiKey\(|auth\(\)/.test(h.slice(0, 1500))) missing.push(`${rel} ${name}`);
       }
     }
     expect(missing, `без auth проверка: ${missing.join(", ")}`).toEqual([]);

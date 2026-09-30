@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { materials, materialDeliveries } from "@/db/schema";
 import { firstZodError } from "@/lib/acts";
+import { today } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
     if (initial > 0) {
       tx.insert(materialDeliveries).values({
         materialId: m.id,
-        date: new Date().toISOString().slice(0, 10),
+        date: today(),
         quantity: initial,
         notes: "Начална наличност",
       }).run();
