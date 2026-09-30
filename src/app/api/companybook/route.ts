@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { companySettings } from "@/db/schema";
+import { mapCompany } from "@/lib/companybook";
 
 export const dynamic = "force-dynamic";
 
@@ -29,25 +30,16 @@ export async function GET(req: Request) {
     const res = await fetch(`${BASE}/companies/${eik}?with_data=true`, {
       headers: { "X-API-Key": apiKey },
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
 
-    if (data.error) {
-      return NextResponse.json({ error: data.errorBG || data.errorEN || "Грешка" }, { status: 404 });
+    if (data.error || !res.ok || !data.company) {
+      const msg = data.errorBG || data.errorEN ||
+        (res.status === 401 || res.status === 403 ? "Невалиден CompanyBook API ключ" :
+         res.status === 429 ? "Лимитът на CompanyBook е изчерпан — опитайте по-късно" : "Фирмата не е намерена");
+      return NextResponse.json({ error: msg }, { status: res.status === 429 ? 429 : 404 });
     }
 
-    const c = data.company;
-    const rawAddress = c.seat ? `${c.seat.settlement || ""}, ${c.seat.street || ""} ${c.seat.streetNumber || ""}`.trim().replace(/^,\s*/, "") : "";
-    return NextResponse.json({
-      eik: c.uic,
-      name: c.companyName?.name || "",
-      nameLatin: c.companyNameTransliteration?.name || "",
-      legalForm: c.legalForm || "",
-      status: c.status === "N" ? "Активна" : c.status === "L" ? "Ликвидирана" : c.status,
-      address: rawAddress,
-      city: c.seat?.settlement || "",
-      postCode: c.seat?.postCode || "",
-      vatNumber: `BG${c.uic}`,
-    });
+    return NextResponse.json(mapCompany(data));
   } catch (e) {
     return NextResponse.json({ error: "Грешка при свързване с CompanyBook" }, { status: 502 });
   }
