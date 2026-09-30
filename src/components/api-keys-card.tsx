@@ -4,11 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { KeyRound, Trash2 } from "lucide-react";
+import { useIsAdmin } from "@/lib/use-is-admin";
 
 type Key = { id: number; name: string; active: boolean; createdAt: string };
 
 // Ключове за външни AI клиенти (/api/tools/call). Вижда се само от администратор.
 export function ApiKeysCard() {
+  const isAdmin = useIsAdmin();
+  return isAdmin ? <ApiKeysList /> : null;
+}
+
+function ApiKeysList() {
   const [keys, setKeys] = useState<Key[] | null>(null);
   const [name, setName] = useState("");
   const [created, setCreated] = useState<string | null>(null);
