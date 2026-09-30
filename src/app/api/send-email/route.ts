@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { companySettings } from "@/db/schema";
 import nodemailer from "nodemailer";
 import { z } from "zod";
+import { auditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: "Невалиден имейл адрес или празно съобщение" }, { status: 400 });
   }
 
   const { to, subject, html, pdfBase64, pdfFilename } = parsed.data;
@@ -62,6 +63,13 @@ export async function POST(req: Request) {
     }
 
     await transporter.sendMail(mailOptions);
+    // Следа кой какво е изпратил от фирмения адрес
+    auditLog({
+      userId: session?.user?.id ? parseInt(String(session.user.id)) : null,
+      action: "SEND",
+      entityType: "email",
+      changes: { to, subject, attachment: pdfFilename || null, via: isApiKey ? "api-key" : "user" },
+    });
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Грешка при изпращане" }, { status: 500 });
