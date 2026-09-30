@@ -5,6 +5,7 @@ import { eq, lte, and, sql } from "drizzle-orm";
 import { getAuth } from "@/lib/auth-helpers";
 import { calcInvoiceTotals, nextRecurringDate, roundMoney } from "@/lib/calc";
 import { getNextInvoiceNumber } from "@/lib/invoice-number";
+import { today as todayStr } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
   const { session, isApiKey } = await getAuth(req);
   if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayStr();
 
   const due = db
     .select()

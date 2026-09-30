@@ -10,9 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useIsAdmin } from "@/lib/use-is-admin";
 import { formatCurrency } from "@/lib/utils";
 import { calcPay } from "@/lib/payroll";
+import { today } from "@/lib/dates";
 
 function todayStr() {
-  return new Date().toISOString().split("T")[0];
+  return today();
 }
 
 export default function AttendancePage() {

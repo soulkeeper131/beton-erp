@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { today as sofiaToday } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -117,7 +118,7 @@ export default function CalendarPage() {
     return entries.filter(e => e.plannedDate === dateStr);
   };
 
-  const todayStr = today.toISOString().split("T")[0];
+  const todayStr = sofiaToday();
 
   return (
     <div className="space-y-4">

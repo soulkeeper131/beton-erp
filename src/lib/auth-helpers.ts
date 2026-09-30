@@ -52,3 +52,13 @@ export async function requireAuth(req: Request): Promise<NextResponse | null> {
   if (!session?.user && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   return null;
 }
+
+// Като requireAdmin, но връща готов отговор при отказ или id на администратора
+// (null при API ключ). Употреба: const a = await adminGate(req); if ("denied" in a) return a.denied;
+export async function adminGate(req: Request, forbiddenMsg = "Само за администратор"):
+  Promise<{ denied: NextResponse } | { userId: number | null }> {
+  const admin = await requireAdmin(req);
+  if (!admin) return { denied: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  if (admin === "forbidden") return { denied: NextResponse.json({ error: forbiddenMsg }, { status: 403 }) };
+  return { userId: parseInt(String((admin as any).user?.id ?? "")) || null };
+}

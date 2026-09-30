@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/utils";
 import { Plus, Trash2, ArrowLeft } from "lucide-react";
+import { today } from "@/lib/dates";
 
 const itemSchema = z.object({
   itemType: z.enum(["concrete", "service"]).default("concrete"),
@@ -91,7 +92,7 @@ export default function NewOfferPage() {
     defaultValues: {
       clientId: 0,
       siteId: null,
-      date: new Date().toISOString().split("T")[0],
+      date: today(),
       validUntil: "",
       notes: "",
       items: [

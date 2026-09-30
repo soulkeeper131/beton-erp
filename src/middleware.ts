@@ -65,6 +65,10 @@ export async function middleware(request: NextRequest) {
     if (process.env.API_KEY && token === process.env.API_KEY) {
       return NextResponse.next();
     }
+    // Ключовете от базата се проверяват в самия route (edge няма достъп до SQLite)
+    if (token && pathname === "/api/tools/call") {
+      return NextResponse.next();
+    }
   }
 
   // Сесията се валидира (подпис + срок), не само наличието на cookie —

@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { companySettings, machines, materials, invoices, clients } from "@/db/schema";
 import { eq, gte, lte, lt, and, ne } from "drizzle-orm";
 import nodemailer from "nodemailer";
+import { today as todayStr, addDays } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +16,8 @@ export async function POST(req: Request) {
   const { session, isApiKey } = await getAuth(req);
   if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const today = new Date().toISOString().split("T")[0];
-  const thirtyDays = new Date();
-  thirtyDays.setDate(thirtyDays.getDate() + 30);
-  const thirtyDaysStr = thirtyDays.toISOString().split("T")[0];
+  const today = todayStr();
+  const thirtyDaysStr = addDays(today, 30);
 
   const settings = db.select().from(companySettings).get();
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { clients, sites, offers, pourings, invoices, machines, workers, materials } from "@/db/schema";
+import { today } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -81,7 +82,7 @@ function toCsv(data: any[], filename: string) {
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${filename}_${new Date().toISOString().slice(0, 10)}.csv"`,
+      "Content-Disposition": `attachment; filename="${filename}_${today()}.csv"`,
     },
   });
 }

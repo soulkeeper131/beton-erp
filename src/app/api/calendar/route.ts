@@ -3,6 +3,7 @@ import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { siteCalendar, sites } from "@/db/schema";
 import { eq, gte, lte, and } from "drizzle-orm";
+import { monthEnd } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
   if (month) {
     const start = `${month}-01`;
     const [y, m] = month.split("-").map(Number);
-    const end = new Date(y, m, 0).toISOString().split("T")[0]; // last day of month
+    const end = monthEnd(y, m); // last day of month
     conditions.push(gte(siteCalendar.plannedDate, start));
     conditions.push(lte(siteCalendar.plannedDate, end));
   }

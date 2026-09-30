@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatCurrency } from "@/lib/utils";
 import { calcInvoiceTotals } from "@/lib/calc";
 import { Plus, Trash2, ArrowLeft, Search, CheckCircle } from "lucide-react";
+import { today } from "@/lib/dates";
 
 const isValidEik = (v: string) => /^\d{9}$/.test(v) || /^\d{13}$/.test(v);
 
@@ -20,8 +21,8 @@ export default function NewInvoicePage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     clientId: "", supplierId: "", number: "",
-    date: new Date().toISOString().split("T")[0],
-    dueDate: "", taxEventDate: new Date().toISOString().split("T")[0],
+    date: today(),
+    dueDate: "", taxEventDate: today(),
     direction: "outgoing" as "incoming" | "outgoing",
     type: "invoice", currency: "EUR",
     discountPercent: 0, discountAmount: 0,

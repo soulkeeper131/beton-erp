@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { offers, offerItems } from "@/db/schema";
 import { desc, eq, like } from "drizzle-orm";
 import { roundMoney } from "@/lib/calc";
+import { today } from "@/lib/dates";
 
 // Обща логика за оферти — API, формите и агентът минават оттук.
 
@@ -31,7 +32,7 @@ export function offerTotal(items: Parameters<typeof offerItemTotal>[0][]) {
 }
 
 /** Следващ номер ОФ-<година>-NNNN (MAX + 1 за годината). */
-export function getNextOfferNumber(year = new Date().getFullYear()): string {
+export function getNextOfferNumber(year = Number(today().slice(0, 4))): string {
   const prefix = `ОФ-${year}-`;
   const last = db
     .select({ number: offers.number })

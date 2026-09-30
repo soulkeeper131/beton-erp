@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useIsAdmin } from "@/lib/use-is-admin";
+import { today } from "@/lib/dates";
 
 export default function MaterialDetailPage() {
   const params = useParams();
@@ -22,7 +23,7 @@ export default function MaterialDetailPage() {
   // form state
   const [type, setType] = useState<"in" | "out">("in");
   const [quantity, setQuantity] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(today());
   const [supplier, setSupplier] = useState("");
   const [price, setPrice] = useState("");
   const [notes, setNotes] = useState("");

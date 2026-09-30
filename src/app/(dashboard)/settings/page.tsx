@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Save, Mail, CheckCircle, XCircle, Inbox, Brain } from "lucide-react";
+import { ApiKeysCard } from "@/components/api-keys-card";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -61,7 +62,8 @@ export default function SettingsPage() {
     setSaving(false);
     if (res.ok) {
       // Remask the key
-      setForm(f => ({ ...f, aiApiKey: f.aiApiKey && f.aiApiKey !== "••••••••" ? "••••••••" : f.aiApiKey }));
+      const remask = (v: string) => (v ? "••••••••" : v);
+      setForm(f => ({ ...f, aiApiKey: remask(f.aiApiKey), companybookApiKey: remask(f.companybookApiKey) }));
       alert("✅ Запазено");
     } else alert("❌ " + ((await res.json().catch(() => null))?.error || "Грешка"));
   }
@@ -278,6 +280,8 @@ export default function SettingsPage() {
           <Save className="h-4 w-4" /> {saving ? "Запазване..." : "Запази всички настройки"}
         </Button>
       </form>
+
+      <ApiKeysCard />
     </div>
   );
 }
