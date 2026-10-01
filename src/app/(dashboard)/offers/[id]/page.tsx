@@ -31,6 +31,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { EmailDialog } from "@/components/email-dialog";
+import { bufferToBase64 } from "@/lib/base64";
+import { today } from "@/lib/dates";
 
 type OfferItem = {
   id: number;
@@ -43,6 +45,9 @@ type OfferItem = {
   total: number;
   concreteTypeName: string | null;
   concreteTypeClassName: string | null;
+  serviceId: number | null;
+  serviceName: string | null;
+  serviceUnit: string | null;
 };
 
 type Offer = {
@@ -148,6 +153,17 @@ export default function OfferDetailPage() {
     );
   }
 
+  // Актуване по офертата — при изпратена или приета оферта
+  const canAct = offer.status === "sent" || offer.status === "accepted";
+  const newActUrl = `/pourings/new?offerId=${offer.id}${offer.siteId ? `&siteId=${offer.siteId}` : ""}`;
+  const expired = offer.status === "sent" && !!offer.validUntil && offer.validUntil < today();
+  // Изпълнено по типове бетон (от актовете към офертата)
+  const poured: Record<number, number> = {};
+  for (const p of pourings) for (const i of p.items || []) {
+    if (i.concreteTypeId) poured[i.concreteTypeId] = (poured[i.concreteTypeId] || 0) + (i.quantityM3 || 0);
+  }
+  const unbilled = pourings.filter((p: any) => !p.invoiceId);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -161,6 +177,7 @@ export default function OfferDetailPage() {
             <p className="text-muted-foreground text-sm">
               {formatDate(offer.date)}
               {offer.validUntil && ` — Валидна до ${formatDate(offer.validUntil)}`}
+              {expired && <span className="ml-2 font-medium text-red-600" data-testid="offer-expired">изтекла</span>}
             </p>
           </div>
         </div>
@@ -177,10 +194,13 @@ export default function OfferDetailPage() {
               const r = await fetch(`/api/offers/${offer.id}/pdf`);
               if (!r.ok) return null;
               const buf = await r.arrayBuffer();
-              const base64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+              const base64 = bufferToBase64(buf);
               return { base64, filename: `Оферта-${offer.number}.pdf` };
             }}
           />
+          {isAdmin && canAct && (
+            <Button size="sm" onClick={() => router.push(newActUrl)}>📋 Нов акт по офертата</Button>
+          )}
           {isAdmin && (
             <Button variant="outline" size="sm" onClick={() => router.push(`/offers/${offer.id}/edit`)}>
               <Pencil className="h-4 w-4 mr-1" /> Редактирай
@@ -281,7 +301,8 @@ export default function OfferDetailPage() {
                   <TableRow>
                     <TableHead className="w-10">№</TableHead>
                     <TableHead>Описание</TableHead>
-                    <TableHead className="text-right">К-во (m³)</TableHead>
+                    <TableHead className="text-right">К-во</TableHead>
+                    {pourings.length > 0 && <TableHead className="text-right">Изпълнено</TableHead>}
                     <TableHead className="text-right">Ед. цена</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">
                       Транспорт
@@ -299,7 +320,7 @@ export default function OfferDetailPage() {
                         {idx + 1}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {item.concreteTypeName || "—"}
+                        {item.serviceName || item.concreteTypeName || "—"}
                         {item.concreteTypeClassName && (
                           <span className="text-xs text-muted-foreground block">
                             {item.concreteTypeClassName}
@@ -307,8 +328,19 @@ export default function OfferDetailPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {item.quantityM3.toFixed(2)}
+                        {item.quantityM3.toFixed(2)} {item.serviceId ? item.serviceUnit || "" : "m³"}
                       </TableCell>
+                      {pourings.length > 0 && (
+                        <TableCell className="text-right tabular-nums">
+                          {item.concreteTypeId ? (() => {
+                            const done = poured[item.concreteTypeId] || 0;
+                            const over = done > item.quantityM3 + 1e-9;
+                            return <span className={over ? "text-orange-600 font-medium" : ""} title={over ? "Изляно е повече от офертата" : undefined}>
+                              {done.toFixed(2)} m³ ({item.quantityM3 > 0 ? Math.round(done / item.quantityM3 * 100) : 0}%)
+                            </span>;
+                          })() : "—"}
+                        </TableCell>
+                      )}
                       <TableCell className="text-right tabular-nums">
                         {formatCurrency(item.pricePerM3)}
                       </TableCell>
@@ -331,13 +363,21 @@ export default function OfferDetailPage() {
       </Card>
 
       {/* Linked Pourings */}
-      {pourings.length > 0 && (
+      {(pourings.length > 0 || (isAdmin && canAct)) && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-base">📋 Актове към тази оферта</CardTitle>
-            <Button variant="outline" size="sm" onClick={() => router.push(`/pourings/new`)}>+ Нов акт</Button>
+            <div className="flex gap-2">
+              {isAdmin && unbilled.length > 0 && (
+                <Button size="sm" onClick={() => router.push(`/invoices/new?pourings=${unbilled.map((p: any) => p.id).join(",")}`)}>
+                  🧾 Фактурирай нефактурираните ({unbilled.length})
+                </Button>
+              )}
+              {isAdmin && canAct && <Button variant="outline" size="sm" onClick={() => router.push(newActUrl)}>+ Нов акт</Button>}
+            </div>
           </CardHeader>
-          <CardContent className="p-0">
+          {pourings.length === 0 && <CardContent className="text-sm text-muted-foreground">Още няма актове по офертата.</CardContent>}
+          {pourings.length > 0 && <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -346,6 +386,7 @@ export default function OfferDetailPage() {
                     <TableHead>К-во (m³)</TableHead>
                     <TableHead>Редове</TableHead>
                     <TableHead>Машина</TableHead>
+                    <TableHead>Фактура</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -356,6 +397,9 @@ export default function OfferDetailPage() {
                       <TableCell>{(p.quantityM3 || 0).toFixed(1)} m³</TableCell>
                       <TableCell className="text-muted-foreground">{p.items?.length || 0} реда</TableCell>
                       <TableCell>{p.machine?.name || "—"}</TableCell>
+                      <TableCell>{p.invoice?.id
+                        ? <a href={`/invoices/${p.invoice.id}`} className="hover:underline">{p.invoice.status === "draft" ? "чернова" : p.invoice.number}</a>
+                        : <span className="text-orange-600">нефактуриран</span>}</TableCell>
                       <TableCell>
                         <Button variant="ghost" size="sm" onClick={() => router.push(`/pourings/${p.id}`)}>Детайли</Button>
                       </TableCell>
@@ -364,7 +408,7 @@ export default function OfferDetailPage() {
                 </TableBody>
               </Table>
             </div>
-          </CardContent>
+          </CardContent>}
         </Card>
       )}
 

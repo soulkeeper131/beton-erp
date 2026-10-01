@@ -36,6 +36,7 @@ export default function SitesPage() {
         <Input placeholder="Търсене..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
       <DataList
+        rowHref={row => `/sites/${row.id}`}
         columns={[
           { key: "name", label: "Име" },
           { key: "city", label: "Град/Село" },

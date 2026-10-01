@@ -395,6 +395,8 @@ for (const sql of invoiceCols) {
 // затова добавяме nullable + backfill.
 try { sqlite.exec('ALTER TABLE invoices ADD COLUMN created_at TEXT'); } catch(e: any) { if (!e.message.includes('duplicate')) console.error('invoices created_at migration:', e.message); }
 try { sqlite.exec('ALTER TABLE invoices ADD COLUMN updated_at TEXT'); } catch(e: any) { if (!e.message.includes('duplicate')) console.error('invoices updated_at migration:', e.message); }
+// Актът помни с коя фактура е фактуриран
+try { sqlite.exec('ALTER TABLE pourings ADD COLUMN invoice_id INTEGER REFERENCES invoices(id)'); } catch (e: any) { if (!e.message.includes('duplicate')) console.error('pourings invoice_id migration:', e.message); }
 try { sqlite.exec("UPDATE invoices SET created_at = datetime('now') WHERE created_at IS NULL"); } catch {}
 try { sqlite.exec("UPDATE invoices SET updated_at = datetime('now') WHERE updated_at IS NULL"); } catch {}
 

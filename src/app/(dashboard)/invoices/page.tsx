@@ -66,8 +66,11 @@ export default function InvoicesPage() {
         <Input placeholder="Търсене..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
       <DataList
+        rowHref={row => `/invoices/${row.id}`}
         columns={[
-          { key: "number", label: "Номер" },
+          { key: "number", label: "Номер", render: (v: string, row: any) => row.status === "draft"
+            ? <span className="text-orange-600">{row.direction === "outgoing" ? "📝 чернова" : `${v} (чернова)`}</span>
+            : v },
           { key: "direction", label: "Тип", render: (v: string) => directionLabels[v] || v },
           { key: "clientName", label: tab === "incoming" ? "Доставчик" : "Клиент", render: (v: any, row: any) => row?.clientCompany || v || "—" },
           { key: "date", label: "Дата", render: (v: string) => formatDate(v) },

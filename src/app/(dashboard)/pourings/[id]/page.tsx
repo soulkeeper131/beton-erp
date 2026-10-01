@@ -117,13 +117,16 @@ export default function PouredDetailPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...form,
-        siteId: parseInt(form.siteId),
         machineId: form.machineId ? parseInt(form.machineId) : null,
-        items: editItems.map(i => ({
-          concreteTypeId: parseInt(i.concreteTypeId),
-          quantityM3: parseFloat(i.quantityM3),
-          pricePerM3: parseFloat(i.pricePerM3) || 0,
-        })),
+        // Фактуриран акт: обект, дата и редове не се изпращат (заключени)
+        ...(poured.invoiceId ? { siteId: undefined, date: undefined } : {
+          siteId: parseInt(form.siteId),
+          items: editItems.map(i => ({
+            concreteTypeId: parseInt(i.concreteTypeId),
+            quantityM3: parseFloat(i.quantityM3),
+            pricePerM3: parseFloat(i.pricePerM3) || 0,
+          })),
+        }),
         workers: editWorkers.filter(w => w.workerId).map(w => ({
           workerId: parseInt(w.workerId),
           hours: parseFloat(w.hours) || 0,
@@ -151,13 +154,16 @@ export default function PouredDetailPage() {
 
   if (!poured) return <div className="p-6">Зареждане...</div>;
 
+  // Фактуриран акт: количества, цени, обект и дата са заключени (сървърът също отказва)
+  const locked = !!poured.invoiceId;
+  const canInvoice = isAdmin; // фактури издава администраторът (както „+ Нова“ във Фактури)
   const totalQty = (poured.items || []).reduce((s: number, i: any) => s + (i.quantityM3 || 0), 0);
   const totalPrice = (poured.items || []).reduce((s: number, i: any) => s + (i.total || i.quantityM3 * (i.pricePerM3 || i.concreteTypePrice || 0) || 0), 0);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">📋 Актуване</h1>
+        <h1 className="text-2xl font-bold">📋 Акт №{poured.id}</h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" asChild>
             <a href={`/api/pourings/${poured.id}/pdf`} target="_blank" rel="noopener">
@@ -172,6 +178,25 @@ export default function PouredDetailPage() {
         </div>
       </div>
 
+      {canInvoice && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border p-3 text-sm" data-testid="act-invoice">
+          {poured.invoice?.id ? (
+            <>
+              <span>🧾 {poured.invoice.status === "draft" ? "В чернова на фактура" : <>Фактуриран с фактура № <b>{poured.invoice.number}</b></>}</span>
+              <a href={`/invoices/${poured.invoice.id}`} className="ml-auto text-primary hover:underline">Към фактурата →</a>
+            </>
+          ) : (
+            <>
+              <span className="text-orange-600 font-medium">Нефактуриран</span>
+              <Button size="sm" className="ml-auto" onClick={() => router.push(`/invoices/new?pourings=${poured.id}`)}>🧾 Фактурирай</Button>
+            </>
+          )}
+        </div>
+      )}
+      {editing && locked && (
+        <p className="text-sm text-muted-foreground">Актът е фактуриран — количествата, цените, обектът и датата не се променят (корекция с кредитно/дебитно известие). Работниците, материалите и бележките може да се редактират.</p>
+      )}
+
       {/* Main info */}
       <Card>
         <CardHeader><CardTitle>Основна информация</CardTitle></CardHeader>
@@ -179,7 +204,7 @@ export default function PouredDetailPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Обект</Label>
-              {editing ? (
+              {editing && !locked ? (
                 <Select value={form.siteId} onValueChange={(v) => setForm({ ...form, siteId: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -194,7 +219,7 @@ export default function PouredDetailPage() {
             </div>
             <div>
               <Label>Дата</Label>
-              {editing ? (
+              {editing && !locked ? (
                 <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
               ) : (
                 <p className="text-sm font-medium">{poured.date}</p>
@@ -250,14 +275,14 @@ export default function PouredDetailPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Редове на изливане</CardTitle>
-          {editing && (
+          {editing && !locked && (
             <Button type="button" variant="outline" size="sm" onClick={addEditItem}>
               <Plus className="h-4 w-4 mr-1" /> Добави
             </Button>
           )}
         </CardHeader>
         <CardContent>
-          {editing ? (
+          {editing && !locked ? (
             <div className="space-y-3">
               {editItems.map((item, idx) => (
                 <div key={idx} className="border rounded-lg p-3 space-y-2">

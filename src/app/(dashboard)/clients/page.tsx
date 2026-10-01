@@ -77,6 +77,7 @@ export default function ClientsPage() {
         <Input placeholder="Търсене..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
       <DataList
+        rowHref={row => `/clients/${row.id}`}
         columns={[
           { key: "name", label: "Име" },
           { key: "companyName", label: "Фирма" },

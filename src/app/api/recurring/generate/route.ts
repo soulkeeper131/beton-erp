@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
-import { eq, lte, and, sql } from "drizzle-orm";
+import { eq, lte, and } from "drizzle-orm";
 import { getAuth } from "@/lib/auth-helpers";
-import { calcInvoiceTotals, nextRecurringDate, roundMoney } from "@/lib/calc";
+import { nextRecurringDate } from "@/lib/calc";
 import { getNextInvoiceNumber } from "@/lib/invoice-number";
+import { invoiceSchema, invoiceZodError } from "@/lib/invoices";
+import { saveInvoice } from "@/lib/invoices-db";
 import { today as todayStr } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +25,7 @@ export async function POST(req: Request) {
     .all();
 
   const generated: { id: number; name: string; invoiceNumber: string }[] = [];
+  const errors: { id: number; name: string; error: string }[] = [];
 
   for (const rec of due) {
     let items: any[] = [];
@@ -31,64 +34,29 @@ export async function POST(req: Request) {
     } catch {}
     if (!Array.isArray(items) || items.length === 0) continue;
 
-    const { subtotal, vatAmount, total } = calcInvoiceTotals(items);
-
-    // Номер: следващ изходящ номер (MAX подход, без колазии)
-    const number = getNextInvoiceNumber(rec.direction === "incoming" ? "incoming" : "outgoing");
-
-    // dueDate = +30 дни
+    // dueDate = +1 месец
     const dueDate = nextRecurringDate(today, "monthly");
+    const parsed = invoiceSchema.safeParse({
+      clientId: rec.clientId, date: today, dueDate, taxEventDate: today,
+      direction: rec.direction || "outgoing", type: "invoice",
+      number: rec.direction === "incoming" ? getNextInvoiceNumber("incoming") : null,
+      notes: rec.notes || `Периодична фактура: ${rec.name}`, items,
+    });
+    if (!parsed.success) { errors.push({ id: rec.id, name: rec.name, error: invoiceZodError(parsed.error) }); continue; }
 
-    const inv = db.transaction((tx) => {
-      const created = tx
-        .insert(schema.invoices)
-        .values({
-          clientId: rec.clientId,
-          number,
-          date: today,
-          dueDate,
-          taxEventDate: today,
-          direction: rec.direction || "outgoing",
-          type: "invoice",
-          currency: "EUR",
-          subtotal,
-          discountPercent: 0,
-          discountAmount: 0,
-          vatRate: items[0]?.vatRate ?? 20,
-          vatAmount,
-          total,
-          paymentMethod: "bank",
-          paymentStatus: "unpaid",
-          status: "draft",
-          notes: rec.notes || `Периодична фактура: ${rec.name}`,
-        })
-        .returning()
-        .get();
-
-      for (const item of items) {
-        tx.insert(schema.invoiceItems).values({
-          invoiceId: created.id,
-          description: item.description,
-          unit: item.unit || "бр.",
-          quantity: item.quantity,
-          price: item.price,
-          vatRate: item.vatRate ?? 20,
-          total: roundMoney(item.quantity * item.price),
-        }).run();
-      }
-
-      // nextDate (+1 месец/седмица) в същата транзакция. Преди липсваше .run() —
-      // датата не се местеше и всяко генериране правеше нова фактура за същия период.
+    // Чернова (изходящите получават номер при издаване) + nextDate в същата транзакция.
+    // Преди nextDate не се местеше и всяко генериране правеше нова фактура за същия период.
+    const saved = saveInvoice(parsed.data, null, (tx, _id) => {
       tx.update(schema.recurringInvoices)
         .set({ nextDate: nextRecurringDate(rec.nextDate, rec.frequency as "monthly" | "weekly"), lastGenerated: today })
         .where(eq(schema.recurringInvoices.id, rec.id))
         .run();
-
-      return created;
     });
+    if ("error" in saved) { errors.push({ id: rec.id, name: rec.name, error: saved.error }); continue; }
+    const inv = db.select({ number: schema.invoices.number }).from(schema.invoices).where(eq(schema.invoices.id, saved.id)).get()!;
 
     generated.push({ id: rec.id, name: rec.name, invoiceNumber: inv.number });
   }
 
-  return NextResponse.json({ generated, count: generated.length });
+  return NextResponse.json({ generated, count: generated.length, errors });
 }

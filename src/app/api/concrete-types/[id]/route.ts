@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuth } from "@/lib/auth-helpers";
+import { adminGate, getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { concreteTypes } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -8,9 +8,9 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 
 const updateSchema = z.object({
-  name: z.string().min(1).optional(),
+  name: z.string().trim().min(1, "Името е задължително").optional(),
   className: z.string().optional().nullable(),
-  pricePerM3: z.number().min(0).optional(),
+  pricePerM3: z.coerce.number({ invalid_type_error: "Въведете цена" }).min(0, "Цената не може да е отрицателна").optional(),
   description: z.string().optional().nullable(),
   active: z.boolean().optional(),
 });
@@ -36,13 +36,13 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const { session, isApiKey } = await getAuth(req);
-  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const a = await adminGate(req, "Само администратор променя типовете бетон");
+  if ("denied" in a) return a.denied;
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: parsed.error.issues[0]?.message || "Невалидни данни" }, { status: 400 });
   }
 
   const existing = await db
@@ -67,8 +67,8 @@ export async function DELETE(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const { session, isApiKey } = await getAuth(req);
-  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const a = await adminGate(req, "Само администратор променя типовете бетон");
+  if ("denied" in a) return a.denied;
 
   // Soft delete: set active = false
   const [updated] = await db

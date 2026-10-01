@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuth } from "@/lib/auth-helpers";
+import { adminGate, getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { concreteTypes } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
@@ -8,9 +8,9 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 
 const concreteTypeSchema = z.object({
-  name: z.string().min(1, "Името е задължително"),
+  name: z.string({ required_error: "Името е задължително" }).trim().min(1, "Името е задължително"),
   className: z.string().optional().default(""),
-  pricePerM3: z.number().min(0, "Цената трябва да е положителна"),
+  pricePerM3: z.coerce.number({ invalid_type_error: "Въведете цена" }).min(0, "Цената не може да е отрицателна"),
   description: z.string().optional().default(""),
 });
 
@@ -32,13 +32,14 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const { session, isApiKey } = await getAuth(req);
-  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Цените влизат в офертите и актовете — променя ги администраторът
+  const a = await adminGate(req, "Само администратор променя типовете бетон");
+  if ("denied" in a) return a.denied;
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
   const parsed = concreteTypeSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: parsed.error.issues[0]?.message || "Невалидни данни" }, { status: 400 });
   }
 
   const [created] = await db.insert(concreteTypes).values({

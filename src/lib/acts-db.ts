@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { sites, offers, materials } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { sites, offers, materials, invoices, pourings, pouringItems } from "@/db/schema";
+import { asc, eq, sql } from "drizzle-orm";
 
 // Обектът трябва да съществува; офертата (ако има) — да е за същия обект
 // (или, ако офертата няма обект, за същия клиент).
@@ -27,4 +27,34 @@ export function applyStockDelta(tx: Tx, delta: Map<number, number>) {
       .where(eq(materials.id, materialId))
       .run();
   }
+}
+
+// ---- Фактурирани актове ----
+
+/** Фактурата, с която е фактуриран актът (или null). */
+export function invoicedBy(invoiceId: number | null): { id: number; number: string; status: string } | null {
+  if (!invoiceId) return null;
+  return db.select({ id: invoices.id, number: invoices.number, status: invoices.status })
+    .from(invoices).where(eq(invoices.id, invoiceId)).get() ?? null;
+}
+
+export function billedMessage(inv: { number: string; status: string }): string {
+  return inv.status === "draft"
+    ? `Актът е в чернова на фактура (${inv.number}). Промени по количества, цени, обект и дата не са позволени — първо махнете акта от черновата или я изтрийте.`
+    : `Актът е фактуриран с фактура № ${inv.number}. Промени по количества, цени, обект и дата не са позволени — корекция се прави с кредитно/дебитно известие.`;
+}
+
+/** Различават ли се новите редове от записаните (тип, количество, цена, в същия ред). */
+export function itemsChanged(pouringId: number, items: { concreteTypeId: number; quantityM3: number; pricePerM3: number }[]): boolean {
+  const cur = db.select({ concreteTypeId: pouringItems.concreteTypeId, quantityM3: pouringItems.quantityM3, pricePerM3: pouringItems.pricePerM3 })
+    .from(pouringItems).where(eq(pouringItems.pouringId, pouringId)).orderBy(asc(pouringItems.sortOrder), asc(pouringItems.id)).all();
+  if (cur.length !== items.length) return true;
+  const eps = 1e-9;
+  return cur.some((c, i) => c.concreteTypeId !== items[i].concreteTypeId
+    || Math.abs(c.quantityM3 - items[i].quantityM3) > eps
+    || Math.abs(c.pricePerM3 - items[i].pricePerM3) > eps);
+}
+
+export function currentDate(pouringId: number): string | undefined {
+  return db.select({ date: pourings.date }).from(pourings).where(eq(pourings.id, pouringId)).get()?.date;
 }

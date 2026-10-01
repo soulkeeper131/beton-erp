@@ -17,7 +17,8 @@ export default function InvoiceDraftsPage() {
     fetch("/api/invoices?status=draft")
       .then((r) => r.json())
       .then((d) => {
-        setDrafts(Array.isArray(d) ? d : []);
+        // Тук са входящите от имейл; изходящите чернови са в списъка „Фактури“
+        setDrafts(Array.isArray(d) ? d.filter((x: any) => x.direction === "incoming") : []);
         setLoading(false);
       });
   }, []);
@@ -33,20 +34,22 @@ export default function InvoiceDraftsPage() {
 
   const approve = async (id: number) => {
     setActionLoading(id);
-    await fetch(`/api/invoices/${id}`, {
+    const res = await fetch(`/api/invoices/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "sent" }),
     });
-    setDrafts(drafts.filter((d) => d.id !== id));
+    if (res.ok) setDrafts(drafts.filter((d) => d.id !== id));
+    else alert((await res.json().catch(() => null))?.error || "Грешка");
     setActionLoading(null);
   };
 
   const reject = async (id: number) => {
     if (!confirm("Сигурни ли сте, че искате да отхвърлите тази чернова?")) return;
     setActionLoading(id);
-    await fetch(`/api/invoices/${id}`, { method: "DELETE" });
-    setDrafts(drafts.filter((d) => d.id !== id));
+    const res = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
+    if (res.ok) setDrafts(drafts.filter((d) => d.id !== id));
+    else alert((await res.json().catch(() => null))?.error || "Грешка");
     setActionLoading(null);
   };
 

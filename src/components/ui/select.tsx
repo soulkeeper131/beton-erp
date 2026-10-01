@@ -6,7 +6,27 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-const Select = SelectPrimitive.Root
+// Radix (SelectBubbleInput) при програмна смяна на value пуска „change“ на скрития
+// native <select>; ако опциите още не са заредени, стойността става "" и onValueChange("")
+// изтрива току-що зададения избор (напр. оферта/клиент при отваряне на форма).
+// Пазим се: промени, дошли в прозореца между commit-а и ефектите след смяна на value, се игнорират.
+const useIsoLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect
+
+function Select({ value, onValueChange, ...props }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Root>) {
+  const syncing = React.useRef(false)
+  useIsoLayoutEffect(() => { syncing.current = true }, [value])
+  React.useEffect(() => { syncing.current = false }, [value])
+  return (
+    <SelectPrimitive.Root
+      {...props}
+      value={value}
+      onValueChange={(v) => {
+        if (syncing.current && v !== value) return
+        onValueChange?.(v)
+      }}
+    />
+  )
+}
 
 const SelectGroup = SelectPrimitive.Group
 

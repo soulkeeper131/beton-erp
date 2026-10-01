@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,11 +12,19 @@ import { Plus, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { today } from "@/lib/dates";
 
+// useSearchParams изисква Suspense граница
 export default function NewPouringPage() {
+  return <Suspense><NewPouringForm /></Suspense>;
+}
+
+function NewPouringForm() {
   const router = useRouter();
-  const preselectedSiteId = typeof window !== "undefined"
-    ? new URLSearchParams(window.location.search).get("siteId") || ""
-    : "";
+  // Преди се четеше window.location — при навигация от офертата/обекта (без презареждане)
+  // адресът още беше старият и обектът/офертата не се попълваха
+  const query = useSearchParams();
+  const preselectedSiteId = query?.get("siteId") || "";
+  // ?offerId= — „Нов акт по офертата“: обектът и редовете идват от офертата
+  const preselectedOfferId = query?.get("offerId") || "";
   const [sites, setSites] = useState<any[]>([]);
   const [concreteTypes, setConcreteTypes] = useState<any[]>([]);
   const [machines, setMachines] = useState<any[]>([]);
@@ -42,11 +50,15 @@ export default function NewPouringPage() {
     fetch("/api/concrete-types").then(r => r.json()).then(setConcreteTypes);
     fetch("/api/machines").then(r => r.json()).then(setMachines);
     fetch("/api/offers").then(r => r.json()).then(setOffers);
+    if (preselectedOfferId) selectOffer(preselectedOfferId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Filter offers by selected site
+  // Оферти за избрания обект — или без обект, но за същия клиент
+  const selectedSite = sites.find(s => String(s.id) === form.siteId);
   const filteredOffers = form.siteId
-    ? offers.filter(o => o.siteId === parseInt(form.siteId) && (o.status === "sent" || o.status === "accepted"))
+    ? offers.filter(o => (o.siteId === parseInt(form.siteId) || (!o.siteId && selectedSite && o.clientId === selectedSite.clientId))
+        && (o.status === "sent" || o.status === "accepted" || String(o.id) === form.offerId))
     : [];
 
   const offerPrice = (concreteTypeId: string) =>
@@ -57,6 +69,7 @@ export default function NewPouringPage() {
     setForm(f => ({ ...f, offerId }));
     if (!offerId) { setOfferItems([]); return; }
     const offer = await fetch(`/api/offers/${offerId}`).then(r => r.json()).catch(() => null);
+    if (offer?.siteId) setForm(f => ({ ...f, siteId: f.siteId || String(offer.siteId) }));
     const concrete = (offer?.items || []).filter((oi: any) => oi.concreteTypeId);
     setOfferItems(concrete);
     const emptyRows = items.every(i => !i.concreteTypeId && !i.quantityM3);
@@ -138,7 +151,12 @@ export default function NewPouringPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Обект *</Label>
-                <Select value={form.siteId} onValueChange={(v) => { setForm({ ...form, siteId: v, offerId: "" }); setOfferItems([]); }}>
+                <Select value={form.siteId} onValueChange={(v) => {
+                  // Radix вика onValueChange и когато списъкът се зареди след избраната стойност —
+                  // без тази проверка предварително избраната оферта се изтриваше
+                  if (v === form.siteId) return;
+                  setForm({ ...form, siteId: v, offerId: "" }); setOfferItems([]);
+                }}>
                   <SelectTrigger><SelectValue placeholder="Избери обект" /></SelectTrigger>
                   <SelectContent>
                     {sites.map((s: any) => (

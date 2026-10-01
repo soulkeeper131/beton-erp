@@ -185,6 +185,8 @@ export const pourings = sqliteTable("pourings", {
   notes: text("notes"),
   actPdfPath: text("act_pdf_path"),
   status: text("status").notNull().default("completed"),
+  // Фактурата, с която е фактуриран актът (null = нефактуриран)
+  invoiceId: integer("invoice_id"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
 });
 

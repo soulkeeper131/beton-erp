@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, FileText } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { EmailDialog } from "@/components/email-dialog";
+import { bufferToBase64 } from "@/lib/base64";
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -38,13 +39,17 @@ export default function InvoiceDetailPage() {
     }
   }
 
-  useEffect(() => {
-    fetch(`/api/invoices/${params.id}`).then(r => r.json()).then(d => {
+  function reload() {
+    return fetch(`/api/invoices/${params.id}`).then(r => r.json()).then(d => {
       if (d.error) router.push("/invoices");
       else setInvoice(d);
       setLoading(false);
     });
-  }, [params.id, router]);
+  }
+  useEffect(() => {
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id]);
 
   if (loading) return <div className="flex justify-center py-20 text-muted-foreground">Зареждане...</div>;
   if (!invoice) return <div className="flex justify-center py-20 text-muted-foreground">Не е намерена</div>;
@@ -54,6 +59,7 @@ export default function InvoiceDetailPage() {
   const paymentLabels: Record<string, string> = { unpaid: "Неплатено", partial: "Частично", paid: "Платено" };
   const methodLabels: Record<string, string> = { bank: "Банков превод", cash: "В брой", card: "Карта" };
   const c = invoice.company || {};
+  const incoming = invoice.direction === "incoming";
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -63,9 +69,12 @@ export default function InvoiceDetailPage() {
         {invoice.status === "draft" ? (
           <>
             <span className="font-medium">Чернова</span>
-            <span className="text-muted-foreground">— не участва в оборота, докато не е издадена</span>
+            <span className="text-muted-foreground">
+              — не участва в оборота{invoice.nextNumber ? `; при издаване получава № ${invoice.nextNumber}` : ", докато не е издадена"}
+            </span>
             <div className="ml-auto flex gap-2">
-              <Button size="sm" disabled={busy} onClick={() => patch({ status: "sent" })}>✅ Издай</Button>
+              <Button size="sm" disabled={busy} onClick={async () => { await patch({ status: "sent" }); reload(); }}>✅ Издай</Button>
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => router.push(`/invoices/new?edit=${invoice.id}`)}>✏️ Редактирай</Button>
               <Button size="sm" variant="outline" disabled={busy} onClick={remove}>🗑️ Изтрий</Button>
             </div>
           </>
@@ -86,10 +95,21 @@ export default function InvoiceDetailPage() {
 
       <div className="flex items-start justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold">{typeLabels[invoice.type] || invoice.type} №{invoice.number}</h1>
+          <h1 className="text-2xl font-bold">
+            {typeLabels[invoice.type] || invoice.type} {invoice.status === "draft" && invoice.direction === "outgoing" ? "(чернова)" : `№${invoice.number}`}
+          </h1>
           <p className="text-muted-foreground">{directionLabels[invoice.direction]} • {invoice.currency}</p>
           {invoice.related && (
             <p className="text-sm">към фактура <a className="underline" href={`/invoices/${invoice.related.id}`}>№{invoice.related.number}</a> от {invoice.related.date}</p>
+          )}
+          {(invoice.creditNotes || []).map((n: any) => (
+            <p key={n.id} className="text-sm">{typeLabels[n.type]} <a className="underline" href={`/invoices/${n.id}`}>{n.status === "draft" ? "(чернова)" : `№${n.number}`}</a> от {n.date} · {formatCurrency(n.total)}</p>
+          ))}
+          {invoice.status === "sent" && invoice.type === "invoice" && (
+            <div className="flex gap-2 mt-2">
+              <Button size="sm" variant="outline" onClick={() => router.push(`/invoices/new?type=credit_note&related=${invoice.id}`)}>➖ Кредитно известие</Button>
+              <Button size="sm" variant="outline" onClick={() => router.push(`/invoices/new?type=debit_note&related=${invoice.id}`)}>➕ Дебитно известие</Button>
+            </div>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -105,7 +125,7 @@ export default function InvoiceDetailPage() {
               const r = await fetch(`/api/invoices/${invoice.id}/pdf`);
               if (!r.ok) return null;
               const buf = await r.arrayBuffer();
-              const base64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+              const base64 = bufferToBase64(buf);
               return { base64, filename: `Фактура-${invoice.number}.pdf` };
             }}
           />
@@ -131,9 +151,10 @@ export default function InvoiceDetailPage() {
       )}
 
       {/* Доставчик + Получател */}
+      {/* При входяща фактура доставчикът е контрагентът, а получателят — нашата фирма */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Доставчик</CardTitle></CardHeader>
+        <Card className={incoming ? "order-2" : ""}>
+          <CardHeader><CardTitle className="text-sm">{incoming ? "Получател" : "Доставчик"}</CardTitle></CardHeader>
           <CardContent>
             <dl className="space-y-1 text-sm">
               {c.companyName && <div className="font-semibold">{c.companyName}</div>}
@@ -151,8 +172,8 @@ export default function InvoiceDetailPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Получател</CardTitle></CardHeader>
+        <Card className={incoming ? "order-1" : ""}>
+          <CardHeader><CardTitle className="text-sm">{incoming ? "Доставчик" : "Получател"}</CardTitle></CardHeader>
           <CardContent>
             <dl className="space-y-1 text-sm">
               {invoice.clientCompany && <div className="font-semibold">{invoice.clientCompany}</div>}
@@ -207,6 +228,20 @@ export default function InvoiceDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {invoice.acts?.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-sm">📋 Фактурирани актове</CardTitle></CardHeader>
+          <CardContent className="space-y-1 text-sm">
+            {invoice.acts.map((a: any) => (
+              <div key={a.id} className="flex justify-between gap-2">
+                <a href={`/pourings/${a.id}`} className="underline">Акт №{a.id} от {a.date}{a.siteName ? ` — ${a.siteName}` : ""}</a>
+                <span className="text-muted-foreground">{(a.quantityM3 || 0).toFixed(2)} m³</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Тотали */}
       <Card>

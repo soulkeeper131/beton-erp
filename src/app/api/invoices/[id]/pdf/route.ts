@@ -26,6 +26,7 @@ export async function GET(
       taxEventDate: invoices.taxEventDate,
       direction: invoices.direction,
       type: invoices.type,
+      status: invoices.status,
       currency: invoices.currency,
       subtotal: invoices.subtotal,
       discountPercent: invoices.discountPercent,
@@ -63,7 +64,9 @@ export async function GET(
     InvoicePDF({ invoice, items, company, related })
   );
 
-  const safeNumber = invoice.number?.replace(/[^a-zA-Z0-9_-]/g, "_") || "invoice";
+  const safeNumber = invoice.status === "draft" && invoice.direction === "outgoing"
+    ? `draft-${invoice.id}`
+    : invoice.number?.replace(/[^a-zA-Z0-9_-]/g, "_") || "invoice";
   return new Response(stream as any, {
     headers: {
       "Content-Type": "application/pdf",

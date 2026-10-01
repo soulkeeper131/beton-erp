@@ -2,7 +2,8 @@
 
 import { db } from "@/db";
 import { calcInvoiceTotals, roundMoney } from "@/lib/calc";
-import { getNextInvoiceNumber } from "@/lib/invoice-number";
+import { invoiceSchema, invoiceZodError } from "@/lib/invoices";
+import { saveInvoice } from "@/lib/invoices-db";
 import { guardUserChange, MIN_PASSWORD, validRole } from "@/lib/users";
 import { getNextOfferNumber, offerItemSchema, offerTotal, replaceOfferItems } from "@/lib/offers";
 import { clients, offers, offerItems, pourings, pouringItems, sites, concreteTypes, services, materials, machines, siteCalendar, invoices, invoiceItems, workers, users, companySettings } from "@/db/schema";
@@ -210,23 +211,16 @@ async function createWorker(params: { name: string; phone?: string; dailyRate: n
 }
 
 async function createInvoice(params: { clientId: number; date: string; dueDate: string; items: any[]; type?: string; notes?: string }) {
-  const { clientId, date, dueDate, items, type, notes } = params;
-  const { subtotal, vatAmount, total } = calcInvoiceTotals(items);
-  const nextNum = getNextInvoiceNumber("outgoing");
-  const result = db.insert(invoices).values({
-    clientId, number: nextNum, date, dueDate, taxEventDate: date,
-    type: type || "invoice", direction: "outgoing", currency: "EUR",
-    subtotal, vatRate: items[0]?.vatRate ?? 20, vatAmount, total, paymentMethod: "bank", paymentStatus: "unpaid",
-    notes: notes || null,
-  }).returning({ id: invoices.id }).get();
-  for (const item of items) {
-    db.insert(invoiceItems).values({
-      invoiceId: result.id, description: item.description,
-      unit: item.unit || "бр.", quantity: item.quantity, price: item.price,
-      vatRate: item.vatRate ?? 20, total: roundMoney(item.quantity * item.price),
-    }).run();
-  }
-  return { id: result.id, number: nextNum, total, items: items.length };
+  // Същите проверки като във формата; записва се като чернова — номер при издаване
+  const parsed = invoiceSchema.safeParse({
+    clientId: params.clientId, date: params.date, dueDate: params.dueDate, taxEventDate: params.date,
+    type: params.type || "invoice", direction: "outgoing", notes: params.notes, items: params.items,
+  });
+  if (!parsed.success) throw new Error(invoiceZodError(parsed.error));
+  const saved = saveInvoice(parsed.data);
+  if ("error" in saved) throw new Error(saved.error);
+  const inv = db.select({ number: invoices.number, total: invoices.total }).from(invoices).where(eq(invoices.id, saved.id)).get()!;
+  return { id: saved.id, number: inv.number, status: "draft", total: inv.total, items: params.items.length, note: "Черновата се издава от страницата на фактурата — тогава получава номер" };
 }
 
 async function generateOfferPdf(params: { offerId: number }) {

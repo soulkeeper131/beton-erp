@@ -29,6 +29,7 @@ export default function MaterialsPage() {
         {isAdmin && <Button onClick={() => router.push("/materials/new")}>+ Нов материал</Button>}
       </div>
       <DataList
+        rowHref={row => `/materials/${row.id}`}
         columns={[
           { key: "name", label: "Име" },
           { key: "quantity", label: "Наличност", render: (v: number, row: any) => `${v} ${row.unit || ""}` },

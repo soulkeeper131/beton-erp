@@ -12,13 +12,15 @@ export default function ConcreteTypesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/concrete-types").then(r => r.json()).then(d => { setData(d); setLoading(false); });
+    // И неактивните — за да може да се пуснат отново
+    fetch("/api/concrete-types?all=1").then(r => r.json()).then(d => { setData(d); setLoading(false); });
   }, []);
 
   async function handleDelete(id: number) {
-    if (!confirm("Сигурен ли си?")) return;
-    await fetch(`/api/concrete-types/${id}`, { method: "DELETE" });
-    setData(data.filter(ct => ct.id !== id));
+    if (!confirm("Типът ще спре да се предлага в нови оферти и актове (старите остават непроменени). Продължаване?")) return;
+    const res = await fetch(`/api/concrete-types/${id}`, { method: "DELETE" });
+    if (!res.ok) { alert((await res.json().catch(() => null))?.error || "Грешка"); return; }
+    setData(data.map(ct => ct.id === id ? { ...ct, active: false } : ct));
   }
 
   return (
@@ -28,10 +30,12 @@ export default function ConcreteTypesPage() {
         {isAdmin && <Button onClick={() => router.push("/concrete-types/new")}>+ Нов тип</Button>}
       </div>
       <DataList
+        rowHref={row => `/concrete-types/${row.id}`}
         columns={[
           { key: "name", label: "Име" },
           { key: "pricePerM3", label: "Цена/m³", render: (v: number) => `${v} €` },
           { key: "description", label: "Описание" },
+          { key: "active", label: "Статус", render: (v: boolean) => v === false ? <span className="text-muted-foreground">неактивен</span> : "активен" },
         ]}
         data={data}
         loading={loading}
