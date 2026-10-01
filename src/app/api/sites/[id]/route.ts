@@ -3,8 +3,9 @@ import { firstZodError } from "@/lib/acts";
 import { siteUsage } from "@/lib/clients";
 import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
-import { sites, clients, pourings } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { sites, clients } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { siteOverview } from "@/lib/sites-db";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -54,16 +55,10 @@ export async function GET(
 
   if (!site) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Also get recent pourings
-  const recentPourings = await db
-    .select()
-    .from(pourings)
-    .where(eq(pourings.siteId, parseInt(params.id)))
-    .orderBy(desc(pourings.date))
-    .limit(20)
-    .all();
-
-  return NextResponse.json({ ...site, pourings: recentPourings });
+  // Оферти, актове (с фактурата им), предстоящи наливания и обобщение.
+  // Бригадирът не вижда суми и фактури.
+  const finance = isApiKey || (session?.user as any)?.role !== "brigadir";
+  return NextResponse.json({ ...site, ...siteOverview(site.id, finance) });
 }
 
 export async function PATCH(

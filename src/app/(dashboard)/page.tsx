@@ -4,12 +4,17 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
+import Link from "next/link";
 
 type DashboardData = {
   // null за роли без достъп до финанси (бригадир)
   monthlyRevenue: number | null;
   openOffers: number | null;
   unpaidInvoices: number | null;
+  unpaidAmount: number | null;
+  overdueCount: number | null;
+  overdueAmount: number | null;
+  unbilledActs: { count: number; m3: number; value: number } | null;
   activeSites: number;
   workersToday: number;
   totalPouringsM3: number;
@@ -73,7 +78,14 @@ export default function DashboardHome() {
           <KpiCard title="Оборот (месец)" value={formatCurrency(data.monthlyRevenue)} icon="💰" />
         )}
         {data.openOffers != null && <KpiCard title="Отворени оферти" value={data.openOffers} icon="📋" />}
-        {data.unpaidInvoices != null && <KpiCard title="Неплатени от клиенти" value={data.unpaidInvoices} icon="⚠️" />}
+        {data.unpaidAmount != null && (
+          <KpiCard title={`Неплатени от клиенти (${data.unpaidInvoices})`} value={formatCurrency(data.unpaidAmount)} icon="⚠️" href="/invoices"
+            sub={data.overdueCount ? `просрочени ${data.overdueCount}: ${formatCurrency(data.overdueAmount || 0)}` : undefined} subDanger={!!data.overdueCount} />
+        )}
+        {data.unbilledActs != null && (
+          <KpiCard title={`Нефактурирани актове (${data.unbilledActs.count})`} value={formatCurrency(data.unbilledActs.value)} icon="🧾" href="/pourings?invoiced=0"
+            sub={`${data.unbilledActs.m3} m³ чакат фактура`} subDanger={data.unbilledActs.count > 0} />
+        )}
         <KpiCard title="Активни обекти" value={data.activeSites} icon="🏗️" />
         <KpiCard title="Работници днес" value={data.workersToday} icon="👷" />
         <KpiCard
@@ -199,24 +211,32 @@ function KpiCard({
   title,
   value,
   icon,
+  sub,
+  subDanger,
+  href,
 }: {
   title: string;
   value: string | number;
   icon: string;
+  sub?: string;
+  subDanger?: boolean;
+  href?: string;
 }) {
-  return (
-    <Card>
+  const card = (
+    <Card className={href ? "hover:bg-muted/50 transition-colors h-full" : "h-full"}>
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground">{title}</p>
             <p className="text-xl font-bold mt-1">{value}</p>
+            {sub && <p className={`text-xs mt-0.5 ${subDanger ? "text-orange-600" : "text-muted-foreground"}`}>{sub}</p>}
           </div>
           <span className="text-2xl">{icon}</span>
         </div>
       </CardContent>
     </Card>
   );
+  return href ? <Link href={href}>{card}</Link> : card;
 }
 
 function DashboardSkeleton() {

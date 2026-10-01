@@ -4,7 +4,7 @@ import { roundMoney } from "@/lib/calc";
 import { invoiceSign } from "@/lib/reports";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
-import { count, sum, and, gte, lte, eq, ne, or, sql } from "drizzle-orm";
+import { count, countDistinct, sum, and, gte, lte, eq, ne, or, sql, isNull } from "drizzle-orm";
 import { today as todayStr, addDays } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +55,26 @@ export async function GET(req: Request) {
     ))
     .get()) as { cnt: number };
   const unpaidInvoices = unpaidResult?.cnt || 0;
+
+  // Суми: неплатени и просрочени (падеж преди днес) изходящи фактури
+  const unpaidRows = db.select({ total: schema.invoices.total, dueDate: schema.invoices.dueDate })
+    .from(schema.invoices)
+    .where(and(
+      eq(schema.invoices.status, "sent"),
+      eq(schema.invoices.direction, "outgoing"),
+      eq(schema.invoices.type, "invoice"),
+      ne(schema.invoices.paymentStatus, "paid"),
+    )).all();
+  const unpaidAmount = roundMoney(unpaidRows.reduce((s, r) => s + (r.total || 0), 0));
+  const overdue = unpaidRows.filter((r) => r.dueDate && r.dueDate < today);
+  const overdueAmount = roundMoney(overdue.reduce((s, r) => s + (r.total || 0), 0));
+
+  // Нефактурирани актове — изляно, но още не е във фактура
+  const unbilled = db.select({ total: sum(schema.pouringItems.total), m3: sum(schema.pouringItems.quantityM3), acts: countDistinct(schema.pourings.id) })
+    .from(schema.pourings)
+    .leftJoin(schema.pouringItems, eq(schema.pouringItems.pouringId, schema.pourings.id))
+    .where(isNull(schema.pourings.invoiceId))
+    .get();
 
   // KPI: active sites
   const sitesResult = (await db
@@ -137,9 +157,17 @@ export async function GET(req: Request) {
     monthlyRevenue: showFinance ? monthlyRevenue : null,
     openOffers: showFinance ? openOffers : null,
     unpaidInvoices: showFinance ? unpaidInvoices : null,
+    unpaidAmount: showFinance ? unpaidAmount : null,
+    overdueCount: showFinance ? overdue.length : null,
+    overdueAmount: showFinance ? overdueAmount : null,
+    unbilledActs: showFinance ? {
+      count: Number(unbilled?.acts || 0),
+      m3: roundMoney(Number(unbilled?.m3 || 0)),
+      value: roundMoney(Number(unbilled?.total || 0)),
+    } : null,
     activeSites,
     workersToday,
-    totalPouringsM3,
+    totalPouringsM3: roundMoney(Number(totalPouringsM3) || 0),
     upcomingCalendar,
     expiringDocs,
     lowStock,
