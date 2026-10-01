@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -74,17 +75,28 @@ type SiteData = {
   updatedAt: string;
   clientName: string | null;
   clientCompany: string | null;
-  pourings?: Pouring[];
+  acts: SiteAct[];
+  offers: { id: number; number: string; date: string; validUntil: string | null; status: string; total: number }[];
+  upcoming: { id: number; plannedDate: string; estimatedM3: number | null; status: string; notes: string | null; concreteTypeName: string | null; machineName: string | null }[];
+  summary: {
+    actsCount: number; pouredM3: number; unbilledCount: number; unbilledM3: number;
+    offered?: number; pouredValue?: number; invoicedValue?: number; unbilledValue?: number;
+  };
 };
 
-type Pouring = {
+type SiteAct = {
   id: number;
   date: string;
   quantityM3: number;
-  status: string;
-  weather: string | null;
-  notes: string | null;
+  total: number | null;
+  offerId: number | null;
+  offerNumber: string | null;
+  invoiced: boolean;
+  invoice: { id: number; number: string; status: string } | null;
 };
+
+const offerStatusLabels: Record<string, string> = { draft: "📝 Чернова", sent: "📤 Изпратена", accepted: "✅ Приета", rejected: "❌ Отказана" };
+const planStatusLabels: Record<string, string> = { planned: "Планиран", confirmed: "Потвърден", done: "Изпълнен", postponed: "Отложен" };
 
 type Client = {
   id: number;
@@ -172,6 +184,9 @@ export default function SiteDetailPage() {
       alert((await res.json().catch(() => null))?.error || "Грешка при запис");
     }
   };
+
+  const hasFinance = site?.summary?.pouredValue !== undefined;
+  const unbilledIds = (site?.acts || []).filter((a) => !a.invoiced).map((a) => a.id);
 
   if (loading) {
     return (
@@ -291,39 +306,116 @@ export default function SiteDetailPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Последни наливания</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {!site.pourings || site.pourings.length === 0 ? (
-              <div className="p-6 text-center text-muted-foreground">
-                Няма наливания за този обект.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Дата</TableHead>
-                      <TableHead>Количество</TableHead>
-                      <TableHead>Статус</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {site.pourings.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell>{formatDate(p.date)}</TableCell>
-                        <TableCell>{p.quantityM3} m³</TableCell>
-                        <TableCell>
-                          <span className="text-xs text-muted-foreground">{p.status}</span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+      </div>
+
+      {/* Обобщение */}
+      <Card>
+        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 text-sm" data-testid="site-summary">
+          {site.summary.offered !== undefined && (
+            <div><div className="text-muted-foreground text-xs">Оферирано</div><div className="text-lg font-semibold">{formatCurrency(site.summary.offered)}</div></div>
+          )}
+          <div>
+            <div className="text-muted-foreground text-xs">Изляно ({site.summary.actsCount} {site.summary.actsCount === 1 ? "акт" : "акта"})</div>
+            <div className="text-lg font-semibold">{site.summary.pouredM3.toFixed(2)} m³</div>
+            {site.summary.pouredValue !== undefined && <div className="text-xs text-muted-foreground">{formatCurrency(site.summary.pouredValue)} без ДДС</div>}
+          </div>
+          {site.summary.invoicedValue !== undefined && (
+            <div><div className="text-muted-foreground text-xs">Фактурирано</div><div className="text-lg font-semibold">{formatCurrency(site.summary.invoicedValue)}</div></div>
+          )}
+          <div>
+            <div className="text-muted-foreground text-xs">Чака фактура</div>
+            <div className={`text-lg font-semibold ${site.summary.unbilledCount ? "text-orange-600" : ""}`}>
+              {site.summary.unbilledValue !== undefined ? formatCurrency(site.summary.unbilledValue) : `${site.summary.unbilledM3.toFixed(2)} m³`}
+            </div>
+            <div className="text-xs text-muted-foreground">{site.summary.unbilledCount} {site.summary.unbilledCount === 1 ? "акт" : "акта"} · {site.summary.unbilledM3.toFixed(2)} m³</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Актове */}
+      <Card>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+          <CardTitle>📋 Актове</CardTitle>
+          <div className="flex gap-2">
+            {isAdmin && unbilledIds.length > 0 && (
+              <Button size="sm" onClick={() => router.push(`/invoices/new?pourings=${unbilledIds.join(",")}`)}>
+                🧾 Фактурирай нефактурираните ({unbilledIds.length})
+              </Button>
             )}
+            {isAdmin && <Button size="sm" variant="outline" onClick={() => router.push(`/pourings/new?siteId=${site.id}`)}>+ Нов акт</Button>}
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {site.acts.length === 0 ? (
+            <div className="p-6 text-center text-muted-foreground">Няма актове за този обект.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Акт</TableHead>
+                    <TableHead>Дата</TableHead>
+                    <TableHead className="text-right">Количество</TableHead>
+                    {hasFinance && <TableHead className="text-right">Сума</TableHead>}
+                    <TableHead>Оферта</TableHead>
+                    {hasFinance && <TableHead>Фактура</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {site.acts.map((a) => (
+                    <TableRow key={a.id}>
+                      <TableCell><Link href={`/pourings/${a.id}`} className="text-primary hover:underline">№{a.id}</Link></TableCell>
+                      <TableCell>{formatDate(a.date)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{a.quantityM3.toFixed(2)} m³</TableCell>
+                      {hasFinance && <TableCell className="text-right tabular-nums">{formatCurrency(a.total || 0)}</TableCell>}
+                      <TableCell>{a.offerId ? <Link href={`/offers/${a.offerId}`} className="hover:underline">{a.offerNumber}</Link> : "—"}</TableCell>
+                      {hasFinance && (
+                        <TableCell>{a.invoice
+                          ? <Link href={`/invoices/${a.invoice.id}`} className="hover:underline">{a.invoice.status === "draft" ? "чернова" : a.invoice.number}</Link>
+                          : <span className="text-orange-600">нефактуриран</span>}</TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {hasFinance && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>📄 Оферти</CardTitle>
+              {isAdmin && <Button size="sm" variant="outline" onClick={() => router.push(`/offers/new?siteId=${site.id}`)}>+ Нова оферта</Button>}
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {site.offers.length === 0 ? <p className="text-muted-foreground">Няма оферти.</p> : site.offers.map((o) => (
+                <div key={o.id} className="flex items-center justify-between gap-2">
+                  <Link href={`/offers/${o.id}`} className="text-primary hover:underline">{o.number}</Link>
+                  <span className="text-muted-foreground">{offerStatusLabels[o.status] || o.status}</span>
+                  <span className="tabular-nums">{formatCurrency(o.total)}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>📅 Предстоящи наливания</CardTitle>
+            <Button size="sm" variant="outline" onClick={() => router.push("/calendar")}>Календар</Button>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {site.upcoming.length === 0 ? <p className="text-muted-foreground">Няма планирани.</p> : site.upcoming.map((u) => (
+              <div key={u.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium">{formatDate(u.plannedDate)}</span>
+                <span className="text-muted-foreground">
+                  {[u.concreteTypeName, u.estimatedM3 ? `${u.estimatedM3} m³` : null, u.machineName].filter(Boolean).join(" · ") || "—"}
+                </span>
+                <span className="text-xs">{planStatusLabels[u.status] || u.status}</span>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>

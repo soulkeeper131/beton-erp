@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,14 +8,21 @@ import { DataList } from "@/components/ui/data-list";
 import { useIsAdmin } from "@/lib/use-is-admin";
 import { formatCurrency } from "@/lib/utils";
 
+// useSearchParams изисква Suspense граница
 export default function PouringsPage() {
+  return <Suspense><PouringsList /></Suspense>;
+}
+
+function PouringsList() {
   const router = useRouter();
+  const search = useSearchParams();
   const isAdmin = useIsAdmin();
   const canInvoice = isAdmin; // фактури издава администраторът (както „+ Нова“ във Фактури)
   const [data, setData] = useState<any[]>([]);
   const [sites, setSites] = useState<any[]>([]);
   const [filterSite, setFilterSite] = useState<string>("all");
-  const [filterBilled, setFilterBilled] = useState<string>("all");
+  // ?invoiced=0 — от таблото („Нефактурирани актове“)
+  const [filterBilled, setFilterBilled] = useState<string>(["0", "1"].includes(search.get("invoiced") || "") ? search.get("invoiced")! : "all");
   const [selected, setSelected] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 

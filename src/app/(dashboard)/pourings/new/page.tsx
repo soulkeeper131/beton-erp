@@ -25,6 +25,11 @@ function NewPouringForm() {
   const preselectedSiteId = query?.get("siteId") || "";
   // ?offerId= — „Нов акт по офертата“: обектът и редовете идват от офертата
   const preselectedOfferId = query?.get("offerId") || "";
+  // От календара: ?date=&calendarId=&concreteTypeId=&machineId= — записът става „Изпълнен“
+  const calendarId = query?.get("calendarId") || "";
+  const preDate = query?.get("date") || "";
+  const preConcrete = query?.get("concreteTypeId") || "";
+  const preMachine = query?.get("machineId") || "";
   const [sites, setSites] = useState<any[]>([]);
   const [concreteTypes, setConcreteTypes] = useState<any[]>([]);
   const [machines, setMachines] = useState<any[]>([]);
@@ -37,19 +42,31 @@ function NewPouringForm() {
   const [form, setForm] = useState({
     siteId: preselectedSiteId,
     offerId: "",
-    date: today(),
-    machineId: "",
+    date: /^\d{4}-\d{2}-\d{2}$/.test(preDate) ? preDate : today(),
+    machineId: preMachine,
     weather: "",
     notes: "",
   });
 
-  const [items, setItems] = useState([{ concreteTypeId: "", quantityM3: "", pricePerM3: "" }]);
+  const [items, setItems] = useState([{ concreteTypeId: preConcrete, quantityM3: "", pricePerM3: "" }]);
 
   useEffect(() => {
     fetch("/api/sites").then(r => r.json()).then(setSites);
-    fetch("/api/concrete-types").then(r => r.json()).then(setConcreteTypes);
+    fetch("/api/concrete-types").then(r => r.json()).then((list: any[]) => {
+      setConcreteTypes(list);
+      // Бетон от календара — цена по ценоразпис (офертата, ако бъде избрана, я сменя)
+      const ct = preConcrete && Array.isArray(list) ? list.find(c => String(c.id) === preConcrete) : null;
+      if (ct) setItems(its => its.map((it, i) => i === 0 && !it.pricePerM3 && it.concreteTypeId === preConcrete ? { ...it, pricePerM3: String(ct.pricePerM3) } : it));
+    });
     fetch("/api/machines").then(r => r.json()).then(setMachines);
-    fetch("/api/offers").then(r => r.json()).then(setOffers);
+    fetch("/api/offers").then(r => r.json()).then((list: any[]) => {
+      setOffers(list);
+      // Обект от календара/обекта с точно една действаща оферта → тя се избира (договорни цени)
+      if (!preselectedOfferId && preselectedSiteId && Array.isArray(list)) {
+        const active = list.filter(o => String(o.siteId) === preselectedSiteId && (o.status === "sent" || o.status === "accepted"));
+        if (active.length === 1) selectOffer(String(active[0].id));
+      }
+    });
     if (preselectedOfferId) selectOffer(preselectedOfferId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -72,10 +89,18 @@ function NewPouringForm() {
     if (offer?.siteId) setForm(f => ({ ...f, siteId: f.siteId || String(offer.siteId) }));
     const concrete = (offer?.items || []).filter((oi: any) => oi.concreteTypeId);
     setOfferItems(concrete);
-    const emptyRows = items.every(i => !i.concreteTypeId && !i.quantityM3);
-    if (concrete.length && emptyRows) {
-      setItems(concrete.map((oi: any) => ({ concreteTypeId: String(oi.concreteTypeId), quantityM3: "", pricePerM3: String(oi.pricePerM3) })));
-    }
+    if (!concrete.length) return;
+    // Функционален update — функцията може да се извика преди редовете да са обновени
+    setItems(its => {
+      if (its.every(i => !i.concreteTypeId && !i.quantityM3)) {
+        return concrete.map((oi: any) => ({ concreteTypeId: String(oi.concreteTypeId), quantityM3: "", pricePerM3: String(oi.pricePerM3) }));
+      }
+      // Вече избран бетон (напр. от календара) → договорната цена от офертата
+      return its.map(it => {
+        const oi = concrete.find((c: any) => String(c.concreteTypeId) === it.concreteTypeId);
+        return oi ? { ...it, pricePerM3: String(oi.pricePerM3) } : it;
+      });
+    });
   }
 
   const addItem = () => setItems([...items, { concreteTypeId: "", quantityM3: "", pricePerM3: "" }]);
@@ -132,6 +157,11 @@ function NewPouringForm() {
     if (res.ok) {
       // Към акта — там се добавят работници, материали и снимки
       const created = await res.json();
+      if (calendarId) {
+        await fetch(`/api/calendar?id=${calendarId}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "done" }),
+        }).catch(() => {});
+      }
       router.push(`/pourings/${created.id}`);
     } else {
       const data = await res.json().catch(() => null);
