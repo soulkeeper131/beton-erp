@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,19 +10,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatCurrency } from "@/lib/utils";
 import { calcInvoiceTotals } from "@/lib/calc";
 import { Plus, Trash2, ArrowLeft, Search, CheckCircle } from "lucide-react";
-import { today } from "@/lib/dates";
+import { today, addDays } from "@/lib/dates";
+import { actInvoiceLines } from "@/lib/invoices";
+
+const DUE_DAYS = 14; // падеж по подразбиране
 
 const isValidEik = (v: string) => /^\d{9}$/.test(v) || /^\d{13}$/.test(v);
 
+// useSearchParams изисква Suspense граница
 export default function NewInvoicePage() {
+  return <Suspense><InvoiceForm /></Suspense>;
+}
+
+function InvoiceForm() {
   const router = useRouter();
+  const search = useSearchParams();
+  // ?edit=ID — редакция на чернова; ?pourings=1,2 — фактура от актове;
+  // ?type=credit_note&related=ID — известие към фактура
+  const editId = search.get("edit");
+  const [pouringIds, setPouringIds] = useState<number[]>([]);
+  const [acts, setActs] = useState<any[]>([]);
+  const [error, setError] = useState("");
+  const [nextNumber, setNextNumber] = useState("");
   const [clients, setClients] = useState<any[]>([]);
   const [company, setCompany] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     clientId: "", supplierId: "", number: "",
     date: today(),
-    dueDate: "", taxEventDate: today(),
+    dueDate: addDays(today(), DUE_DAYS), taxEventDate: today(),
     direction: "outgoing" as "incoming" | "outgoing",
     type: "invoice", currency: "EUR",
     discountPercent: 0, discountAmount: 0,
@@ -41,14 +57,69 @@ export default function NewInvoicePage() {
     fetch("/api/clients").then(r => r.json()).then(setClients);
     fetch("/api/company-settings").then(r => r.json()).then(setCompany);
     fetch("/api/invoices?status=sent").then(r => r.json()).then(d => Array.isArray(d) && setIssuedInvoices(d)).catch(() => {});
-    fetchNextNumber("outgoing");
+
+    const pourings = search.get("pourings");
+    const related = search.get("related");
+    if (editId) {
+      // Редакция на чернова
+      fetch(`/api/invoices/${editId}`).then(r => r.json()).then(d => {
+        if (d.error) { setError(d.error); return; }
+        if (d.status !== "draft") { router.replace(`/invoices/${editId}`); return; }
+        setForm(f => ({
+          ...f,
+          clientId: String(d.clientId), number: d.direction === "incoming" ? d.number : "",
+          date: d.date, dueDate: d.dueDate, taxEventDate: d.taxEventDate || d.date,
+          direction: d.direction, type: d.type, currency: d.currency || "EUR",
+          discountPercent: d.discountPercent || 0, discountAmount: d.discountAmount || 0,
+          paymentMethod: d.paymentMethod || "bank", paymentStatus: d.paymentStatus || "unpaid",
+          taxExemptionReason: d.taxExemptionReason || "", notes: d.notes || "",
+          relatedInvoiceId: d.relatedInvoiceId ? String(d.relatedInvoiceId) : "",
+        }));
+        setItems((d.items || []).map((i: any) => ({ description: i.description, unit: i.unit, quantity: i.quantity, price: i.price, vatRate: i.vatRate })));
+        setActs(d.acts || []);
+        setPouringIds((d.acts || []).map((a: any) => a.id));
+        fetchNextNumber(d.direction, d.type);
+      });
+      return;
+    }
+    if (pourings) {
+      // Фактура от актове: клиентът и редовете идват от тях
+      fetch(`/api/pourings?ids=${encodeURIComponent(pourings)}`).then(r => r.json()).then((list: any[]) => {
+        if (!Array.isArray(list) || !list.length) { setError("Актовете не са намерени"); return; }
+        const billed = list.filter(a => a.invoiceId);
+        if (billed.length) setError(`Вече фактурирани: ${billed.map(a => `акт №${a.id} (${a.invoice?.number || "фактура"})`).join(", ")} — махнати са.`);
+        const free = list.filter(a => !a.invoiceId);
+        const clientIds = new Set(free.map(a => a.clientId));
+        if (clientIds.size > 1) { setError("Избраните актове са на различни клиенти — фактурирайте ги поотделно."); return; }
+        if (!free.length) return;
+        setActs(free.map(a => ({ id: a.id, date: a.date, siteName: a.site?.name, quantityM3: a.quantityM3 })));
+        setPouringIds(free.map(a => a.id));
+        setForm(f => ({ ...f, clientId: String(free[0].clientId), type: "invoice", direction: "outgoing" }));
+        setItems(actInvoiceLines(free.map(a => ({ id: a.id, date: a.date, siteName: a.site?.name, items: a.items || [] }))));
+      });
+    } else if (related) {
+      // Известие към издадена фактура — клиентът и редовете се копират за корекция
+      const type = search.get("type") === "debit_note" ? "debit_note" : "credit_note";
+      fetch(`/api/invoices/${related}`).then(r => r.json()).then(d => {
+        if (d.error) return;
+        setForm(f => ({ ...f, type, direction: d.direction, clientId: String(d.clientId), relatedInvoiceId: String(d.id), taxExemptionReason: d.taxExemptionReason || "" }));
+        setItems((d.items || []).map((i: any) => ({ description: i.description, unit: i.unit, quantity: i.quantity, price: i.price, vatRate: i.vatRate })));
+        fetchNextNumber(d.direction, type);
+      });
+      return;
+    }
+    fetchNextNumber("outgoing", "invoice");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchNextNumber = async (dir: string) => {
+  // Изходящите получават номер при издаване — показва се кой ще бъде; входящите се въвеждат
+  const fetchNextNumber = async (dir: string, type: string) => {
     try {
-      const res = await fetch(`/api/invoices/next-number?direction=${dir}`);
+      const res = await fetch(`/api/invoices/next-number?direction=${dir}&type=${type}`);
       const data = await res.json();
-      if (data.number) setForm(prev => ({ ...prev, number: data.number }));
+      if (!data.number) return;
+      if (dir === "incoming") setForm(prev => ({ ...prev, number: prev.number || data.number }));
+      else setNextNumber(data.number);
     } catch {}
   };
 
@@ -114,21 +185,50 @@ export default function NewInvoicePage() {
     setItems(copy);
   };
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.clientId || !form.number || !form.dueDate || items.length === 0) return;
+  async function save(issue: boolean) {
+    setError("");
+    if (!form.clientId) return setError("Изберете клиент");
+    if (!isOutgoing && !form.number.trim()) return setError("Въведете номера на входящата фактура");
+    if (isNote && !form.relatedInvoiceId) return setError("Изберете фактурата, към която е известието");
+    const bad = items.findIndex(i => !i.description.trim() || !(i.quantity > 0));
+    if (bad >= 0) return setError(`Ред ${bad + 1}: въведете описание и количество`);
     setSaving(true);
-    const res = await fetch("/api/invoices", {
-      method: "POST",
+    const res = await fetch(editId ? `/api/invoices/${editId}` : "/api/invoices", {
+      method: editId ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, relatedInvoiceId: isNote ? form.relatedInvoiceId || null : null, items }),
+      body: JSON.stringify({
+        ...form,
+        number: isOutgoing ? null : form.number,
+        relatedInvoiceId: isNote ? form.relatedInvoiceId || null : null,
+        items,
+        pouringIds,
+        issue: !editId && issue,
+      }),
     });
-    if (res.ok) router.push("/invoices");
-    else {
-      const data = await res.json().catch(() => null);
-      alert(typeof data?.error === "string" ? data.error : "Грешка при запазване — проверете полетата");
-      setSaving(false);
+    const data = await res.json().catch(() => null);
+    if (res.ok || data?.id) {
+      const id = editId || data.id;
+      // Редакция + „Издай“: издаването е отделна стъпка (номерът се дава тогава)
+      if (editId && issue) {
+        const r = await fetch(`/api/invoices/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "sent" }) });
+        if (!r.ok) {
+          setError(`Черновата е записана, но не е издадена: ${(await r.json().catch(() => null))?.error || "грешка"}`);
+          setSaving(false);
+          return;
+        }
+      } else if (!res.ok) {
+        alert(data.error);
+      }
+      router.push(`/invoices/${id}`);
+      return;
     }
+    setError(typeof data?.error === "string" ? data.error : "Грешка при запазване — проверете полетата");
+    setSaving(false);
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    save(false);
   }
 
   const isOutgoing = form.direction === "outgoing";
@@ -137,7 +237,7 @@ export default function NewInvoicePage() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
-        <h1 className="text-2xl font-bold">🧾 Нова фактура</h1>
+        <h1 className="text-2xl font-bold">🧾 {editId ? "Редакция на чернова" : isNote ? (form.type === "credit_note" ? "Кредитно известие" : "Дебитно известие") : "Нова фактура"}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -145,12 +245,12 @@ export default function NewInvoicePage() {
           <CardHeader><CardTitle>Основна информация</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
-              <Button type="button" size="sm" variant={isOutgoing ? "default" : "outline"} onClick={() => { setForm({...form, direction: "outgoing"}); fetchNextNumber("outgoing"); }}>📤 Изходяща</Button>
-              <Button type="button" size="sm" variant={!isOutgoing ? "default" : "outline"} onClick={() => { setForm({...form, direction: "incoming"}); fetchNextNumber("incoming"); }}>📥 Входяща</Button>
+              <Button type="button" size="sm" disabled={!!editId || pouringIds.length > 0} variant={isOutgoing ? "default" : "outline"} onClick={() => { setForm({...form, direction: "outgoing", number: ""}); fetchNextNumber("outgoing", form.type); }}>📤 Изходяща</Button>
+              <Button type="button" size="sm" disabled={!!editId || pouringIds.length > 0} variant={!isOutgoing ? "default" : "outline"} onClick={() => { setForm({...form, direction: "incoming"}); fetchNextNumber("incoming", form.type); }}>📥 Входяща</Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2"><Label>Тип</Label>
-                <Select value={form.type} onValueChange={v => setForm({...form, type: v})}>
+                <Select value={form.type} onValueChange={v => { setForm({...form, type: v}); if (isOutgoing) fetchNextNumber("outgoing", v); }} disabled={pouringIds.length > 0}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="invoice">Фактура</SelectItem>
@@ -160,7 +260,15 @@ export default function NewInvoicePage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2"><Label>Номер *</Label><Input value={form.number} onChange={e => setForm({...form, number: e.target.value})} /></div>
+              {isOutgoing ? (
+                <div className="space-y-2"><Label>Номер</Label>
+                  <div className="h-10 flex items-center text-sm text-muted-foreground" data-testid="number-preview">
+                    при издаване{nextNumber ? ` → ${nextNumber}` : ""}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2"><Label>Номер *</Label><Input value={form.number} onChange={e => setForm({...form, number: e.target.value})} /></div>
+              )}
               <div className="space-y-2"><Label>Валута</Label><Input value={form.currency} disabled /></div>
             </div>
             {isNote && (
@@ -169,7 +277,7 @@ export default function NewInvoicePage() {
                 <Select value={form.relatedInvoiceId} onValueChange={v => setForm({...form, relatedInvoiceId: v})}>
                   <SelectTrigger><SelectValue placeholder="Изберете фактурата, която се коригира" /></SelectTrigger>
                   <SelectContent>
-                    {issuedInvoices.filter(i => i.direction === form.direction && i.type === "invoice").map(i => (
+                    {issuedInvoices.filter(i => i.direction === form.direction && i.type === "invoice" && (!form.clientId || String(i.clientId) === form.clientId)).map(i => (
                       <SelectItem key={i.id} value={String(i.id)}>
                         {i.number} · {i.date} · {i.clientCompany || i.clientName} · {formatCurrency(i.total)}
                       </SelectItem>
@@ -179,7 +287,7 @@ export default function NewInvoicePage() {
               </div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2"><Label>Дата *</Label><Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></div>
+              <div className="space-y-2"><Label>Дата *</Label><Input type="date" value={form.date} onChange={e => { const date = e.target.value; setForm(f => ({ ...f, date, taxEventDate: f.taxEventDate === f.date ? date : f.taxEventDate, dueDate: f.dueDate < date ? addDays(date, DUE_DAYS) : f.dueDate })); }} /></div>
               <div className="space-y-2"><Label>Падеж *</Label><Input type="date" value={form.dueDate} onChange={e => setForm({...form, dueDate: e.target.value})} /></div>
               <div className="space-y-2"><Label>Данъчно събитие *</Label><Input type="date" value={form.taxEventDate} onChange={e => setForm({...form, taxEventDate: e.target.value})} /></div>
             </div>
@@ -191,7 +299,7 @@ export default function NewInvoicePage() {
           <CardContent>
             <div className="space-y-2">
               <Label>Клиент *</Label>
-              <Select value={form.clientId} onValueChange={v => setForm({...form, clientId: v})}>
+              <Select value={form.clientId} onValueChange={v => setForm({...form, clientId: v})} disabled={pouringIds.length > 0}>
                 <SelectTrigger><SelectValue placeholder="Изберете клиент" /></SelectTrigger>
                 <SelectContent>
                   {clients.map((c: any) => (
@@ -245,6 +353,21 @@ export default function NewInvoicePage() {
                 {company.bankName && <div>Банка: {company.bankName}</div>}
                 {company.iban && <div>IBAN: {company.iban}</div>}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {acts.length > 0 && (
+          <Card>
+            <CardHeader><CardTitle>📋 Фактурирани актове</CardTitle></CardHeader>
+            <CardContent className="space-y-1 text-sm">
+              {acts.map(a => (
+                <div key={a.id} className="flex items-center justify-between gap-2">
+                  <a href={`/pourings/${a.id}`} target="_blank" className="underline">Акт №{a.id} от {a.date}{a.siteName ? ` — ${a.siteName}` : ""}</a>
+                  <span className="text-muted-foreground">{(a.quantityM3 || 0).toFixed(2)} m³</span>
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground pt-1">Редовете са попълнени от актовете — може да добавите транспорт, помпа и др. След запис актовете се водят фактурирани.</p>
             </CardContent>
           </Card>
         )}
@@ -335,8 +458,13 @@ export default function NewInvoicePage() {
           </CardContent>
         </Card>
 
+        {error && <div className="rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-700 dark:text-red-400" role="alert">{error}</div>}
+
         <div className="flex flex-col sm:flex-row gap-2">
-          <Button type="submit" disabled={saving} className="gap-2 w-full sm:w-auto">💾 {saving ? "Запазване..." : "Запази фактура"}</Button>
+          <Button type="submit" disabled={saving} variant={isOutgoing ? "outline" : "default"} className="gap-2 w-full sm:w-auto">💾 {saving ? "Запазване..." : isOutgoing ? "Запази чернова" : "Запази"}</Button>
+          {isOutgoing && (
+            <Button type="button" disabled={saving} onClick={() => save(true)} className="gap-2 w-full sm:w-auto">✅ Запази и издай</Button>
+          )}
           <Button type="button" variant="outline" onClick={() => router.back()} className="w-full sm:w-auto">Отказ</Button>
         </div>
       </form>

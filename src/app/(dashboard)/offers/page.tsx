@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DataList } from "@/components/ui/data-list";
 import { useIsAdmin } from "@/lib/use-is-admin";
+import { today } from "@/lib/dates";
 
 const statusLabels: Record<string, string> = { draft: "📝 Чернова", sent: "📤 Изпратена", accepted: "✅ Приета", rejected: "❌ Отказана" };
 
@@ -34,12 +35,18 @@ export default function OffersPage() {
         {isAdmin && <Button onClick={() => router.push("/offers/new")}>+ Нова оферта</Button>}
       </div>
       <DataList
+        rowHref={row => `/offers/${row.id}`}
         columns={[
           { key: "number", label: "Номер" },
-          { key: "clientName", label: "Клиент", render: (v: any) => v || "—" },
+          { key: "clientName", label: "Клиент", render: (v: any, row: any) => row.clientCompany || v || "—" },
           { key: "date", label: "Дата" },
           { key: "total", label: "Сума", render: (v: number) => `${v.toFixed(2)} €` },
-          { key: "status", label: "Статус", render: (v: string) => statusLabels[v] || v },
+          { key: "status", label: "Статус", render: (v: string, row: any) => (
+            <>
+              {statusLabels[v] || v}
+              {v === "sent" && row.validUntil && row.validUntil < today() && <span className="ml-1 text-red-600 text-xs">· изтекла</span>}
+            </>
+          ) },
         ]}
         data={data}
         loading={loading}

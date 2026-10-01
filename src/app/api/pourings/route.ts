@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
-import { pourings, pouringItems, sites, offers, concreteTypes, machines } from "@/db/schema";
-import { eq, desc, asc, inArray } from "drizzle-orm";
+import { pourings, pouringItems, sites, offers, concreteTypes, machines, invoices } from "@/db/schema";
+import { and, eq, desc, asc, inArray, isNull, isNotNull } from "drizzle-orm";
 import { actCreateSchema, firstZodError } from "@/lib/acts";
 import { checkActRefs } from "@/lib/acts-db";
 import { roundMoney } from "@/lib/calc";
@@ -17,9 +17,18 @@ export async function GET(request: NextRequest) {
   const siteId = searchParams.get("siteId");
   const offerId = searchParams.get("offerId");
 
-  let where: any = undefined;
-  if (offerId) where = eq(pourings.offerId, parseInt(offerId));
-  else if (siteId) where = eq(pourings.siteId, parseInt(siteId));
+  const clientId = searchParams.get("clientId");
+  const invoiced = searchParams.get("invoiced"); // "0" нефактурирани, "1" фактурирани
+  const ids = searchParams.get("ids"); // "1,2,3" — за фактура от избрани актове
+
+  const conds: any[] = [];
+  if (offerId) conds.push(eq(pourings.offerId, parseInt(offerId)));
+  else if (siteId) conds.push(eq(pourings.siteId, parseInt(siteId)));
+  if (clientId) conds.push(eq(sites.clientId, parseInt(clientId)));
+  if (invoiced === "0") conds.push(isNull(pourings.invoiceId));
+  if (invoiced === "1") conds.push(isNotNull(pourings.invoiceId));
+  if (ids) conds.push(inArray(pourings.id, ids.split(",").map(Number).filter((n) => n > 0)));
+  const where = conds.length ? and(...conds) : undefined;
 
   const result = await db.select({
     id: pourings.id,
@@ -30,14 +39,18 @@ export async function GET(request: NextRequest) {
     siteId: pourings.siteId,
     offerId: pourings.offerId,
     machineId: pourings.machineId,
+    invoiceId: pourings.invoiceId,
+    clientId: sites.clientId,
     site: { id: sites.id, name: sites.name },
     offer: { id: offers.id, number: offers.number },
     machine: { id: machines.id, name: machines.name },
+    invoice: { id: invoices.id, number: invoices.number, status: invoices.status },
   })
     .from(pourings)
     .leftJoin(sites, eq(pourings.siteId, sites.id))
     .leftJoin(offers, eq(pourings.offerId, offers.id))
     .leftJoin(machines, eq(pourings.machineId, machines.id))
+    .leftJoin(invoices, eq(pourings.invoiceId, invoices.id))
     .where(where)
     .orderBy(desc(pourings.date));
 

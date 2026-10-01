@@ -20,6 +20,8 @@ type Props = { invoice: any; items: any[]; company: any; related?: { number: str
 export function InvoicePDF({ invoice, items, company, related }: Props) {
   const c = company || {};
   const title = typeLabels[invoice.type] || "ФАКТУРА";
+  // Изходяща чернова няма номер — PDF-ът ѝ не бива да изглежда като издаден документ
+  const isDraft = invoice.status === "draft" && invoice.direction !== "incoming";
   const direction = invoice.direction || "outgoing";
   const isIncoming = direction === "incoming";
   const logoPath = c.logoPath ? path.join(process.cwd(), c.logoPath) : null;
@@ -183,11 +185,11 @@ export function InvoicePDF({ invoice, items, company, related }: Props) {
         {/* ═══ TITLE ═══ */}
         <View style={styles.titleBox}>
           <View style={styles.originalCell}>
-            <Text style={styles.originalText}>ОРИГИНАЛ</Text>
+            <Text style={styles.originalText}>{isDraft ? "ЧЕРНОВА" : "ОРИГИНАЛ"}</Text>
           </View>
           <View style={styles.titleCell}>
             <Text style={styles.titleText}>{isIncoming ? "ВХОДЯЩА " : ""}{title}</Text>
-            <Text style={styles.titleNum}>№ {invoice.number || "-"}</Text>
+            <Text style={styles.titleNum}>{isDraft ? "Не е издадена — номер при издаване" : `№ ${invoice.number || "-"}`}</Text>
             {related ? (
               <Text style={{ fontSize: 8, marginTop: 2 }}>към фактура № {related.number} от {related.date}</Text>
             ) : null}
@@ -355,7 +357,7 @@ export function InvoicePDF({ invoice, items, company, related }: Props) {
         <View style={styles.footer}>
           <Text style={styles.footText}>
             {[c.companyName, c.eik ? `ЕИК ${c.eik}` : "", c.city].filter(Boolean).join("  •  ")}
-            {"  —  "}Фактура № {invoice.number} / {invoice.date}
+            {"  —  "}{isDraft ? "ЧЕРНОВА" : `Фактура № ${invoice.number}`} / {invoice.date}
           </Text>
         </View>
 

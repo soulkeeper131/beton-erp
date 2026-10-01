@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -75,11 +75,15 @@ type ConcreteType = {
   active?: boolean;
 };
 
+// useSearchParams изисква Suspense граница
 export default function NewOfferPage() {
+  return <Suspense><NewOfferForm /></Suspense>;
+}
+
+function NewOfferForm() {
   const router = useRouter();
-  const preselectedSiteId = typeof window !== "undefined"
-    ? new URLSearchParams(window.location.search).get("siteId")
-    : null;
+  // ?siteId= от страницата на обекта (window.location при навигация беше още стария адрес)
+  const preselectedSiteId = useSearchParams()?.get("siteId") || null;
   const [clients, setClients] = useState<Client[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [concreteTypes, setConcreteTypes] = useState<ConcreteType[]>([]);

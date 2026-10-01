@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
-import { invoices, invoiceItems, clients, companySettings } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { invoices, invoiceItems, clients, companySettings, pourings, sites } from "@/db/schema";
+import { asc, eq } from "drizzle-orm";
+import { invoiceSchema, invoiceZodError } from "@/lib/invoices";
+import { deleteDraftInvoice, issueInvoice, previewNumber, saveInvoice } from "@/lib/invoices-db";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +59,27 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     : null;
   const items = db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, parseInt(params.id))).all();
 
-  return NextResponse.json({ ...invoice, items, company, related });
+  // Фактурирани актове и известията към тази фактура
+  const acts = db.select({ id: pourings.id, date: pourings.date, quantityM3: pourings.quantityM3, siteName: sites.name })
+    .from(pourings).leftJoin(sites, eq(pourings.siteId, sites.id))
+    .where(eq(pourings.invoiceId, invoice.id)).orderBy(asc(pourings.date)).all();
+  const creditNotes = db.select({ id: invoices.id, number: invoices.number, type: invoices.type, date: invoices.date, total: invoices.total, status: invoices.status })
+    .from(invoices).where(eq(invoices.relatedInvoiceId, invoice.id)).all();
+  const nextNumber = invoice.status === "draft" && invoice.direction === "outgoing" ? previewNumber("outgoing", invoice.type) : null;
+
+  return NextResponse.json({ ...invoice, items, company, related, acts, creditNotes, nextNumber });
+}
+
+// Редакция на чернова (цялата фактура — редове, клиент, дати, актове)
+export async function PUT(req: Request, { params }: { params: { id: string } }) {
+  const { session, isApiKey } = await getAuth(req);
+  if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const parsed = invoiceSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: invoiceZodError(parsed.error) }, { status: 400 });
+  const saved = saveInvoice(parsed.data, parseInt(params.id));
+  if ("error" in saved) return NextResponse.json({ error: saved.error }, { status: saved.status });
+  return NextResponse.json(db.select().from(invoices).where(eq(invoices.id, saved.id)).get());
 }
 
 // Позволени промени: издаване (чернова → издадена), плащане и бележки.
@@ -79,36 +101,30 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const current = db.select({ status: invoices.status }).from(invoices).where(eq(invoices.id, id)).get();
   if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const parsed = patchSchema.safeParse(await req.json());
+  const parsed = patchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Непозволена промяна", details: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: "Непозволена промяна — черновата се редактира изцяло, издадената само с известие" }, { status: 400 });
   }
-  if (current.status === "sent" && parsed.data.status === "draft") {
+  const { status, ...rest } = parsed.data;
+  if (current.status === "sent" && status === "draft") {
     return NextResponse.json({ error: "Издадена фактура не може да се върне в чернова" }, { status: 409 });
   }
-
-  const updated = db
-    .update(invoices)
-    .set({ ...parsed.data, updatedAt: new Date().toISOString() })
-    .where(eq(invoices.id, id))
-    .returning()
-    .get();
-  return NextResponse.json(updated);
+  // Издаване: номерът се дава тук (поредица без пропуски)
+  if (status === "sent" && current.status === "draft") {
+    const issued = issueInvoice(id);
+    if ("error" in issued) return NextResponse.json({ error: issued.error }, { status: issued.status });
+  }
+  if (Object.keys(rest).length) {
+    db.update(invoices).set({ ...rest, updatedAt: new Date().toISOString() }).where(eq(invoices.id, id)).run();
+  }
+  return NextResponse.json(db.select().from(invoices).where(eq(invoices.id, id)).get());
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   const { session, isApiKey } = await getAuth(req);
   if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const id = parseInt(params.id);
-  const current = db.select({ status: invoices.status }).from(invoices).where(eq(invoices.id, id)).get();
-  if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  // Издадена фактура не се трие (пропуск в номерацията) — анулира се с кредитно известие
-  if (current.status !== "draft") {
-    return NextResponse.json({ error: "Издадена фактура не може да се изтрие — издайте кредитно известие" }, { status: 409 });
-  }
-
-  db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id)).run();
-  db.delete(invoices).where(eq(invoices.id, id)).run();
+  const res = deleteDraftInvoice(parseInt(params.id));
+  if ("error" in res) return NextResponse.json({ error: res.error }, { status: res.status });
   return NextResponse.json({ success: true });
 }

@@ -3,11 +3,11 @@ import { requireAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import {
   pourings, pouringItems, sites, offers, concreteTypes, machines,
-  actWorkers, actMaterials, actPhotos, workers, materials,
+  actWorkers, actMaterials, actPhotos, workers, materials, invoices,
 } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { actPatchSchema, firstZodError, materialStockDelta } from "@/lib/acts";
-import { applyStockDelta, checkActRefs } from "@/lib/acts-db";
+import { applyStockDelta, billedMessage, checkActRefs, currentDate, invoicedBy, itemsChanged } from "@/lib/acts-db";
 import { roundMoney } from "@/lib/calc";
 
 export const dynamic = "force-dynamic";
@@ -32,14 +32,18 @@ export async function GET(
     siteId: pourings.siteId,
     offerId: pourings.offerId,
     machineId: pourings.machineId,
+    invoiceId: pourings.invoiceId,
+    clientId: sites.clientId,
     site: { id: sites.id, name: sites.name },
     offer: { id: offers.id, number: offers.number },
     machine: { id: machines.id, name: machines.name },
+    invoice: { id: invoices.id, number: invoices.number, status: invoices.status },
   })
     .from(pourings)
     .leftJoin(sites, eq(pourings.siteId, sites.id))
     .leftJoin(offers, eq(pourings.offerId, offers.id))
     .leftJoin(machines, eq(pourings.machineId, machines.id))
+    .leftJoin(invoices, eq(pourings.invoiceId, invoices.id))
     .where(eq(pourings.id, id))
     .limit(1);
 
@@ -106,12 +110,24 @@ export async function PATCH(
   const id = parseInt(params.id);
   if (isNaN(id)) return NextResponse.json({ error: "Невалиден ID" }, { status: 400 });
 
-  const current = db.select({ siteId: pourings.siteId, offerId: pourings.offerId }).from(pourings).where(eq(pourings.id, id)).get();
+  const current = db.select({ siteId: pourings.siteId, offerId: pourings.offerId, invoiceId: pourings.invoiceId }).from(pourings).where(eq(pourings.id, id)).get();
   if (!current) return NextResponse.json({ error: "Не е намерено" }, { status: 404 });
 
   const parsed = actPatchSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: firstZodError(parsed.error) }, { status: 400 });
   const body = parsed.data;
+
+  // Фактуриран акт: количествата, цените, обектът и датата са във фактурата.
+  // Работници, материали, машина и бележки остават редактируеми (вътрешни разходи).
+  const billed = invoicedBy(current.invoiceId);
+  if (billed && (body.items !== undefined || body.siteId !== undefined || body.date !== undefined || body.offerId !== undefined)) {
+    const changed = body.items !== undefined && itemsChanged(id, body.items)
+      || (body.siteId !== undefined && body.siteId !== current.siteId)
+      || (body.offerId !== undefined && (body.offerId ?? null) !== current.offerId)
+      || (body.date !== undefined && body.date !== currentDate(id));
+    if (changed) return NextResponse.json({ error: billedMessage(billed) }, { status: 409 });
+    delete body.items; delete body.siteId; delete body.offerId; delete body.date;
+  }
 
   if (body.siteId !== undefined || body.offerId !== undefined) {
     const refError = checkActRefs(body.siteId ?? current.siteId, body.offerId !== undefined ? body.offerId ?? null : current.offerId);
@@ -182,6 +198,11 @@ export async function DELETE(
 
   const id = parseInt(params.id);
   if (isNaN(id)) return NextResponse.json({ error: "Невалиден ID" }, { status: 400 });
+
+  const act = db.select({ invoiceId: pourings.invoiceId }).from(pourings).where(eq(pourings.id, id)).get();
+  if (!act) return NextResponse.json({ error: "Не е намерено" }, { status: 404 });
+  const billed = invoicedBy(act.invoiceId);
+  if (billed) return NextResponse.json({ error: billedMessage(billed).replace("Промени по количества, цени, обект и дата", "Изтриване") }, { status: 409 });
 
   db.transaction((tx) => {
     // Изразходените материали се връщат в склада

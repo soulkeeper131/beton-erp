@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,9 +19,16 @@ interface DataListProps {
   emptyText?: string;
   loading?: boolean;
   isAdmin?: boolean;
+  // Страница за преглед на реда — първата колона става връзка за всички роли
+  // (преди само администраторът имаше бутон и останалите не можеха да отворят запис)
+  rowHref?: (row: any) => string;
 }
 
-export function DataList({ columns, data, onEdit, onDelete, emptyText = "Няма данни", loading, isAdmin = true }: DataListProps) {
+export function DataList({ columns, data, onEdit, onDelete, emptyText = "Няма данни", loading, isAdmin = true, rowHref }: DataListProps) {
+  const cell = (col: DataListColumn, row: any, i: number) => {
+    const content = col.render ? col.render(row[col.key], row) : row[col.key] ?? "—";
+    return i === 0 && rowHref ? <Link href={rowHref(row)} className="font-medium text-primary hover:underline">{content}</Link> : content;
+  };
   const hasActions = isAdmin && !!(onEdit || onDelete);
 
   if (loading) {
@@ -50,9 +58,9 @@ export function DataList({ columns, data, onEdit, onDelete, emptyText = "Ням�
                 <TableBody>
                   {data.map((row: any) => (
                     <TableRow key={row.id}>
-                      {columns.map((col) => (
+                      {columns.map((col, i) => (
                         <TableCell key={col.key} className="whitespace-nowrap">
-                          {col.render ? col.render(row[col.key], row) : row[col.key] ?? "—"}
+                          {cell(col, row, i)}
                         </TableCell>
                       ))}
                       {hasActions && (
@@ -81,7 +89,7 @@ export function DataList({ columns, data, onEdit, onDelete, emptyText = "Ням�
                 <div key={col.key} className={i === 0 ? "" : "flex justify-between text-sm"}>
                   {i === 0 ? (
                     <div className="font-semibold text-base">
-                      {col.render ? col.render(row[col.key], row) : row[col.key] ?? "—"}
+                      {cell(col, row, 0)}
                     </div>
                   ) : (
                     <>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth-helpers";
-import { getNextInvoiceNumber } from "@/lib/invoice-number";
+import { previewNumber } from "@/lib/invoices-db";
 
 export const dynamic = "force-dynamic";
 
@@ -11,5 +11,6 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const direction = searchParams.get("direction") === "incoming" ? "incoming" : "outgoing";
 
-  return NextResponse.json({ number: getNextInvoiceNumber(direction) });
+  // Изходящите получават номера при издаване — това е номерът, който ще се даде
+  return NextResponse.json({ number: previewNumber(direction, searchParams.get("type") || "invoice") });
 }
