@@ -5,11 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { UserPlus, Pencil, Trash2, Shield, ShieldCheck, ShieldAlert, User } from "lucide-react";
 
 type UserRow = { id: number; email: string; name: string; role: string; phone: string | null; active: boolean };
+
+// Преди менюто за роля беше Radix Select с <option> вътре — не се показваше и всеки
+// нов потребител ставаше „Служител“; мениджър/бригадир не можеше да се създаде от екрана
+const ROLE_LABELS: Record<string, string> = { admin: "Администратор", manager: "Мениджър", brigadir: "Бригадир", employee: "Служител" };
 
 const roleIcons: Record<string, any> = {
   admin: ShieldCheck,
@@ -142,7 +146,7 @@ export default function UsersPage() {
                         <td className="p-3 text-gray-500">{u.email}</td>
                         <td className="p-3">
                           <Badge className={`inline-flex items-center gap-1 ${roleColors[u.role] || "bg-gray-100"}`}>
-                            <Icon className="w-3 h-3" /> {u.role}
+                            <Icon className="w-3 h-3" /> {ROLE_LABELS[u.role] || u.role}
                           </Badge>
                         </td>
                         <td className="p-3 text-gray-500">{u.phone || "-"}</td>
@@ -196,10 +200,12 @@ export default function UsersPage() {
             <div>
               <Label>Роля</Label>
               <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
-                <option value="admin">Администратор</option>
-                <option value="manager">Мениджър</option>
-                <option value="brigadir">Бригадир</option>
-                <option value="employee">Служител</option>
+                <SelectTrigger aria-label="Роля"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div>
