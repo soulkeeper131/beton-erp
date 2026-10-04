@@ -34,6 +34,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     .select({
       pouringId: actMaterials.pouringId,
       quantity: actMaterials.quantity,
+      unitCost: actMaterials.unitCost,
       date: pourings.date,
       siteName: sites.name,
     })

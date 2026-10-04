@@ -54,6 +54,7 @@ export default function MaterialDetailPage() {
   async function handleAdd() {
     const q = parseFloat(quantity);
     if (!q || q <= 0) return alert("Въведи количество");
+    if (type === "out" && q > material.quantity) return alert(`Недостатъчна наличност: има ${material.quantity} ${material.unit}`);
     setSaving(true);
     const res = await fetch(`/api/materials/${id}/deliveries`, {
       method: "POST",
@@ -62,7 +63,7 @@ export default function MaterialDetailPage() {
         quantity: type === "in" ? q : -q,
         date,
         supplier: supplier || null,
-        price: price ? parseFloat(price) : null,
+        price: type === "in" && price ? parseFloat(price) : null,
         notes: notes || null,
       }),
     });
@@ -99,7 +100,8 @@ export default function MaterialDetailPage() {
 
   async function handleDelete(deliveryId: number) {
     if (!confirm("Сигурен ли си? Наличността ще се коригира обратно.")) return;
-    await fetch(`/api/materials/${id}/deliveries?deliveryId=${deliveryId}`, { method: "DELETE" });
+    const res = await fetch(`/api/materials/${id}/deliveries?deliveryId=${deliveryId}`, { method: "DELETE" });
+    if (!res.ok) alert((await res.json().catch(() => null))?.error || "Грешка при изтриване");
     load();
   }
 
@@ -119,9 +121,10 @@ export default function MaterialDetailPage() {
           <Button variant="ghost" size="sm" onClick={() => router.push("/materials")}>← Назад</Button>
           <h1 className="text-2xl font-bold">📦 {material.name}</h1>
           <p className="text-muted-foreground text-sm">
-            Наличност: <span className="font-semibold">{material.quantity} {material.unit}</span>
+            Наличност: <span className={`font-semibold ${material.quantity < 0 ? "text-red-600" : material.minThreshold > 0 && material.quantity <= material.minThreshold ? "text-orange-600" : ""}`}>{material.quantity} {material.unit}</span>
             {" · "}Мин. праг: {material.minThreshold} {material.unit}
-            {" · "}Цена: {material.pricePerUnit != null ? `${material.pricePerUnit} €/${material.unit}` : "—"}
+            {" · "}Средна цена: {material.pricePerUnit != null ? `${material.pricePerUnit} €/${material.unit}` : "—"}
+            {material.pricePerUnit != null && material.quantity > 0 && <>{" · "}Стойност: {(material.quantity * material.pricePerUnit).toFixed(2)} €</>}
           </p>
         </div>
         {isAdmin && (
@@ -169,15 +172,19 @@ export default function MaterialDetailPage() {
                 </div>
               )}
               <div>
-                <Label className="text-xs">{type === "in" ? `Ед. цена (€/${material.unit})` : "Цена (€)"}</Label>
-                <Input type="number" step="0.01" min="0" className="h-9" value={price} onChange={(e) => setPrice(e.target.value)} />
+{type === "in" && (<>
+                <Label className="text-xs">Ед. цена без ДДС (€/{material.unit})</Label>
+                <Input type="number" step="0.0001" min="0" className="h-9" value={price} onChange={(e) => setPrice(e.target.value)} />
+              </>)}
               </div>
             </div>
             <div>
               <Label className="text-xs">Забележка</Label>
               <Input className="h-9" value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
-            {type === "in" && <p className="text-xs text-muted-foreground">При приход с цена тя става текуща цена на материала (по нея се смятат разходите в актовете).</p>}
+            {type === "in"
+              ? <p className="text-xs text-muted-foreground">Цената на склада става средна претеглена от наличното и новата доставка. Вече изписаното в актове остава по старата цена.</p>
+              : <p className="text-xs text-muted-foreground">Ръчен разход (брак, корекция при инвентаризация). Изписаното по актове се води автоматично.</p>}
             <Button onClick={handleAdd} disabled={saving}>{saving ? "Запис..." : "Запиши"}</Button>
           </CardContent>
         </Card>
@@ -210,7 +217,7 @@ export default function MaterialDetailPage() {
                       <TableCell><span className="text-red-600">Акт</span></TableCell>
                       <TableCell className="text-right font-medium">-{d.quantity}</TableCell>
                       <TableCell>—</TableCell>
-                      <TableCell className="text-right">—</TableCell>
+                      <TableCell className="text-right">{d.unitCost != null ? `${d.unitCost} €/${material.unit}` : "—"}</TableCell>
                       <TableCell>
                         <a className="underline" href={`/pourings/${d.pouringId}`}>Акт #{d.pouringId}{d.siteName ? ` · ${d.siteName}` : ""}</a>
                       </TableCell>

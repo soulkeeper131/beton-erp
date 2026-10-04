@@ -23,8 +23,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const update: Record<string, any> = {};
   for (const [k, v] of Object.entries(parsed.data)) if (v !== undefined) update[k] = v;
 
-  if (update.workerId && !db.select({ id: workers.id }).from(workers).where(eq(workers.id, update.workerId)).get()) {
-    return NextResponse.json({ error: "Работникът не съществува" }, { status: 400 });
+  if (update.workerId && update.workerId !== current.workerId) {
+    const w = db.select({ dailyRate: workers.dailyRate, overtimeRate: workers.overtimeRate }).from(workers).where(eq(workers.id, update.workerId)).get();
+    if (!w) return NextResponse.json({ error: "Работникът не съществува" }, { status: 400 });
+    // Друг работник → неговите ставки
+    update.dailyRate = w.dailyRate;
+    update.overtimeRate = w.overtimeRate;
   }
   const workerId = update.workerId ?? current.workerId;
   const date = update.date ?? current.date;

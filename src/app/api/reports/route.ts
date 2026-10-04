@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { getAuth } from "@/lib/auth-helpers";
 import { invoiceSign, inPeriod, parsePeriod } from "@/lib/reports";
 
@@ -69,13 +69,13 @@ export async function GET(req: Request) {
     .from(schema.actWorkers)
     .all();
 
-  // Разход материали (по текущата цена — историческа цена не се пази)
+  // Разход материали — по цената към момента на изписване (стари записи без нея: текущата)
   const actMaterials = await db
     .select({
       pouringId: schema.actMaterials.pouringId,
       materialId: schema.actMaterials.materialId,
       quantity: schema.actMaterials.quantity,
-      pricePerUnit: schema.materials.pricePerUnit,
+      pricePerUnit: sql<number | null>`coalesce(${schema.actMaterials.unitCost}, ${schema.materials.pricePerUnit})`,
     })
     .from(schema.actMaterials)
     .leftJoin(schema.materials, eq(schema.actMaterials.materialId, schema.materials.id))

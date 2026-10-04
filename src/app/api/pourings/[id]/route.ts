@@ -7,7 +7,7 @@ import {
 } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { actPatchSchema, firstZodError, materialStockDelta } from "@/lib/acts";
-import { applyStockDelta, billedMessage, checkActRefs, currentDate, invoicedBy, itemsChanged } from "@/lib/acts-db";
+import { applyStockDelta, billedMessage, checkActRefs, currentDate, invoicedBy, itemsChanged, materialUnitCosts } from "@/lib/acts-db";
 import { roundMoney } from "@/lib/calc";
 
 export const dynamic = "force-dynamic";
@@ -83,6 +83,7 @@ export async function GET(
     id: actMaterials.id,
     materialId: actMaterials.materialId,
     quantity: actMaterials.quantity,
+    unitCost: actMaterials.unitCost,
     materialName: materials.name,
     unit: materials.unit,
   })
@@ -139,6 +140,7 @@ export async function PATCH(
     if (body[key] !== undefined) update[key] = body[key];
   }
 
+  const stockWarnings: string[] = [];
   // Всичко в една транзакция — при грешка актът остава непроменен
   db.transaction((tx) => {
     if (body.items) {
@@ -172,13 +174,14 @@ export async function PATCH(
 
     if (body.materials) {
       // Складът следва акта: изписва се разликата спрямо предишното състояние
-      const before = tx.select({ materialId: actMaterials.materialId, quantity: actMaterials.quantity })
+      const before = tx.select({ materialId: actMaterials.materialId, quantity: actMaterials.quantity, unitCost: actMaterials.unitCost })
         .from(actMaterials).where(eq(actMaterials.pouringId, id)).all();
+      const costs = materialUnitCosts(tx, before, body.materials.map((m) => m.materialId));
       tx.delete(actMaterials).where(eq(actMaterials.pouringId, id)).run();
       for (const m of body.materials) {
-        tx.insert(actMaterials).values({ pouringId: id, materialId: m.materialId, quantity: m.quantity }).run();
+        tx.insert(actMaterials).values({ pouringId: id, materialId: m.materialId, quantity: m.quantity, unitCost: costs.get(m.materialId) ?? null }).run();
       }
-      applyStockDelta(tx, materialStockDelta(before, body.materials));
+      stockWarnings.push(...applyStockDelta(tx, materialStockDelta(before, body.materials)));
     }
 
     if (Object.keys(update).length > 0) {
@@ -186,7 +189,9 @@ export async function PATCH(
     }
   });
 
-  return GET(request, { params });
+  const res = await GET(request, { params });
+  if (!stockWarnings.length) return res;
+  return NextResponse.json({ ...(await res.json()), warnings: stockWarnings });
 }
 
 export async function DELETE(

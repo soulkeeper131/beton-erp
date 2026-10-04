@@ -20,13 +20,32 @@ export function checkActRefs(siteId: number, offerId: number | null): string | n
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 // Намалява наличността с delta (отрицателно delta връща в склада). Вика се в транзакция.
-export function applyStockDelta(tx: Tx, delta: Map<number, number>) {
+// Връща предупреждения за материали, които излизат на минус (актът се записва — изляното
+// е факт, но складът трябва да се коригира с приход).
+export function applyStockDelta(tx: Tx, delta: Map<number, number>): string[] {
+  const warnings: string[] = [];
   for (const [materialId, qty] of delta) {
-    tx.update(materials)
+    const m = tx.update(materials)
       .set({ quantity: sql`${materials.quantity} - ${qty}` })
       .where(eq(materials.id, materialId))
-      .run();
+      .returning({ name: materials.name, quantity: materials.quantity, unit: materials.unit })
+      .get();
+    if (m && qty > 0 && m.quantity < -1e-9) {
+      warnings.push(`${m.name}: недостиг ${Math.round(-m.quantity * 1000) / 1000} ${m.unit} — запишете приход в склада`);
+    }
   }
+  return warnings;
+}
+
+/** Цена за единица за всеки изписан материал: запазва досегашната за вече изписаните, текущата за новите. */
+export function materialUnitCosts(tx: Tx, before: { materialId: number; unitCost: number | null }[], materialIds: number[]) {
+  const costs = new Map<number, number | null>();
+  for (const b of before) if (b.unitCost != null && !costs.has(b.materialId)) costs.set(b.materialId, b.unitCost);
+  for (const id of materialIds) {
+    if (costs.has(id)) continue;
+    costs.set(id, tx.select({ p: materials.pricePerUnit }).from(materials).where(eq(materials.id, id)).get()?.p ?? null);
+  }
+  return costs;
 }
 
 // ---- Фактурирани актове ----
