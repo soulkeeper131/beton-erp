@@ -397,6 +397,17 @@ try { sqlite.exec('ALTER TABLE invoices ADD COLUMN created_at TEXT'); } catch(e:
 try { sqlite.exec('ALTER TABLE invoices ADD COLUMN updated_at TEXT'); } catch(e: any) { if (!e.message.includes('duplicate')) console.error('invoices updated_at migration:', e.message); }
 // Актът помни с коя фактура е фактуриран
 try { sqlite.exec('ALTER TABLE pourings ADD COLUMN invoice_id INTEGER REFERENCES invoices(id)'); } catch (e: any) { if (!e.message.includes('duplicate')) console.error('pourings invoice_id migration:', e.message); }
+// Себестойност на материала в акта и ставки в явката (замразени към момента на записа)
+for (const stmt of [
+  'ALTER TABLE act_materials ADD COLUMN unit_cost REAL',
+  'ALTER TABLE worker_attendance ADD COLUMN daily_rate REAL',
+  'ALTER TABLE worker_attendance ADD COLUMN overtime_rate REAL',
+]) {
+  try { sqlite.exec(stmt); } catch (e: any) { if (!e.message.includes('duplicate')) console.error('migration:', stmt, e.message); }
+}
+// Старите записи получават текущите цени/ставки веднъж — оттук нататък не се менят
+try { sqlite.exec('UPDATE act_materials SET unit_cost = (SELECT price_per_unit FROM materials WHERE materials.id = act_materials.material_id) WHERE unit_cost IS NULL'); } catch {}
+try { sqlite.exec('UPDATE worker_attendance SET daily_rate = (SELECT daily_rate FROM workers WHERE workers.id = worker_attendance.worker_id), overtime_rate = (SELECT overtime_rate FROM workers WHERE workers.id = worker_attendance.worker_id) WHERE daily_rate IS NULL'); } catch {}
 try { sqlite.exec("UPDATE invoices SET created_at = datetime('now') WHERE created_at IS NULL"); } catch {}
 try { sqlite.exec("UPDATE invoices SET updated_at = datetime('now') WHERE updated_at IS NULL"); } catch {}
 

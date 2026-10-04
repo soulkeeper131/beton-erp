@@ -45,3 +45,40 @@ export const attendanceSchema = z.object({
   advance: z.coerce.number({ invalid_type_error: "Невалиден аванс" }).min(0, "Невалиден аванс").default(0),
   notes: z.string().optional().nullable(),
 });
+
+/** Месечна ведомост: сумира по работник, като всяка явка се смята със своите ставки. */
+export function payrollSummary(entries: {
+  workerId: number; workerName?: string | null; hours: number | null; overtime: number | null; advance: number | null;
+  dailyRate: number | null; overtimeRate: number | null;
+}[]) {
+  const by = new Map<number, { workerId: number; name: string; days: number; hours: number; overtime: number; base: number; overtimePay: number; advance: number; gross: number; net: number }>();
+  for (const e of entries) {
+    const pay = calcPay({ hours: e.hours || 0, overtime: e.overtime || 0, advance: e.advance || 0, dailyRate: e.dailyRate, overtimeRate: e.overtimeRate });
+    const s = by.get(e.workerId) || { workerId: e.workerId, name: e.workerName || "?", days: 0, hours: 0, overtime: 0, base: 0, overtimePay: 0, advance: 0, gross: 0, net: 0 };
+    s.days += pay.days; s.hours += e.hours || 0; s.overtime += e.overtime || 0;
+    s.base = roundMoney(s.base + pay.base); s.overtimePay = roundMoney(s.overtimePay + pay.overtimePay);
+    s.advance = roundMoney(s.advance + (e.advance || 0)); s.gross = roundMoney(s.gross + pay.gross); s.net = roundMoney(s.gross - s.advance);
+    by.set(e.workerId, s);
+  }
+  return [...by.values()].sort((a, b) => a.name.localeCompare(b.name, "bg"));
+}
+
+/**
+ * Явки от актовете: по работник и ден часовете се сумират; над 8 ч отиват като извънредни.
+ * Обектът е този от акта с най-много часове за деня.
+ */
+export function attendanceFromActs(rows: { workerId: number; date: string; siteId: number; hours: number }[]) {
+  const by = new Map<string, { workerId: number; date: string; hours: number; sites: Map<number, number> }>();
+  for (const r of rows) {
+    const k = `${r.workerId}|${r.date}`;
+    const e = by.get(k) || { workerId: r.workerId, date: r.date, hours: 0, sites: new Map() };
+    e.hours += r.hours || 0;
+    e.sites.set(r.siteId, (e.sites.get(r.siteId) || 0) + (r.hours || 0));
+    by.set(k, e);
+  }
+  return [...by.values()].map((e) => {
+    const siteId = [...e.sites.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    const hours = Math.min(e.hours, WORKDAY_HOURS);
+    return { workerId: e.workerId, date: e.date, siteId, hours, overtime: Math.max(0, Math.round((e.hours - hours) * 100) / 100) };
+  });
+}

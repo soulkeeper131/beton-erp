@@ -119,6 +119,9 @@ export const workerAttendance = sqliteTable("worker_attendance", {
   overtime: real("overtime").default(0),
   advance: real("advance").default(0),
   notes: text("notes"),
+  // Ставките към деня на явката — смяна на ставката не променя минали месеци
+  dailyRate: real("daily_rate"),
+  overtimeRate: real("overtime_rate"),
 });
 
 // ========== MATERIALS ==========
@@ -217,6 +220,8 @@ export const actMaterials = sqliteTable("act_materials", {
   pouringId: integer("pouring_id").notNull().references(() => pourings.id),
   materialId: integer("material_id").notNull().references(() => materials.id),
   quantity: real("quantity").notNull(),
+  // Цена за единица към момента на изписване — старите разходи не се менят при нова доставка
+  unitCost: real("unit_cost"),
 });
 
 // ========== ACT PHOTOS ==========

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth-helpers";
 import { db } from "@/db";
 import { workerAttendance, workers, sites } from "@/db/schema";
-import { eq, desc, like, and } from "drizzle-orm";
+import { eq, desc, like, and, sql } from "drizzle-orm";
 import { attendanceSchema } from "@/lib/payroll";
 import { firstZodError } from "@/lib/acts";
 
@@ -31,8 +31,9 @@ export async function GET(req: Request) {
       advance: workerAttendance.advance,
       notes: workerAttendance.notes,
       workerName: workers.name,
-      dailyRate: workers.dailyRate,
-      overtimeRate: workers.overtimeRate,
+      // Ставките към деня на явката (стари записи без тях — текущите на работника)
+      dailyRate: sql<number>`coalesce(${workerAttendance.dailyRate}, ${workers.dailyRate})`,
+      overtimeRate: sql<number | null>`coalesce(${workerAttendance.overtimeRate}, ${workers.overtimeRate})`,
       siteName: sites.name,
     })
     .from(workerAttendance)
@@ -49,11 +50,11 @@ export async function POST(req: Request) {
   const { session, isApiKey } = await getAuth(req);
   if (!session && !isApiKey) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
-  const parsed = attendanceSchema.safeParse(body);
+  const parsed = attendanceSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: firstZodError(parsed.error) }, { status: 400 });
 
-  if (!db.select({ id: workers.id }).from(workers).where(eq(workers.id, parsed.data.workerId)).get()) {
+  const worker = db.select({ id: workers.id, dailyRate: workers.dailyRate, overtimeRate: workers.overtimeRate }).from(workers).where(eq(workers.id, parsed.data.workerId)).get();
+  if (!worker) {
     return NextResponse.json({ error: "Работникът не съществува" }, { status: 400 });
   }
   if (parsed.data.siteId && !db.select({ id: sites.id }).from(sites).where(eq(sites.id, parsed.data.siteId)).get()) {
@@ -78,6 +79,8 @@ export async function POST(req: Request) {
       overtime: parsed.data.overtime,
       advance: parsed.data.advance,
       notes: parsed.data.notes || null,
+      dailyRate: worker.dailyRate,
+      overtimeRate: worker.overtimeRate,
     })
     .returning()
     .all();

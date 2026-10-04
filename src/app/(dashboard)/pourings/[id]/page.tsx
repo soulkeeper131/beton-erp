@@ -140,6 +140,8 @@ export default function PouredDetailPage() {
     });
     if (res.ok) {
       const updated = await res.json();
+      // Актът е записан; недостиг в склада се показва, за да се запише приход
+      if (updated.warnings?.length) alert("⚠️ Склад:\n" + updated.warnings.join("\n"));
       setPoured(updated);
       setEditing(false);
       setSaveError("");

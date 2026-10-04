@@ -56,6 +56,7 @@ export function WorkerForm({ workerId }: { workerId?: string }) {
               <Label>Дневна ставка (€ за 8 ч) *</Label>
               <Input type="number" step="0.01" min="0" value={form.dailyRate} onChange={e => setForm({ ...form, dailyRate: e.target.value })} />
               {hourly > 0 && <p className="text-xs text-muted-foreground mt-1">= {hourly} €/ч (ползва се в актовете и ведомостта)</p>}
+              {workerId && <p className="text-xs text-muted-foreground">Промяната важи за нови явки и актове — вече записаните остават по старата ставка.</p>}
             </div>
             <div>
               <Label>Извънреден труд (€/ч)</Label>
